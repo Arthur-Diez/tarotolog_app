@@ -1,4 +1,4 @@
-import type { ThemeParams, WebApp } from "@twa-dev/sdk";
+import type { ThemeParams, TelegramWebApp } from "./telegram";
 
 const themeParamToCssVar: Partial<Record<keyof ThemeParams, string>> = {
   accent_color: "--tg-accent",
@@ -32,7 +32,7 @@ function applyThemeParams(themeParams?: ThemeParams) {
   });
 }
 
-function resolveColorScheme(webApp?: WebApp) {
+function resolveColorScheme(webApp?: TelegramWebApp) {
   const scheme = webApp?.colorScheme;
   if (scheme === "light" || scheme === "dark") {
     return scheme;
@@ -45,7 +45,7 @@ function resolveColorScheme(webApp?: WebApp) {
   return "light";
 }
 
-export function applyTheme(webApp?: WebApp) {
+export function applyTheme(webApp?: TelegramWebApp) {
   if (typeof document === "undefined") return;
 
   applyThemeParams(webApp?.themeParams);
