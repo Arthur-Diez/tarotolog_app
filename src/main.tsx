@@ -11,7 +11,7 @@ async function bootstrap() {
     .then((webApp) => {
       if (webApp) {
         applyTheme(webApp);
-        webApp.onEvent?.(\"themeChanged\", () => applyTheme(webApp));
+        webApp.onEvent?.("themeChanged", () => applyTheme(webApp));
       } else {
         applyTheme();
       }
