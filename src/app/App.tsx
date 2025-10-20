@@ -1,13 +1,49 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import HomeScreen from "@/pages/HomeScreen";
 import { TabBar } from "@/components/layout/TabBar";
+import { ErrorScreen } from "@/components/layout/ErrorScreen";
+import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import type { TabRoute } from "./routes";
 import { routes } from "./routes";
+import { useAppState } from "@/stores/appState";
 
 export default function App() {
   const [activeRoute, setActiveRoute] = useState<TabRoute["id"]>("home");
+  const status = useAppState((state) => state.status);
+  const error = useAppState((state) => state.error);
+  const initialize = useAppState((state) => state.initialize);
+  const settingsTheme = useAppState((state) => state.settings?.theme);
+
+  useEffect(() => {
+    if (!settingsTheme) return;
+    if (settingsTheme === "light" || settingsTheme === "dark") {
+      document.documentElement.classList.toggle("dark", settingsTheme === "dark");
+    }
+  }, [settingsTheme]);
+
+  useEffect(() => {
+    if (status === "idle") {
+      void initialize();
+    }
+  }, [initialize, status]);
+
+  if (status === "idle" || status === "loading") {
+    return <LoadingScreen />;
+  }
+
+  if (status === "error") {
+    return (
+      <ErrorScreen
+        message="Нет соединения с сервером Tarotolog"
+        description={error ?? undefined}
+        onRetry={() => {
+          void initialize();
+        }}
+      />
+    );
+  }
 
   const content = useMemo(() => {
     switch (activeRoute) {

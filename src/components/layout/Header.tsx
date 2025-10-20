@@ -11,6 +11,8 @@ export interface HeaderProps {
 }
 
 export function Header({ name, username, energy, className }: HeaderProps) {
+  const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energy)));
+
   return (
     <div className={cn("flex items-center justify-between gap-4", className)}>
       <div className="flex items-center gap-4">
@@ -23,7 +25,7 @@ export function Header({ name, username, energy, className }: HeaderProps) {
         <div className="space-y-1">
           <p className="text-base font-semibold">{name}</p>
           {username ? <p className="text-sm text-muted-foreground">@{username}</p> : null}
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Энергия: {energy}%</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Энергия: {formattedEnergy} ⚡</p>
         </div>
       </div>
       <Button variant="outline" className="gap-2 whitespace-nowrap border-white/30 bg-white/5 px-4 text-sm font-semibold text-secondary hover:bg-white/10">

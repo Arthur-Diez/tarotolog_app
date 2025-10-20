@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Calculator,
   HeartHandshake,
@@ -17,6 +18,7 @@ import { DailyHints } from "@/components/sections/DailyHints";
 import { SectionGrid } from "@/components/sections/SectionGrid";
 import { Streak } from "@/components/sections/Streak";
 import { useEnergy } from "@/hooks/useEnergy";
+import { useAppState } from "@/stores/appState";
 
 const sections = [
   {
@@ -63,19 +65,39 @@ const sections = [
   }
 ];
 
-export default function HomeScreen() {
-  const { level, glowIntensity } = useEnergy(82);
+const MAX_ENERGY = 500;
 
-  const streakDays = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"].map((day, index) => ({
-    day,
-    completed: index < 5,
-    isToday: index === 5
-  }));
+export default function HomeScreen() {
+  const appUser = useAppState((state) => state.user);
+  const telegramUser = useAppState((state) => state.telegramUser);
+  const settings = useAppState((state) => state.settings);
+
+  const energyBalance = appUser?.energy_balance ?? 0;
+  const { level, glowIntensity } = useEnergy(energyBalance);
+  const streakCount = appUser?.streak_days ?? 0;
+  const gaugeMax = Math.max(MAX_ENERGY, energyBalance || 0);
+
+  const streakDays = useMemo(() => {
+    const labels = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+    const todayIndex = ((new Date().getDay() + 6) % 7); // convert Sunday (0) to 6
+    const completedThreshold = Math.min(streakCount, labels.length);
+    return labels.map((day, index) => ({
+      day,
+      completed: index < completedThreshold,
+      isToday: index === todayIndex
+    }));
+  }, [streakCount]);
+
+  const displayName =
+    appUser?.display_name ??
+    telegramUser?.first_name ??
+    telegramUser?.username ??
+    "Гость";
 
   return (
     <div className="space-y-6">
-      <Header name="Артём Таро" username="tarot.mystic" energy={Math.round(level)} />
-      <EnergyGauge level={level} glowIntensity={glowIntensity} />
+      <Header name={displayName} username={telegramUser?.username} energy={energyBalance} />
+      <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
       <CardOfDay
         card={{
           title: "Императрица",
@@ -86,7 +108,7 @@ export default function HomeScreen() {
             "Сегодня прояви заботу о себе и близких. Используй энергию дня, чтобы nurture проекты и идеи, которым давно не давал внимания."
         }}
       />
-      <Streak streakCount={5} days={streakDays} />
+      <Streak streakCount={streakCount} days={streakDays} />
       <DailyHints
         focus="Раскрытия потенциала"
         highlights={["Создание новых проектов", "Работа с женской энергией", "Практики благодарности"]}
@@ -99,6 +121,7 @@ export default function HomeScreen() {
           amount: 25,
           description: "Возвращайся каждый день и усиливай поток энергии"
         }}
+        defaultReminder={settings?.notifications}
       />
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <Sparkles className="h-4 w-4 text-secondary" />

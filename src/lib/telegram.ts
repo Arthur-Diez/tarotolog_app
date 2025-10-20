@@ -11,9 +11,24 @@ export interface ThemeParams {
   text_color?: string | null;
 }
 
+export interface TelegramUser {
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  language_code?: string;
+}
+
+export interface TelegramInitDataUnsafe {
+  user?: TelegramUser;
+  [key: string]: unknown;
+}
+
 export interface TelegramWebApp {
   colorScheme?: "light" | "dark" | string;
   themeParams?: ThemeParams;
+  initData?: string;
+  initDataUnsafe?: TelegramInitDataUnsafe;
   ready: () => void;
   expand: () => void;
   onEvent?: (event: "themeChanged", handler: () => void) => void;
