@@ -1,97 +1,71 @@
-import WebApp from "@twa-dev/sdk";
-import { create } from "zustand";
-
-import { initWebApp, type InitWebAppResponse } from "@/lib/api";
-import type { TelegramUser } from "@/lib/telegram";
-
-interface AppState {
-  status: "idle" | "loading" | "ready" | "error";
-  error: string | null;
-  user: InitWebAppResponse["user"] | null;
-  settings: InitWebAppResponse["settings"] | null;
-  telegramUser: TelegramUser | null;
-  initialize: () => Promise<void>;
+export interface ThemeParams {
+  accent_color?: string | null;
+  bg_color?: string | null;
+  button_color?: string | null;
+  button_text_color?: string | null;
+  destructive_text_color?: string | null;
+  header_bg_color?: string | null;
+  hint_color?: string | null;
+  link_color?: string | null;
+  secondary_bg_color?: string | null;
+  text_color?: string | null;
 }
 
-export const useAppState = create<AppState>((set, get) => ({
-  status: "idle",
-  error: null,
-  user: null,
-  settings: null,
-  telegramUser: null,
+export interface TelegramUser {
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  language_code?: string;
+}
 
-  initialize: async () => {
-    const { status } = get();
-    if (status === "loading" || status === "ready") {
-      return;
-    }
+export interface TelegramInitDataUnsafe {
+  user?: TelegramUser;
+  [key: string]: unknown;
+}
 
-    set({ status: "loading", error: null });
+export interface TelegramWebApp {
+  colorScheme?: "light" | "dark" | string;
+  themeParams?: ThemeParams;
+  initData?: string;
+  initDataUnsafe?: TelegramInitDataUnsafe;
+  ready: () => void;
+  expand: () => void;
+  onEvent?: (event: "themeChanged", handler: () => void) => void;
+  offEvent?: (event: "themeChanged", handler: () => void) => void;
+}
 
-    try {
-      // 1. Достаём юзера из Telegram WebApp
-      const tgUser = WebApp?.initDataUnsafe?.user ?? null;
+let cachedWebApp: TelegramWebApp | null = null;
 
-      // 2. Достаём session из query-параметра
-      const session =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("session")
-          : null;
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: TelegramWebApp;
+    };
+  }
+}
 
-      // 3. Минимальная валидация
-      const missing: string[] = [];
-      if (!session) {
-        missing.push("session");
-      }
-      if (!tgUser) {
-        missing.push("telegram user");
-      } else if (!tgUser.id) {
-        missing.push("telegram_id");
-      }
+export async function initTelegram(): Promise<TelegramWebApp | null> {
+  if (cachedWebApp) {
+    return cachedWebApp;
+  }
 
-      if (missing.length > 0) {
-        throw new Error(
-          `Недостаточно данных для инициализации: ${missing.join(", ")}`
-        );
-      }
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-      // 4. Запрос к нашему API /api/init_webapp
-      const response = await initWebApp({
-        telegram_id: tgUser!.id,
-        username: tgUser!.username ?? null,
-        first_name: tgUser!.first_name ?? null,
-        last_name: tgUser!.last_name ?? null,
-        language_code: tgUser!.language_code ?? "ru",
-        session,
-      });
+  const webApp = window.Telegram?.WebApp;
+  if (!webApp) {
+    return null;
+  }
 
-      // 5. Кладём всё в стор
-      set({
-        status: "ready",
-        user: response.user,
-        settings: response.settings,
-        telegramUser: {
-          id: tgUser!.id,
-          username: tgUser!.username ?? undefined,
-          first_name: tgUser!.first_name ?? undefined,
-          last_name: tgUser!.last_name ?? undefined,
-          language_code: tgUser!.language_code ?? undefined,
-        },
-        error: null,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Неизвестная ошибка";
+  webApp.ready();
+  webApp.expand();
+  cachedWebApp = webApp;
 
-      console.error("[Tarotolog] App initialization failed:", message);
+  return webApp;
+}
 
-      set({
-        status: "error",
-        error: message,
-        user: null,
-        settings: null,
-        telegramUser: null,
-      });
-    }
-  },
-}));
+export function getTelegramWebApp(): TelegramWebApp | null {
+  return cachedWebApp;
+}
