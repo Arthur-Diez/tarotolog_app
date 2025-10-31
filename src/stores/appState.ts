@@ -1,7 +1,8 @@
+import WebApp from "@twa-dev/sdk";
 import { create } from "zustand";
 
 import { initWebApp, type InitWebAppResponse } from "@/lib/api";
-import { getTelegramWebApp, type TelegramUser } from "@/lib/telegram";
+import type { TelegramUser } from "@/lib/telegram";
 
 interface AppState {
   status: "idle" | "loading" | "ready" | "error";
@@ -27,23 +28,35 @@ export const useAppState = create<AppState>((set, get) => ({
     set({ status: "loading", error: null });
 
     try {
-      const webApp = getTelegramWebApp();
-      const tgUser = webApp?.initDataUnsafe?.user;
+      const tgUser = WebApp?.initDataUnsafe?.user ?? null;
       const session =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("session")
           : null;
 
-      if (!tgUser || !session) {
-        throw new Error("Недостаточно данных для инициализации");
+      const missing: string[] = [];
+      if (!session) {
+        missing.push("session");
+      }
+
+      if (!tgUser) {
+        missing.push("telegram user");
+      }
+
+      if (tgUser && !tgUser.id) {
+        missing.push("telegram_id");
+      }
+
+      if (missing.length > 0) {
+        throw new Error(`Недостаточно данных для инициализации: ${missing.join(", ")}`);
       }
 
       const response = await initWebApp({
-        telegram_id: tgUser.id,
-        username: tgUser.username ?? "",
-        first_name: tgUser.first_name ?? "",
-        last_name: tgUser.last_name ?? "",
-        language_code: tgUser.language_code ?? "",
+        telegram_id: tgUser!.id,
+        username: tgUser!.username ?? null,
+        first_name: tgUser!.first_name ?? null,
+        last_name: tgUser!.last_name ?? null,
+        language_code: tgUser!.language_code ?? "ru",
         session
       });
 
@@ -51,11 +64,18 @@ export const useAppState = create<AppState>((set, get) => ({
         status: "ready",
         user: response.user,
         settings: response.settings,
-        telegramUser: tgUser,
+        telegramUser: {
+          id: tgUser!.id,
+          username: tgUser!.username,
+          first_name: tgUser!.first_name,
+          last_name: tgUser!.last_name,
+          language_code: tgUser!.language_code
+        },
         error: null
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Неизвестная ошибка";
+      console.error("[Tarotolog] App initialization failed:", message);
       set({ status: "error", error: message });
     }
   }

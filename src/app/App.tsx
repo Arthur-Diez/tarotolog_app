@@ -7,27 +7,20 @@ import { ErrorScreen } from "@/components/layout/ErrorScreen";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import type { TabRoute } from "./routes";
 import { routes } from "./routes";
-import { useAppState } from "@/stores/appState";
+import { useAppInit } from "@/hooks/useAppInit";
 
 export default function App() {
   const [activeRoute, setActiveRoute] = useState<TabRoute["id"]>("home");
-  const status = useAppState((state) => state.status);
-  const error = useAppState((state) => state.error);
-  const initialize = useAppState((state) => state.initialize);
-  const settingsTheme = useAppState((state) => state.settings?.theme);
+  const { status, user, settings, error, retry, telegramUser } = useAppInit();
+  const settingsTheme = settings?.theme;
 
   useEffect(() => {
-    if (!settingsTheme) return;
     if (settingsTheme === "light" || settingsTheme === "dark") {
       document.documentElement.classList.toggle("dark", settingsTheme === "dark");
+    } else if (settingsTheme === "system") {
+      document.documentElement.classList.remove("dark");
     }
   }, [settingsTheme]);
-
-  useEffect(() => {
-    if (status === "idle") {
-      void initialize();
-    }
-  }, [initialize, status]);
 
   if (status === "idle" || status === "loading") {
     return <LoadingScreen />;
@@ -37,10 +30,19 @@ export default function App() {
     return (
       <ErrorScreen
         message="Нет соединения с сервером Tarotolog"
-        description={error ?? undefined}
+        description={error ?? "Недостаточно данных для инициализации"}
         onRetry={() => {
-          void initialize();
+          void retry();
         }}
+      />
+    );
+  }
+
+  if (!user || !settings) {
+    return (
+      <ErrorScreen
+        message="Недостаточно данных для инициализации"
+        description="API ответил без обязательных полей user/settings"
       />
     );
   }
@@ -48,7 +50,7 @@ export default function App() {
   const content = useMemo(() => {
     switch (activeRoute) {
       case "home":
-        return <HomeScreen />;
+        return <HomeScreen user={user} settings={settings} telegramUser={telegramUser} />;
       case "spreads":
         return (
           <div className="glass-panel rounded-3xl p-6 text-center text-muted-foreground">
@@ -76,7 +78,7 @@ export default function App() {
       default:
         return null;
     }
-  }, [activeRoute]);
+  }, [activeRoute, settings, telegramUser, user]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden bg-background px-4 pb-24 pt-6">

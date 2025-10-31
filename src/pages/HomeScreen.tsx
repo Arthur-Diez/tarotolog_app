@@ -18,7 +18,8 @@ import { DailyHints } from "@/components/sections/DailyHints";
 import { SectionGrid } from "@/components/sections/SectionGrid";
 import { Streak } from "@/components/sections/Streak";
 import { useEnergy } from "@/hooks/useEnergy";
-import { useAppState } from "@/stores/appState";
+import type { InitWebAppResponse } from "@/lib/api";
+import type { TelegramUser } from "@/lib/telegram";
 
 const sections = [
   {
@@ -67,14 +68,16 @@ const sections = [
 
 const MAX_ENERGY = 500;
 
-export default function HomeScreen() {
-  const appUser = useAppState((state) => state.user);
-  const telegramUser = useAppState((state) => state.telegramUser);
-  const settings = useAppState((state) => state.settings);
+interface HomeScreenProps {
+  user: InitWebAppResponse["user"];
+  settings: InitWebAppResponse["settings"];
+  telegramUser?: TelegramUser | null;
+}
 
-  const energyBalance = appUser?.energy_balance ?? 0;
+export default function HomeScreen({ user, settings, telegramUser }: HomeScreenProps) {
+  const energyBalance = user?.energy_balance ?? 0;
   const { level, glowIntensity } = useEnergy(energyBalance);
-  const streakCount = appUser?.streak_days ?? 0;
+  const streakCount = 0;
   const gaugeMax = Math.max(MAX_ENERGY, energyBalance || 0);
 
   const streakDays = useMemo(() => {
@@ -89,7 +92,7 @@ export default function HomeScreen() {
   }, [streakCount]);
 
   const displayName =
-    appUser?.display_name ??
+    user?.display_name ??
     telegramUser?.first_name ??
     telegramUser?.username ??
     "Гость";

@@ -2,10 +2,10 @@ export const API_BASE = "https://tarotapi.freakdev.site/api";
 
 export interface InitWebAppPayload {
   telegram_id: number;
-  username: string;
-  first_name: string;
-  last_name: string;
-  language_code: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  language_code: string | null;
   session: string;
 }
 
@@ -13,21 +13,47 @@ export interface InitWebAppResponse {
   user: {
     display_name: string;
     energy_balance: number;
-    streak_days: number;
-    birth_profile?: Record<string, unknown> | null;
+    lang: string | null;
   };
   settings: {
     notifications: boolean;
-    theme: "light" | "dark" | string;
+    theme: "light" | "dark" | "system";
   };
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status}`);
+async function parseResponse(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) {
+    return null;
   }
 
-  return res.json() as Promise<T>;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  const data = await parseResponse(res);
+
+  if (!res.ok) {
+    const message =
+      typeof data === "string"
+        ? data
+        : typeof data === "object" && data !== null
+          ? (data as { detail?: string; message?: string }).detail ??
+            (data as { detail?: string; message?: string }).message
+          : null;
+
+    throw new Error(message || `API Error: ${res.status}`);
+  }
+
+  if (typeof data !== "object" || data === null) {
+    throw new Error("Некорректный ответ сервера");
+  }
+
+  return data as T;
 }
 
 export async function initWebApp(payload: InitWebAppPayload): Promise<InitWebAppResponse> {
