@@ -72,10 +72,10 @@ export const useAppState = create<AppState>((set, get) => ({
         settings: response.settings,
         telegramUser: {
           id: tgUser!.id,
-          username: tgUser!.username ?? null,
-          first_name: tgUser!.first_name ?? null,
-          last_name: tgUser!.last_name ?? null,
-          language_code: tgUser!.language_code ?? null,
+          username: tgUser!.username ?? undefined,
+          first_name: tgUser!.first_name ?? undefined,
+          last_name: tgUser!.last_name ?? undefined,
+          language_code: tgUser!.language_code ?? undefined,
         },
         error: null,
       });
