@@ -53,13 +53,16 @@ export const useAppState = create<AppState>((set, get) => ({
         );
       }
 
+      const safeUser = tgUser as TelegramUser & { id: number };
+      const sessionId = session as string;
+
       const response = await initWebApp({
-        telegram_id: tgUser.id,
-        username: tgUser.username ?? null,
-        first_name: tgUser.first_name ?? null,
-        last_name: tgUser.last_name ?? null,
-        language_code: tgUser.language_code ?? "ru",
-        session,
+        telegram_id: safeUser.id,
+        username: safeUser.username ?? null,
+        first_name: safeUser.first_name ?? null,
+        last_name: safeUser.last_name ?? null,
+        language_code: safeUser.language_code ?? "ru",
+        session: sessionId,
       });
 
       set({
@@ -67,11 +70,11 @@ export const useAppState = create<AppState>((set, get) => ({
         user: response.user,
         settings: response.settings,
         telegramUser: {
-          id: tgUser.id,
-          username: tgUser.username ?? undefined,
-          first_name: tgUser.first_name ?? undefined,
-          last_name: tgUser.last_name ?? undefined,
-          language_code: tgUser.language_code ?? undefined,
+          id: safeUser.id,
+          username: safeUser.username ?? undefined,
+          first_name: safeUser.first_name ?? undefined,
+          last_name: safeUser.last_name ?? undefined,
+          language_code: safeUser.language_code ?? undefined,
         },
         error: null,
       });
