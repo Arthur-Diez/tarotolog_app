@@ -47,7 +47,7 @@ export default function App() {
     );
   }
 
-  const content = (() => {
+  const renderContent = () => {
     switch (activeRoute) {
       case "home":
         return <HomeScreen user={user} settings={settings} telegramUser={telegramUser} />;
@@ -78,7 +78,7 @@ export default function App() {
       default:
         return null;
     }
-  }, [activeRoute, settings, telegramUser, user]);
+  };
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden bg-background px-4 pb-24 pt-6">
@@ -92,7 +92,7 @@ export default function App() {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="space-y-6 pb-6"
           >
-            {content}
+            {renderContent()}
           </motion.div>
         </AnimatePresence>
       </main>
