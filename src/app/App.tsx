@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import HomeScreen from "@/pages/HomeScreen";
@@ -47,7 +47,7 @@ export default function App() {
     );
   }
 
-  const content = useMemo(() => {
+  const content = (() => {
     switch (activeRoute) {
       case "home":
         return <HomeScreen user={user} settings={settings} telegramUser={telegramUser} />;
