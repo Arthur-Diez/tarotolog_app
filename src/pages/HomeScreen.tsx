@@ -1,15 +1,61 @@
 import { Fragment, useMemo } from "react";
-import { Calculator, LayoutDashboard, Sparkles, Sun } from "lucide-react";
+import { Calculator, HeartHandshake, LayoutDashboard, MoonStar, Orbit, Sparkles, Star, Sun } from "lucide-react";
 
 import { EnergyGauge } from "@/components/layout/EnergyGauge";
 import { Header } from "@/components/layout/Header";
 import { CardOfDay } from "@/components/sections/CardOfDay";
 import { DailyHints } from "@/components/sections/DailyHints";
+import { SectionGrid } from "@/components/sections/SectionGrid";
 import { Streak } from "@/components/sections/Streak";
 import { useEnergy } from "@/hooks/useEnergy";
 import type { InitWebAppResponse, WidgetKey } from "@/lib/api";
 import type { TelegramUser } from "@/lib/telegram";
 import { useProfileState } from "@/stores/profileState";
+
+const sections = [
+  {
+    id: "tarot",
+    title: "Расклады",
+    description: "Глубокие расклады для любого запроса",
+    icon: <LayoutDashboard className="h-5 w-5" />
+  },
+  {
+    id: "compatibility",
+    title: "Совместимость",
+    description: "Синергия и отношения с партнёром",
+    icon: <HeartHandshake className="h-5 w-5" />
+  },
+  {
+    id: "horoscope",
+    title: "Гороскоп",
+    description: "Ежедневные подсказки от звезд",
+    icon: <Sun className="h-5 w-5" />
+  },
+  {
+    id: "matrix",
+    title: "Матрица судьбы",
+    description: "Раскрой предназначение и таланты",
+    icon: <Orbit className="h-5 w-5" />
+  },
+  {
+    id: "natal",
+    title: "Натальная карта",
+    description: "Твой личный космический паспорт",
+    icon: <Star className="h-5 w-5" />
+  },
+  {
+    id: "numerology",
+    title: "Нумерология",
+    description: "Числа дня и жизненные циклы",
+    icon: <Calculator className="h-5 w-5" />
+  },
+  {
+    id: "astroforecast",
+    title: "Астропрогноз",
+    description: "Сильные периоды и транзиты",
+    icon: <MoonStar className="h-5 w-5" />
+  }
+];
 
 const MAX_ENERGY = 500;
 
@@ -128,6 +174,7 @@ export default function HomeScreen({ user, telegramUser }: HomeScreenProps) {
     <div className="space-y-6">
       <Header name={displayName} username={telegramUser?.username} energy={energyBalance} />
       <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
+      <SectionGrid sections={sections} />
       {activeWidgets.map((widget) => (
         <Fragment key={widget}>{renderWidget(widget)}</Fragment>
       ))}
