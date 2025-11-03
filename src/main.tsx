@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { HashRouter } from "react-router-dom";
 
 import App from "./app/App";
 import "./index.css";
@@ -28,7 +29,9 @@ async function bootstrap() {
   const root = createRoot(container);
   root.render(
     <StrictMode>
-      <App />
+      <HashRouter>
+        <App />
+      </HashRouter>
     </StrictMode>
   );
 }

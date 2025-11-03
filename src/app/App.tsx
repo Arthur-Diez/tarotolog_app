@@ -1,18 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import HomeScreen from "@/pages/HomeScreen";
+import CalendarPage from "@/pages/CalendarPage";
+import DiaryPage from "@/pages/DiaryPage";
+import EnergyPage from "@/pages/EnergyPage";
+import ProfilePage from "@/pages/ProfilePage";
 import { TabBar } from "@/components/layout/TabBar";
 import { ErrorScreen } from "@/components/layout/ErrorScreen";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
-import type { TabRoute } from "./routes";
 import { routes } from "./routes";
 import { useAppInit } from "@/hooks/useAppInit";
+import { useProfileState } from "@/stores/profileState";
 
 export default function App() {
-  const [activeRoute, setActiveRoute] = useState<TabRoute["id"]>("home");
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
   const settingsTheme = settings?.theme;
+  const location = useLocation();
+  const profileStatus = useProfileState((state) => state.status);
+  const fetchProfile = useProfileState((state) => state.fetchProfile);
 
   useEffect(() => {
     if (settingsTheme === "light" || settingsTheme === "dark") {
@@ -21,6 +28,12 @@ export default function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [settingsTheme]);
+
+  useEffect(() => {
+    if (status === "ready" && profileStatus === "idle") {
+      void fetchProfile();
+    }
+  }, [fetchProfile, profileStatus, status]);
 
   if (status === "idle" || status === "loading") {
     return <LoadingScreen />;
@@ -47,56 +60,30 @@ export default function App() {
     );
   }
 
-  const renderContent = () => {
-    switch (activeRoute) {
-      case "home":
-        return <HomeScreen user={user} settings={settings} telegramUser={telegramUser} />;
-      case "spreads":
-        return (
-          <div className="glass-panel rounded-3xl p-6 text-center text-muted-foreground">
-            Скоро тут появятся новые расклады ✨
-          </div>
-        );
-      case "compatibility":
-        return (
-          <div className="glass-panel rounded-3xl p-6 text-center text-muted-foreground">
-            Раздел совместимости в разработке 💞
-          </div>
-        );
-      case "astrology":
-        return (
-          <div className="glass-panel rounded-3xl p-6 text-center text-muted-foreground">
-            Здесь вскоре появятся астрологические прогнозы 🔮
-          </div>
-        );
-      case "profile":
-        return (
-          <div className="glass-panel rounded-3xl p-6 text-center text-muted-foreground">
-            Профиль и настройки будут доступны позже ⚙️
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden bg-background px-4 pb-24 pt-6">
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeRoute}
+            key={location.pathname}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="space-y-6 pb-6"
           >
-            {renderContent()}
+            <Routes location={location}>
+              <Route path="/" element={<HomeScreen user={user} telegramUser={telegramUser} />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/energy" element={<EnergyPage user={user} telegramUser={telegramUser} />} />
+              <Route path="/diary" element={<DiaryPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </motion.div>
         </AnimatePresence>
       </main>
-      <TabBar routes={routes} activeRouteId={activeRoute} onRouteChange={setActiveRoute} />
+      <TabBar routes={routes} />
     </div>
   );
 }
