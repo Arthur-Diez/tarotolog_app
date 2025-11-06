@@ -12,14 +12,13 @@ import { ErrorScreen } from "@/components/layout/ErrorScreen";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { routes } from "./routes";
 import { useAppInit } from "@/hooks/useAppInit";
-import { useProfileState } from "@/stores/profileState";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
   const settingsTheme = settings?.theme;
   const location = useLocation();
-  const profileStatus = useProfileState((state) => state.status);
-  const fetchProfile = useProfileState((state) => state.fetchProfile);
+  const { loading: profileLoading, error: profileError, profile, refresh } = useProfile();
 
   useEffect(() => {
     if (settingsTheme === "light" || settingsTheme === "dark") {
@@ -29,13 +28,10 @@ export default function App() {
     }
   }, [settingsTheme]);
 
-  useEffect(() => {
-    if (status === "ready" && profileStatus === "idle") {
-      void fetchProfile();
-    }
-  }, [fetchProfile, profileStatus, status]);
+  const isInitLoading = status === "idle" || status === "loading";
+  const isProfileLoading = profileLoading && !profile;
 
-  if (status === "idle" || status === "loading") {
+  if (isInitLoading || isProfileLoading) {
     return <LoadingScreen />;
   }
 
@@ -46,6 +42,18 @@ export default function App() {
         description={error ?? "Недостаточно данных для инициализации"}
         onRetry={() => {
           void retry();
+        }}
+      />
+    );
+  }
+
+  if (profileError && !profile) {
+    return (
+      <ErrorScreen
+        message="Не удалось загрузить профиль"
+        description={profileError}
+        onRetry={() => {
+          void refresh();
         }}
       />
     );
@@ -73,9 +81,9 @@ export default function App() {
             className="space-y-6 pb-6"
           >
             <Routes location={location}>
-              <Route path="/" element={<HomeScreen user={user} telegramUser={telegramUser} />} />
+              <Route path="/" element={<HomeScreen telegramUser={telegramUser} />} />
               <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/energy" element={<EnergyPage user={user} telegramUser={telegramUser} />} />
+              <Route path="/energy" element={<EnergyPage />} />
               <Route path="/diary" element={<DiaryPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,76 +2,77 @@ import { create } from "zustand";
 
 import {
   DEFAULT_WIDGET_KEYS,
+  WIDGET_KEYS,
+  type ProfileResponse,
   type UpdateProfilePayload,
-  type UserProfile,
   type WidgetKey,
   getProfile,
   updateProfile
 } from "@/lib/api";
 
-const ALLOWED_WIDGETS = new Set<WidgetKey>([
-  "card_of_day",
-  "daily_spread",
-  "individual_horoscope",
-  "astro_forecast",
-  "numerology_forecast"
-]);
+type ProfileStatus = "idle" | "loading" | "ready";
 
 interface ProfileState {
-  status: "idle" | "loading" | "ready" | "error";
+  loading: boolean;
   saving: boolean;
   error: string | null;
-  profile: UserProfile | null;
-  widgets: WidgetKey[];
+  saveError: string | null;
+  profile: ProfileResponse | null;
+  status: ProfileStatus;
   fetchProfile: () => Promise<void>;
-  saveProfile: (payload: UpdateProfilePayload) => Promise<UserProfile | null>;
+  saveProfile: (payload: UpdateProfilePayload) => Promise<ProfileResponse | null>;
+  clearSaveError: () => void;
 }
 
-function normalizeWidgets(widgets: WidgetKey[] | null | undefined): WidgetKey[] {
+const allowedWidgets = new Set<WidgetKey>(WIDGET_KEYS);
+
+export function normalizeWidgets(widgets: WidgetKey[] | null | undefined): WidgetKey[] {
   if (!Array.isArray(widgets) || widgets.length === 0) {
     return [...DEFAULT_WIDGET_KEYS];
   }
-  const filtered = widgets.filter((widget): widget is WidgetKey => ALLOWED_WIDGETS.has(widget));
+
+  const filtered = widgets.filter((widget): widget is WidgetKey => allowedWidgets.has(widget));
   return filtered.length > 0 ? filtered : [...DEFAULT_WIDGET_KEYS];
 }
 
 export const useProfileState = create<ProfileState>((set) => ({
-  status: "idle",
+  loading: false,
   saving: false,
   error: null,
+  saveError: null,
   profile: null,
-  widgets: [...DEFAULT_WIDGET_KEYS],
+  status: "idle",
   fetchProfile: async () => {
-    set({ status: "loading", error: null });
+    set({ loading: true, error: null, status: "loading" });
     try {
       const response = await getProfile();
-      set({
-        status: "ready",
-        profile: response.profile,
-        widgets: normalizeWidgets(response.widgets),
-        error: null
-      });
+      set({ profile: response, loading: false, status: "ready", error: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Неизвестная ошибка";
-      set({ status: "error", error: message });
+      console.error("[Tarotolog] Не удалось получить профиль:", message);
+      set({ loading: false, error: message, status: "idle" });
     }
   },
   saveProfile: async (payload: UpdateProfilePayload) => {
-    set({ saving: true, error: null });
+    set({ saving: true, saveError: null });
     try {
       const response = await updateProfile(payload);
       set({
-        profile: response.profile,
-        widgets: normalizeWidgets(response.widgets),
+        profile: response,
         saving: false,
         status: "ready",
+        saveError: null,
         error: null
       });
-      return response.profile;
+      return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Неизвестная ошибка";
-      set({ saving: false, error: message });
+      console.error("[Tarotolog] Не удалось обновить профиль:", message);
+      set({ saving: false, saveError: message });
       return null;
     }
+  },
+  clearSaveError: () => {
+    set({ saveError: null });
   }
 }));

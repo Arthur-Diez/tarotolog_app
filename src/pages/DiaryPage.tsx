@@ -7,7 +7,7 @@ export default function DiaryPage() {
         <NotebookPen className="h-10 w-10 text-secondary" />
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground">Личный дневник</h2>
-          <p className="text-sm">Здесь появится ваш личный дневник для заметок и осознанности.</p>
+          <p className="text-sm">Скоро здесь появится ваш личный дневник и заметки.</p>
         </div>
       </div>
     </div>

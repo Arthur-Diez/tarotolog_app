@@ -1,21 +1,12 @@
-import { HelpCircle, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 
-import { EnergyGauge } from "@/components/layout/EnergyGauge";
-import { BonusAndReminders } from "@/components/sections/BonusAndReminders";
 import { Card } from "@/components/ui/card";
-import { useEnergy } from "@/hooks/useEnergy";
-import type { InitWebAppResponse } from "@/lib/api";
-import type { TelegramUser } from "@/lib/telegram";
+import { useProfile } from "@/hooks/useProfile";
 
-interface EnergyPageProps {
-  user: InitWebAppResponse["user"];
-  telegramUser?: TelegramUser | null;
-}
-
-export default function EnergyPage({ user, telegramUser }: EnergyPageProps) {
+export default function EnergyPage() {
+  const { profile, loading } = useProfile();
+  const user = profile?.user;
   const energyBalance = user?.energy_balance ?? 0;
-  const { level, glowIntensity } = useEnergy(energyBalance);
-  const gaugeMax = Math.max(500, energyBalance || 0);
 
   return (
     <div className="space-y-6">
@@ -25,34 +16,22 @@ export default function EnergyPage({ user, telegramUser }: EnergyPageProps) {
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Энергия аккаунта</p>
-          <p className="text-2xl font-semibold text-foreground">{energyBalance} ⚡</p>
-          {telegramUser?.username ? (
-            <p className="text-xs text-muted-foreground">@{telegramUser.username}</p>
+          {loading && !profile ? (
+            <div className="h-8 w-24 animate-pulse rounded-md bg-muted/30" />
+          ) : (
+            <p className="text-2xl font-semibold text-foreground">{energyBalance} ⚡</p>
+          )}
+          {user?.telegram.username ? (
+            <p className="text-xs text-muted-foreground">@{user.telegram.username}</p>
           ) : null}
         </div>
       </div>
 
-      <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
-
-      <BonusAndReminders
-        bonus={{
-          title: "Ежедневный бонус",
-          amount: 25,
-          description: "Возвращайся каждый день и усиливай поток энергии"
-        }}
-        defaultReminder
-      />
-
-      <Card className="glass-panel space-y-3 border-none p-6">
-        <div className="flex items-center gap-2 text-secondary">
-          <HelpCircle className="h-5 w-5" />
-          <h3 className="text-lg font-semibold text-foreground">Как пополнить энергию?</h3>
-        </div>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li>• Заверши ежедневный расклад или практику.</li>
-          <li>• Оформи подписку Tarotolog Premium и получи повышенный лимит.</li>
-          <li>• Активируй промокоды, которые присылает бот в Telegram.</li>
-        </ul>
+      <Card className="glass-panel border-none p-6 text-center text-muted-foreground">
+        <h2 className="text-lg font-semibold text-foreground">Энергия</h2>
+        <p className="mt-2 text-sm">
+          Скоро здесь появится аналитика энергии, рекомендации по пополнению и история операций.
+        </p>
       </Card>
     </div>
   );

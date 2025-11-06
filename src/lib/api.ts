@@ -1,3 +1,4 @@
+// api.ts
 export const API_BASE = "https://tarotapi.freakdev.site/api";
 
 export const WIDGET_KEYS = [
@@ -5,21 +6,60 @@ export const WIDGET_KEYS = [
   "daily_spread",
   "individual_horoscope",
   "astro_forecast",
-  "numerology_forecast"
+  "numerology_forecast",
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];
 export const DEFAULT_WIDGET_KEYS: WidgetKey[] = ["card_of_day", "astro_forecast"];
 
+// ====== ВСПОМОГАТЕЛЬНОЕ ======
+function getSessionFromUrl(): string | null {
+  const u = new URL(window.location.href);
+  return u.searchParams.get("session");
+}
+
+function getTelegramId(): number | null {
+  // @ts-ignore
+  const user = window?.Telegram?.WebApp?.initDataUnsafe?.user;
+  return user?.id ?? null;
+}
+
+async function parseResponse(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  const data = await parseResponse(res);
+  if (!res.ok) {
+    const msg =
+      typeof data === "string"
+        ? data
+        : (data as any)?.detail ?? (data as any)?.message ?? `API Error: ${res.status}`;
+    throw new Error(msg);
+  }
+  if (typeof data !== "object" || data === null) {
+    throw new Error("Некорректный ответ сервера");
+  }
+  return data as T;
+}
+
+// ====== ТИПЫ ПОД РЕАЛЬНЫЙ БЭКЕНД ======
+
+// /api/init_webapp (оставляем как было у тебя)
 export interface InitWebAppPayload {
   telegram_id: number;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
   language_code: string | null;
-  session: string;
+  session: string; // UUID
 }
-
 export interface InitWebAppResponse {
   user: {
     display_name: string;
@@ -32,121 +72,76 @@ export interface InitWebAppResponse {
   };
 }
 
-export interface UserProfile {
-  first_name: string | null;
-  last_name: string | null;
-  birth_date: string | null;
-  birth_time: string | null;
-  birth_place: string | null;
-  gender: "male" | "female" | "other" | null;
-  is_premium: boolean;
-  energy_balance: number;
-}
-
+// /api/profile — то, что реально отдаёт бэкенд
 export interface ProfileResponse {
-  profile: UserProfile;
-  widgets: WidgetKey[] | null;
+  user: {
+    display_name: string | null;
+    energy_balance: number;
+    lang: string | null;
+    telegram: {
+      username: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      is_premium: boolean;
+    };
+  };
+  preferences: {
+    widgets: WidgetKey[];
+  };
 }
 
+// /api/profile/update — то, что реально принимает бэкенд
 export interface UpdateProfilePayload {
-  first_name: string | null;
-  last_name: string | null;
-  birth_date: string | null;
-  birth_time: string | null;
-  birth_place: string | null;
-  gender: "male" | "female" | "other" | null;
-  is_premium: boolean;
-  energy_balance: number;
-  widgets: WidgetKey[];
+  display_name?: string | null;
+  lang?: string | null;
+  widgets?: WidgetKey[]; // массив строк!
 }
 
-async function parseResponse(res: Response): Promise<unknown> {
-  const text = await res.text();
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const data = await parseResponse(res);
-
-  if (!res.ok) {
-    const message =
-      typeof data === "string"
-        ? data
-        : typeof data === "object" && data !== null
-          ? (data as { detail?: string; message?: string }).detail ??
-            (data as { detail?: string; message?: string }).message
-          : null;
-
-    throw new Error(message || `API Error: ${res.status}`);
-  }
-
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Некорректный ответ сервера");
-  }
-
-  return data as T;
-}
+// ====== ВЫЗОВЫ API ======
 
 export async function initWebApp(payload: InitWebAppPayload): Promise<InitWebAppResponse> {
-  try {
-    const res = await fetch(`${API_BASE}/init_webapp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    return await handleResponse<InitWebAppResponse>(res);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(error.message || "API Error");
-    }
-    throw new Error("API Error");
-  }
+  const res = await fetch(`${API_BASE}/init_webapp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<InitWebAppResponse>(res);
 }
 
 export async function getProfile(): Promise<ProfileResponse> {
-  try {
-    const res = await fetch(`${API_BASE}/profile`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+  const session = getSessionFromUrl();
+  const telegram_id = getTelegramId();
+  if (!session || !telegram_id) throw new Error("Не найдены session или telegram_id");
 
-    return await handleResponse<ProfileResponse>(res);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(error.message || "API Error");
-    }
-    throw new Error("API Error");
-  }
+  const url = `${API_BASE}/profile?telegram_id=${telegram_id}&session=${encodeURIComponent(
+    session
+  )}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    // Origin браузер подставит сам; Content-Type на GET не нужен
+  });
+  return handleResponse<ProfileResponse>(res);
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<ProfileResponse> {
-  try {
-    const res = await fetch(`${API_BASE}/profile/update`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+  const session = getSessionFromUrl();
+  const telegram_id = getTelegramId();
+  if (!session || !telegram_id) throw new Error("Не найдены session или telegram_id");
 
-    return await handleResponse<ProfileResponse>(res);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(error.message || "API Error");
-    }
-    throw new Error("API Error");
-  }
+  // widgets строго массив строк; ничего не сериализуем вручную
+  const body = JSON.stringify({
+    telegram_id,
+    session,
+    display_name: payload.display_name ?? null,
+    lang: payload.lang ?? null,
+    widgets: payload.widgets ?? undefined,
+  });
+
+  const res = await fetch(`${API_BASE}/profile/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  return handleResponse<ProfileResponse>(res);
 }
