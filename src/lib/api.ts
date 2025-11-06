@@ -173,33 +173,31 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
   }
 
   if (payload.birth_profile) {
-    type BirthProfileUpdate = NonNullable<UpdateProfilePayload["birth_profile"]>;
-    const birthProfilePayload: Partial<BirthProfileUpdate> = {};
     const birthProfile = payload.birth_profile;
-    (
-      [
-        "full_name",
-        "birth_date",
-        "birth_time_local",
-        "birth_time_known",
-        "birth_place_text",
-        "birth_lat",
-        "birth_lon",
-        "birth_tz_name",
-        "birth_tz_offset_min",
-        "gender",
-      ] satisfies Array<keyof BirthProfileUpdate>
-    ).forEach((key) => {
-      const value = birthProfile?.[key];
-      if (value !== undefined) {
-        birthProfilePayload[key] = value;
+
+    const birthProfilePayload: Record<string, unknown> = {};
+    ([
+      "full_name",
+      "birth_date",
+      "birth_time_local",
+      "birth_time_known",
+      "birth_place_text",
+      "birth_lat",
+      "birth_lon",
+      "birth_tz_name",
+      "birth_tz_offset_min",
+      "gender",
+    ] as const).forEach((key) => {
+      const v = (birthProfile as Record<string, unknown>)[key];
+      if (v !== undefined) {
+        birthProfilePayload[key] = v;
       }
     });
 
-    if (Object.keys(birthProfilePayload).length > 0) {
-      bodyPayload.birth_profile = birthProfilePayload;
-    }
+  if (Object.keys(birthProfilePayload).length > 0) {
+    (bodyPayload as Record<string, unknown>).birth_profile = birthProfilePayload;
   }
+}
 
   const res = await fetch(`${API_BASE}/profile/update`, {
     method: "POST",
