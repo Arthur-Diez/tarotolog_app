@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { useProfileState } from "@/stores/profileState";
 
 export function useSaveProfile() {
@@ -10,16 +8,10 @@ export function useSaveProfile() {
     clearSaveError: state.clearSaveError
   }));
 
-  useEffect(() => {
-    if (saveError) {
-      console.error("[Tarotolog] Ошибка сохранения профиля:", saveError);
-      window.alert(saveError);
-      clearSaveError();
-    }
-  }, [clearSaveError, saveError]);
-
   return {
     saveProfile,
-    saving
+    saving,
+    error: saveError,
+    clearError: clearSaveError
   };
 }

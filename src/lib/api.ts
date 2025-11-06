@@ -73,6 +73,19 @@ export interface InitWebAppResponse {
 }
 
 // /api/profile — то, что реально отдаёт бэкенд
+export interface BirthProfile {
+  full_name: string | null;
+  birth_date: string | null;
+  birth_time_local: string | null;
+  birth_time_known: boolean;
+  birth_place_text: string | null;
+  birth_lat: number | null;
+  birth_lon: number | null;
+  birth_tz_name: string | null;
+  birth_tz_offset_min: number | null;
+  gender: "male" | "female" | "other" | null;
+}
+
 export interface ProfileResponse {
   user: {
     display_name: string | null;
@@ -88,6 +101,7 @@ export interface ProfileResponse {
   preferences: {
     widgets: WidgetKey[];
   };
+  birth_profile?: BirthProfile | null;
 }
 
 // /api/profile/update — то, что реально принимает бэкенд
@@ -95,6 +109,18 @@ export interface UpdateProfilePayload {
   display_name?: string | null;
   lang?: string | null;
   widgets?: WidgetKey[]; // массив строк!
+  birth_profile?: {
+    full_name?: string | null;
+    birth_date?: string | null;
+    birth_time_local?: string | null;
+    birth_time_known?: boolean;
+    birth_place_text?: string | null;
+    birth_lat?: number | null;
+    birth_lon?: number | null;
+    birth_tz_name?: string | null;
+    birth_tz_offset_min?: number | null;
+    gender?: "male" | "female" | "other" | null;
+  };
 }
 
 // ====== ВЫЗОВЫ API ======
@@ -129,19 +155,55 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
   const telegram_id = getTelegramId();
   if (!session || !telegram_id) throw new Error("Не найдены session или telegram_id");
 
-  // widgets строго массив строк; ничего не сериализуем вручную
-  const body = JSON.stringify({
+  const bodyPayload: Record<string, unknown> = {
     telegram_id,
     session,
-    display_name: payload.display_name ?? null,
-    lang: payload.lang ?? null,
-    widgets: payload.widgets ?? undefined,
-  });
+  };
+
+  if (payload.display_name !== undefined) {
+    bodyPayload.display_name = payload.display_name;
+  }
+
+  if (payload.lang !== undefined) {
+    bodyPayload.lang = payload.lang;
+  }
+
+  if (payload.widgets !== undefined) {
+    bodyPayload.widgets = payload.widgets;
+  }
+
+  if (payload.birth_profile) {
+    const birthProfilePayload: Record<string, unknown> = {};
+    const birthProfile = payload.birth_profile;
+    (
+      [
+        "full_name",
+        "birth_date",
+        "birth_time_local",
+        "birth_time_known",
+        "birth_place_text",
+        "birth_lat",
+        "birth_lon",
+        "birth_tz_name",
+        "birth_tz_offset_min",
+        "gender",
+      ] satisfies Array<keyof UpdateProfilePayload["birth_profile"]>
+    ).forEach((key) => {
+      const value = birthProfile?.[key];
+      if (value !== undefined) {
+        birthProfilePayload[key] = value;
+      }
+    });
+
+    if (Object.keys(birthProfilePayload).length > 0) {
+      bodyPayload.birth_profile = birthProfilePayload;
+    }
+  }
 
   const res = await fetch(`${API_BASE}/profile/update`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body,
+    body: JSON.stringify(bodyPayload),
   });
   return handleResponse<ProfileResponse>(res);
 }
