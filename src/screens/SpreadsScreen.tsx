@@ -56,6 +56,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             expanded={expandedSpread === spread.id}
             onToggle={() => toggleSpread(spread.id)}
             onSelect={() => handleSelectSpread(spread.id)}
+            canSelect={deck.id === "rws" && spread.id === "one_card"}
           />
         ))}
       </div>
@@ -68,9 +69,10 @@ interface SpreadCardProps {
   expanded: boolean;
   onToggle: () => void;
   onSelect: () => void;
+  canSelect: boolean;
 }
 
-function SpreadCard({ spread, expanded, onToggle, onSelect }: SpreadCardProps) {
+function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
   return (
     <Card className="rounded-2xl border border-border/40 bg-card/70 p-4 shadow-lg shadow-black/5">
       <div className="flex items-center justify-between gap-3">
@@ -96,7 +98,7 @@ function SpreadCard({ spread, expanded, onToggle, onSelect }: SpreadCardProps) {
               <ChevronDown className="h-4 w-4" />
             </motion.span>
           </Button>
-          <Button type="button" size="sm" onClick={onSelect} disabled={deck.id !== "rws" || spread.id !== "one_card"}>
+          <Button type="button" size="sm" onClick={onSelect} disabled={!canSelect}>
             Выбрать
           </Button>
         </div>
