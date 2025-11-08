@@ -30,13 +30,19 @@ function createSpreads(): DeckSpread[] {
   }));
 }
 
+import { RWS_SPREADS } from "./rws_spreads";
+
 export const DECKS: Deck[] = [
   {
     id: "rws",
     title: "Классическая — Уэйта-Смита",
     subtitle: "Психология, путь, выбор",
     description: "Классическая система для анализа состояний, мотивации и направлений.",
-    spreads: createSpreads()
+    spreads: RWS_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   },
   {
     id: "lenormand",

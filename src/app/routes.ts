@@ -18,3 +18,5 @@ export const routes: TabRoute[] = [
   { id: "diary", label: "Дневник", icon: NotebookPen, path: "/diary" },
   { id: "profile", label: "Профиль", icon: User, path: "/profile" }
 ];
+
+export const spreadPlayRoute = { path: "/spreads/play/one_card" };

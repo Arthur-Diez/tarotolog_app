@@ -7,6 +7,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import DiaryPage from "@/pages/DiaryPage";
 import EnergyPage from "@/pages/EnergyPage";
 import ProfilePage from "@/pages/ProfilePage";
+import SpreadPlayPage from "@/pages/SpreadPlayPage";
 import { TabBar } from "@/components/layout/TabBar";
 import { ErrorScreen } from "@/components/layout/ErrorScreen";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
@@ -112,6 +113,7 @@ export default function App() {
                   />
                 }
               />
+              <Route path="/spreads/play/one_card" element={<SpreadPlayPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

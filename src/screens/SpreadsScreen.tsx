@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +15,7 @@ interface SpreadsScreenProps {
 
 export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   const [expandedSpread, setExpandedSpread] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const toggleSpread = (spreadId: string) => {
     setExpandedSpread((prev) => (prev === spreadId ? null : spreadId));
@@ -21,8 +23,11 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   };
 
   const handleSelectSpread = (spreadId: string) => {
-    // TODO: go to spread layout (board)
-    console.log("select spread", spreadId);
+    if (deck.id === "rws" && spreadId === "one_card") {
+      navigate("/spreads/play/one_card");
+    } else {
+      alert("Этот расклад будет доступен позже");
+    }
   };
 
   return (
@@ -91,7 +96,7 @@ function SpreadCard({ spread, expanded, onToggle, onSelect }: SpreadCardProps) {
               <ChevronDown className="h-4 w-4" />
             </motion.span>
           </Button>
-          <Button type="button" size="sm" onClick={onSelect}>
+          <Button type="button" size="sm" onClick={onSelect} disabled={deck.id !== "rws" || spread.id !== "one_card"}>
             Выбрать
           </Button>
         </div>
