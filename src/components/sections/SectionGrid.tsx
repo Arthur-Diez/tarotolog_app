@@ -12,9 +12,10 @@ export interface SectionItem {
 
 export interface SectionGridProps {
   sections: SectionItem[];
+  onSectionSelect?: (id: string) => void;
 }
 
-export function SectionGrid({ sections }: SectionGridProps) {
+export function SectionGrid({ sections, onSectionSelect }: SectionGridProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
       {sections.map((section, index) => (
@@ -25,6 +26,10 @@ export function SectionGrid({ sections }: SectionGridProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.03, duration: 0.4, ease: "easeOut" }}
+          onClick={() => {
+            navigator.vibrate?.(10);
+            onSectionSelect?.(section.id);
+          }}
         >
           <Card
             className={cn(

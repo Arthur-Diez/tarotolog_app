@@ -1,4 +1,5 @@
-import { Fragment } from "react";
+import { Fragment, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calculator,
   HeartHandshake,
@@ -71,6 +72,7 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
+  const navigate = useNavigate();
   const { profile, loading } = useProfile();
   const profileData = profile?.user;
   const widgetKeys =
@@ -141,11 +143,24 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     />
   ));
 
+  const handleSectionSelect = useCallback(
+    (sectionId: string) => {
+      switch (sectionId) {
+        case "tarot":
+          navigate("/spreads");
+          break;
+        default:
+          console.debug("[ui] section clicked", sectionId);
+      }
+    },
+    [navigate]
+  );
+
   return (
     <div className="space-y-6">
       <Header name={displayName} username={telegramUser?.username} energy={energyBalance} />
       <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
-      <SectionGrid sections={sections} />
+      <SectionGrid sections={sections} onSectionSelect={handleSectionSelect} />
       {loading && !profile ? skeletons : null}
       {!loading &&
         widgetKeys.map((widget) => (
