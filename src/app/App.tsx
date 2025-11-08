@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
@@ -13,12 +13,18 @@ import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { routes } from "./routes";
 import { useAppInit } from "@/hooks/useAppInit";
 import { useProfile } from "@/hooks/useProfile";
+import { DecksScreen } from "@/screens/DecksScreen";
+import { SpreadsScreen } from "@/screens/SpreadsScreen";
+import { DECKS, type Deck, type DeckId } from "@/data/decks";
 
 export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
   const settingsTheme = settings?.theme;
   const location = useLocation();
   const { loading: profileLoading, error: profileError, profile, refresh } = useProfile();
+  const [spreadsView, setSpreadsView] = useState<{ screen: "decks" | "spreads"; deckId?: DeckId }>(
+    { screen: "decks" }
+  );
 
   useEffect(() => {
     if (settingsTheme === "light" || settingsTheme === "dark") {
@@ -27,6 +33,17 @@ export default function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [settingsTheme]);
+
+  useEffect(() => {
+    const scheme = window.Telegram?.WebApp?.colorScheme ?? "light";
+    console.debug("[ui] colorScheme", scheme);
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== "/spreads" && spreadsView.screen !== "decks") {
+      setSpreadsView({ screen: "decks" });
+    }
+  }, [location.pathname, spreadsView.screen]);
 
   const isInitLoading = status === "idle" || status === "loading";
   const isProfileLoading = profileLoading && !profile;
@@ -85,6 +102,16 @@ export default function App() {
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/energy" element={<EnergyPage />} />
               <Route path="/diary" element={<DiaryPage />} />
+              <Route
+                path="/spreads"
+                element={
+                  <SpreadsRoute
+                    view={spreadsView}
+                    onSelectDeck={(deckId) => setSpreadsView({ screen: "spreads", deckId })}
+                    onBack={() => setSpreadsView({ screen: "decks" })}
+                  />
+                }
+              />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -94,4 +121,23 @@ export default function App() {
       <TabBar routes={routes} />
     </div>
   );
+}
+
+interface SpreadsRouteProps {
+  view: { screen: "decks" | "spreads"; deckId?: DeckId };
+  onSelectDeck: (deckId: DeckId) => void;
+  onBack: () => void;
+}
+
+function SpreadsRoute({ view, onSelectDeck, onBack }: SpreadsRouteProps) {
+  const activeDeck: Deck | undefined = useMemo(
+    () => (view.deckId ? DECKS.find((deck) => deck.id === view.deckId) : undefined),
+    [view.deckId]
+  );
+
+  if (view.screen === "spreads" && activeDeck) {
+    return <SpreadsScreen deck={activeDeck} onBack={onBack} />;
+  }
+
+  return <DecksScreen onSelectDeck={onSelectDeck} />;
 }
