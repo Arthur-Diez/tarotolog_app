@@ -101,9 +101,9 @@ function DeckCard({ deck, expanded, onToggle, onSelect }: DeckCardProps) {
         </div>
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           size="sm"
-          className="shrink-0 gap-1"
+          className="shrink-0 gap-1 bg-secondary text-secondary-foreground hover:bg-secondary/90 border-transparent"
           onClick={(event) => {
             event.stopPropagation();
             onToggle();

@@ -76,7 +76,7 @@ function SpreadCard({ spread, expanded, onToggle, onSelect }: SpreadCardProps) {
         <div className="flex items-center gap-2">
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             size="sm"
             className="gap-1"
             onClick={onToggle}
