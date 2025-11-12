@@ -47,7 +47,7 @@ export const useReadingState = create<ReadingState>((set, get) => ({
   deckId: "rws",
   spreadId: "one_card",
   question: "",
-  stage: "ask",
+  stage: "fan",
   cards: [],
   mustOpenIndex: 1,
   warnedOnce: false,
@@ -99,7 +99,7 @@ export const useReadingState = create<ReadingState>((set, get) => ({
     clearTimers();
     set({
       question: "",
-      stage: "ask",
+      stage: "fan",
       cards: [],
       mustOpenIndex: 1,
       warnedOnce: false

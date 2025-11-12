@@ -16,23 +16,26 @@ export function CardSprite({ name, reversed, isOpen, onClick }: CardSpriteProps)
 
   return (
     <motion.div
-      className="relative h-56 w-36 cursor-pointer [transform-style:preserve-3d]"
-      animate={{ rotateY: isOpen ? 180 : 0, rotateZ: isOpen && reversed ? 180 : 0 }}
+      className="relative h-60 w-36 cursor-pointer [transform-style:preserve-3d]"
+      animate={{
+        rotateY: isOpen ? 180 : 0,
+        rotate: isOpen && reversed ? 180 : 0
+      }}
       transition={{ duration: 0.8, ease: "easeInOut" }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
     >
-      <motion.img
+      <img
         src={backSrc}
         alt="tarot back"
-        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-        style={{ backfaceVisibility: "hidden" }}
+        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 [backface-visibility:hidden]"
+        style={{ imageRendering: "auto", willChange: "transform" }}
       />
-      <motion.img
+      <img
         src={faceSrc}
         alt={name}
-        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-        style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 [transform:rotateY(180deg)] [backface-visibility:hidden]"
+        style={{ imageRendering: "auto", willChange: "transform" }}
       />
     </motion.div>
   );
