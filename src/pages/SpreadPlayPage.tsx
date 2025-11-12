@@ -41,6 +41,8 @@ export default function SpreadPlayPage() {
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
   const showResultCard = stage === "await_open" || stage === "done";
+  const allCardsOpen = cards.every((card) => card.isOpen);
+  const showActionButtons = stage === "done" || (stage === "await_open" && allCardsOpen);
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
@@ -52,12 +54,20 @@ export default function SpreadPlayPage() {
 
   const handleReset = () => {
     storeReset();
+    setStage("fan");
+    setQuestion("");
     setDeckMode("fan");
     setDeckKey((value) => value + 1);
     setIsRunning(false);
     resetQuestionBubble();
     animate("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
   };
+
+  useEffect(() => {
+    if (stage === "fan") {
+      resetQuestionBubble();
+    }
+  }, [stage]);
 
   const flyQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -206,6 +216,7 @@ export default function SpreadPlayPage() {
       }
       return;
     }
+    resetQuestionBubble();
     start(trimmedQuestion);
     await runTimeline();
   };
@@ -298,10 +309,10 @@ export default function SpreadPlayPage() {
           Нажмите на карту, чтобы открыть послание
         </motion.p>
 
-        {stage === "done" && (
+        {showActionButtons && (
           <div className="w-full space-y-3">
             <Button
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => alert("Интерпретация расклада появится здесь")}
             >
