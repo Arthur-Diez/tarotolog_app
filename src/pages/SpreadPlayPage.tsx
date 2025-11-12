@@ -35,7 +35,7 @@ export default function SpreadPlayPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [deckMode, setDeckMode] = useState<"fan" | "stack">("fan");
   const [deckKey, setDeckKey] = useState(0);
-  const questionTextRef = useRef<HTMLDivElement | null>(null);
+  const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
 
   const backSrc = useMemo(() => backUrl("rws"), []);
@@ -43,7 +43,7 @@ export default function SpreadPlayPage() {
   const showResultCard = stage === "await_open" || stage === "done";
 
   const resetQuestionBubble = () => {
-    const bubble = questionTextRef.current;
+    const bubble = questionBubbleRef.current;
     if (!bubble) return;
     bubble.style.opacity = "1";
     bubble.style.filter = "none";
@@ -60,7 +60,7 @@ export default function SpreadPlayPage() {
   };
 
   const flyQuestion = useCallback(async () => {
-    const bubble = questionTextRef.current;
+    const bubble = questionBubbleRef.current;
     const target = fanCenterRef.current;
     if (!bubble || !target) {
       return;
@@ -210,7 +210,7 @@ export default function SpreadPlayPage() {
     await runTimeline();
   };
 
-  const showForm = stage === "fan";
+  const showForm = stage === "fan" || stage === "sending";
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
@@ -252,9 +252,11 @@ export default function SpreadPlayPage() {
           )}
           <div
             id="questionText"
-            ref={questionTextRef}
+            ref={questionBubbleRef}
             className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
-              trimmedQuestion ? "opacity-100" : "opacity-0"
+              trimmedQuestion && (stage === "fan" || stage === "sending")
+                ? "opacity-100"
+                : "opacity-0"
             }`}
           >
             {trimmedQuestion || "Введите вопрос, чтобы начать"}
@@ -273,9 +275,6 @@ export default function SpreadPlayPage() {
               <p className="text-wrap-anywhere text-sm text-white/70">
                 Сформулируйте запрос и получите энергию дня.
               </p>
-            </div>
-            <div className="text-wrap-anywhere text-base font-medium text-secondary">
-              {trimmedQuestion || " "}
             </div>
             <textarea
               placeholder="Введите ваш вопрос к картам..."
