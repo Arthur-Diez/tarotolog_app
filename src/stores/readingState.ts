@@ -10,7 +10,7 @@ interface CardState {
   isOpen: boolean;
 }
 
-type ReadingStage = "ask" | "shuffling" | "dealing" | "await_open" | "done";
+type ReadingStage = "ask" | "question_flight" | "shuffling" | "dealing" | "await_open" | "done";
 
 interface ReadingState {
   deckId: "rws";
@@ -26,6 +26,14 @@ interface ReadingState {
   reset: () => void;
 }
 
+type TimeoutId = ReturnType<typeof setTimeout>;
+let timers: TimeoutId[] = [];
+
+function clearTimers() {
+  timers.forEach((id) => clearTimeout(id));
+  timers = [];
+}
+
 export const useReadingState = create<ReadingState>((set, get) => ({
   deckId: "rws",
   spreadId: "one_card",
@@ -36,20 +44,24 @@ export const useReadingState = create<ReadingState>((set, get) => ({
   warnedOnce: false,
   setQuestion: (value) => set({ question: value }),
   start: (question) => {
+    clearTimers();
     const shuffled = [...RWS_ALL].sort(() => Math.random() - 0.5);
     const card = shuffled[0];
     const reversed = Math.random() < 0.45;
 
     set({
       question,
-      stage: "shuffling",
+      stage: "question_flight",
       cards: [{ positionIndex: 1, name: card, reversed, isOpen: false }],
       mustOpenIndex: 1,
       warnedOnce: false
     });
 
-    setTimeout(() => set({ stage: "dealing" }), 900);
-    setTimeout(() => set({ stage: "await_open" }), 1800);
+    timers.push(
+      setTimeout(() => set({ stage: "shuffling" }), 900),
+      setTimeout(() => set({ stage: "dealing" }), 3900),
+      setTimeout(() => set({ stage: "await_open" }), 4200)
+    );
   },
   openCard: (index) => {
     const state = get();
@@ -72,12 +84,14 @@ export const useReadingState = create<ReadingState>((set, get) => ({
       stage: nextIndex > state.cards.length ? "done" : state.stage
     });
   },
-  reset: () =>
+  reset: () => {
+    clearTimers();
     set({
       question: "",
       stage: "ask",
       cards: [],
       mustOpenIndex: 1,
       warnedOnce: false
-    })
+    });
+  }
 }));
