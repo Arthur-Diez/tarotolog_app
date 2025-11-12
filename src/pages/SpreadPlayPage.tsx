@@ -45,9 +45,9 @@ export default function SpreadPlayPage() {
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
     if (!bubble) return;
-    bubble.style.opacity = "1";
-    bubble.style.filter = "none";
-    bubble.style.transform = "translate3d(0,0,0) scale(1)";
+    bubble.style.opacity = "";
+    bubble.style.filter = "";
+    bubble.style.transform = "";
   };
 
   const handleReset = () => {
@@ -251,7 +251,7 @@ export default function SpreadPlayPage() {
             </motion.div>
           )}
           <div
-            id="questionText"
+            id="questionBubble"
             ref={questionBubbleRef}
             className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
               trimmedQuestion && (stage === "fan" || stage === "sending")
