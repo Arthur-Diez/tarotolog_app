@@ -34,7 +34,7 @@ export function CardSprite({ name, reversed, isOpen, onClick }: CardSpriteProps)
         className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
         style={{
           backfaceVisibility: "hidden",
-          transform: reversed ? "rotateY(180deg) rotate(180deg)" : "rotateY(180deg)"
+          transform: `rotateY(180deg) ${reversed ? "rotate(180deg)" : ""}`
         }}
       />
     </motion.div>

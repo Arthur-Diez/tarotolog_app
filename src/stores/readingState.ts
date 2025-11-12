@@ -10,7 +10,13 @@ interface CardState {
   isOpen: boolean;
 }
 
-type ReadingStage = "ask" | "question_flight" | "shuffling" | "dealing" | "await_open" | "done";
+type ReadingStage =
+  | "ask"
+  | "question_flight"
+  | "shuffling"
+  | "dealing"
+  | "await_open"
+  | "done";
 
 interface ReadingState {
   deckId: "rws";
@@ -58,9 +64,9 @@ export const useReadingState = create<ReadingState>((set, get) => ({
     });
 
     timers.push(
-      setTimeout(() => set({ stage: "shuffling" }), 900),
-      setTimeout(() => set({ stage: "dealing" }), 3900),
-      setTimeout(() => set({ stage: "await_open" }), 4200)
+      setTimeout(() => set({ stage: "shuffling" }), 1000),
+      setTimeout(() => set({ stage: "dealing" }), 5000),
+      setTimeout(() => set({ stage: "await_open" }), 7000)
     );
   },
   openCard: (index) => {

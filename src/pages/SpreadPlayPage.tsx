@@ -17,11 +17,9 @@ export default function SpreadPlayPage() {
   const reset = useReadingState((state) => state.reset);
 
   const trimmedQuestion = question.trim();
-  const showDeckIdle = stage === "ask" || stage === "question_flight";
-  const showShuffle = stage === "shuffling";
-  const showCard =
-    stage === "dealing" || stage === "await_open" || stage === "done";
-  const showQuestionFlight = stage === "question_flight";
+
+  const showCard = stage === "await_open" || stage === "done";
+  const canInteract = stage === "await_open" || stage === "done";
 
   const handleStart = () => {
     if (!trimmedQuestion) {
@@ -32,47 +30,39 @@ export default function SpreadPlayPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2b165b,_#0b1025)] text-white">
-      <div className="pointer-events-none absolute inset-0 opacity-40 mix-blend-screen"
+    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 10% 20%, rgba(255,255,255,0.15) 0%, transparent 45%), radial-gradient(circle at 80% 0%, rgba(132,56,255,0.2) 0%, transparent 40%)"
+            "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.12) 0%, transparent 40%), radial-gradient(circle at 80% 0%, rgba(177,111,255,0.25) 0%, transparent 45%)"
         }}
       />
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center gap-6 px-4 pb-16 pt-10">
-        <div className="relative flex h-72 w-full items-center justify-center">
-          {showDeckIdle && <IdleDeck />}
-          {showShuffle && <ShuffleStack />}
-          {showQuestionFlight && trimmedQuestion ? (
-            <motion.div
-              key={trimmedQuestion}
-              initial={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              animate={{
-                y: -80,
-                opacity: 0,
-                scale: 0.8,
-                filter: "blur(4px)"
-              }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute bottom-12 text-lg font-semibold text-secondary"
-            >
-              <span className="animate-pulse">{trimmedQuestion}</span>
-            </motion.div>
-          ) : null}
 
-          {showCard && (
-            <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center gap-8 px-4 pb-16 pt-10">
+        <div className="relative flex h-[320px] w-full items-center justify-center">
+          {stage === "ask" && <IdleDeck />}
+          {stage === "question_flight" && (
+            <>
+              <IdleDeck dimmed />
+              {trimmedQuestion ? <QuestionFlight text={trimmedQuestion} /> : null}
+            </>
+          )}
+          {stage === "shuffling" && <SplitShuffle />}
+          {stage === "dealing" && <DealAnimation />}
+          {showCard && cards.length > 0 ? (
+            <div className="pointer-events-auto">
               {cards.map((card) => (
                 <CardSprite
                   key={card.positionIndex}
                   name={card.name}
                   reversed={card.reversed}
                   isOpen={card.isOpen}
-                  onClick={() => openCard(card.positionIndex)}
+                  onClick={() => (canInteract ? openCard(card.positionIndex) : undefined)}
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
         {stage === "ask" && (
@@ -95,14 +85,14 @@ export default function SpreadPlayPage() {
           </div>
         )}
 
-        {showShuffle && (
-          <p className="text-sm text-white/70">Карты настраиваются на ваш запрос…</p>
+        {stage === "shuffling" && (
+          <p className="text-sm text-white/70">Колода прислушивается к вашему вопросу…</p>
         )}
 
         {stage === "done" && (
           <div className="w-full space-y-3">
             <Button
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => alert("Интерпретация расклада появится здесь")}
             >
@@ -118,25 +108,30 @@ export default function SpreadPlayPage() {
   );
 }
 
-function IdleDeck() {
+interface IdleDeckProps {
+  dimmed?: boolean;
+}
+
+function IdleDeck({ dimmed }: IdleDeckProps = {}) {
   const cards = Array.from({ length: STACK_SIZE });
   const backSrc = backUrl("rws");
+
   return (
-    <div className="relative h-60 w-40">
+    <div className="relative h-64 w-48">
       {cards.map((_, index) => (
         <motion.img
           key={index}
           src={backSrc}
           className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
           style={{
-            transform: `translateY(${index * -2}px)`,
+            transform: `translateY(${index * -3}px)`,
             zIndex: index,
-            opacity: 1 - index * 0.08
+            opacity: dimmed ? 0.45 - index * 0.04 : 0.9 - index * 0.05
           }}
-          animate={{ y: [0, -4, 0] }}
+          animate={{ y: dimmed ? 0 : [0, -4, 0] }}
           transition={{
             duration: 3,
-            repeat: Infinity,
+            repeat: dimmed ? 0 : Infinity,
             delay: index * 0.15,
             ease: "easeInOut"
           }}
@@ -146,32 +141,107 @@ function IdleDeck() {
   );
 }
 
-function ShuffleStack() {
+function QuestionFlight({ text }: { text: string }) {
+  return (
+    <motion.div
+      key={text}
+      initial={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      animate={{ y: -80, opacity: 0, scale: 0.8, filter: "blur(4px)" }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+      className="absolute bottom-10 text-lg font-semibold text-secondary"
+    >
+      <span className="animate-pulse">{text}</span>
+    </motion.div>
+  );
+}
+
+function SplitShuffle() {
+  return (
+    <div className="relative h-64 w-72">
+      <HalfStack direction="left" />
+      <HalfStack direction="right" />
+    </div>
+  );
+}
+
+function HalfStack({ direction }: { direction: "left" | "right" }) {
   const cards = Array.from({ length: STACK_SIZE });
   const backSrc = backUrl("rws");
+  const sign = direction === "left" ? -1 : 1;
+
   return (
-    <div className="relative h-60 w-48">
-      {cards.map((_, index) => (
-        <motion.img
-          key={index}
-          src={backSrc}
-          className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-          variants={{
-            shuffle: {
-              rotate: [0, -15, 15, -10, 10, 0],
-              x: [0, 20, -20, 10, -10, 0],
-              y: [0, 10, -10, 6, -6, 0],
-              transition: {
-                duration: 3,
-                ease: "easeInOut",
-                delay: index * 0.1
-              }
-            }
-          }}
-          initial="shuffle"
-          animate="shuffle"
-        />
-      ))}
+    <motion.div
+      className={`absolute top-1/2 flex -translate-y-1/2 ${
+        direction === "left" ? "justify-end" : "justify-start"
+      }`}
+      initial={{ x: 0, rotate: 0 }}
+      animate={{
+        x: [0, sign * 60, sign * -40, sign * 30, sign * -20, 0],
+        rotate: [0, sign * -10, sign * 8, sign * -6, sign * 4, 0]
+      }}
+      transition={{ duration: 4, ease: "easeInOut" }}
+      style={{ width: "50%" }}
+    >
+      <div className="relative h-60 w-24">
+        {cards.map((_, index) => (
+          <motion.img
+            key={`${direction}-${index}`}
+            src={backSrc}
+            className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
+            style={{
+              transform: `translateY(${index * -3}px)`,
+              zIndex: index,
+              opacity: 0.9 - index * 0.08
+            }}
+            animate={{
+              y: [index * -3, index * -6, index * -2, index * -4, index * -3],
+              rotate: [0, sign * -3, sign * 3, sign * -2, 0]
+            }}
+            transition={{
+              duration: 4,
+              ease: "easeInOut",
+              delay: index * 0.08
+            }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function DealAnimation() {
+  const cards = Array.from({ length: STACK_SIZE });
+  const backSrc = backUrl("rws");
+
+  return (
+    <div className="relative h-64 w-64">
+      <motion.div
+        className="absolute inset-x-0 top-6 flex justify-center"
+        initial={{ y: 0, opacity: 1 }}
+        animate={{ y: -80, opacity: 0.2 }}
+        transition={{ duration: 2, ease: "easeInOut" }}
+      >
+        <div className="relative h-56 w-32">
+          {cards.map((_, index) => (
+            <img
+              key={`deal-stack-${index}`}
+              src={backSrc}
+              className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
+              style={{
+                transform: `translateY(${index * -3}px)`,
+                opacity: 0.9 - index * 0.08
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
+      <motion.img
+        src={backSrc}
+        className="absolute left-1/2 top-0 h-56 w-36 -translate-x-1/2 rounded-xl object-cover shadow-2xl shadow-black/50"
+        initial={{ y: -60, opacity: 0 }}
+        animate={{ y: 50, opacity: 1 }}
+        transition={{ duration: 2, ease: "easeInOut" }}
+      />
     </div>
   );
 }
