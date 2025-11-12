@@ -92,7 +92,7 @@ export default function SpreadPlayPage() {
         {stage === "done" && (
           <div className="w-full space-y-3">
             <Button
-              variant="secondary"
+              variant="outline"
               className="w-full"
               onClick={() => alert("Интерпретация расклада появится здесь")}
             >
