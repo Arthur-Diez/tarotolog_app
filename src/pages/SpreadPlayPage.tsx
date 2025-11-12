@@ -142,7 +142,7 @@ export default function SpreadPlayPage() {
       for (let i = 0; i < count; i += 1) {
         await animate(
           `.deal-card-${i}`,
-          { opacity: 1, y: 140 + i * 10 },
+          { opacity: 1, y: 70 + i * 6 },
           { duration: DUR.deal, ease: "easeInOut" }
         );
       }
@@ -233,6 +233,23 @@ export default function SpreadPlayPage() {
             mode={deckMode}
             fanCenterRef={fanCenterRef}
           />
+          {showResultCard && (
+            <motion.div
+              className="pointer-events-auto absolute inset-0 flex items-end justify-center pb-6"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {cards.map((card) => (
+                <CardSprite
+                  key={card.positionIndex}
+                  name={card.name}
+                  reversed={card.reversed}
+                  isOpen={card.isOpen}
+                  onClick={() => openCard(card.positionIndex)}
+                />
+              ))}
+            </motion.div>
+          )}
           <div
             id="questionText"
             ref={questionTextRef}
@@ -281,20 +298,6 @@ export default function SpreadPlayPage() {
         >
           Нажмите на карту, чтобы открыть послание
         </motion.p>
-
-        {showResultCard && (
-          <div className="flex justify-center">
-            {cards.map((card) => (
-              <CardSprite
-                key={card.positionIndex}
-                name={card.name}
-                reversed={card.reversed}
-                isOpen={card.isOpen}
-                onClick={() => openCard(card.positionIndex)}
-              />
-            ))}
-          </div>
-        )}
 
         {stage === "done" && (
           <div className="w-full space-y-3">

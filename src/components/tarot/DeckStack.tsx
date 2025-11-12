@@ -136,7 +136,7 @@ export const DeckStack = memo(function DeckStack({
 
       <div
         id="dealArea"
-        className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
       >
         {dealPlaceholders.map((_, index) => (
           <img
