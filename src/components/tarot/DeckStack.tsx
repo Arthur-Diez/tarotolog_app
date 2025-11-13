@@ -30,6 +30,7 @@ const CARD_HEIGHT = 224;
 const SHUFFLE_SWING = CARD_WIDTH * 0.9;
 const DEAL_SLIDE = CARD_HEIGHT + 36;
 const DEAL_DURATION = 1.1;
+const DEAL_LIFT = 90;
 
 function randomRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -153,12 +154,12 @@ export const DeckStack = memo(function DeckStack({
   const dealIndex = centerIndex;
   const stackLiftAnimation =
     dealPhase === "animating"
-      ? { y: [0, -22, -8, -2, 0] }
-      : { y: 0 };
+      ? { y: [0, -(DEAL_LIFT + 20), -(DEAL_LIFT - 6), -DEAL_LIFT] }
+      : { y: dealPhase === "settled" ? -DEAL_LIFT : 0 };
   const stackLiftTransition =
     dealPhase === "animating"
       ? { duration: DEAL_DURATION, ease: "easeInOut" }
-      : { duration: 0.45, ease: "easeInOut" };
+      : { duration: 0.4, ease: "easeOut" };
 
   return (
     <div
