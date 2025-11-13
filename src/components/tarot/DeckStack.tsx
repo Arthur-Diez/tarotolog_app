@@ -31,6 +31,7 @@ const SHUFFLE_SWING = CARD_WIDTH * 0.9;
 const DEAL_SLIDE = CARD_HEIGHT + 36;
 const DEAL_DURATION = 1.1;
 const DEAL_LIFT = 90;
+const DEAL_GAP = 18;
 
 function randomRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -152,14 +153,12 @@ export const DeckStack = memo(function DeckStack({
 
   const isStackPhase = STACK_PHASES.has(mode);
   const dealIndex = centerIndex;
-  const stackLiftAnimation =
-    dealPhase === "animating"
-      ? { y: [0, -(DEAL_LIFT + 20), -(DEAL_LIFT - 6), -DEAL_LIFT] }
-      : { y: dealPhase === "settled" ? -DEAL_LIFT : 0 };
+  const stackRaised = dealPhase === "animating" || dealPhase === "settled";
+  const stackLiftAnimation = stackRaised ? { y: -DEAL_LIFT } : { y: 0 };
   const stackLiftTransition =
     dealPhase === "animating"
       ? { duration: DEAL_DURATION, ease: "easeInOut" }
-      : { duration: 0.4, ease: "easeOut" };
+      : { duration: 0.35, ease: "easeOut" };
 
   return (
     <div
@@ -192,9 +191,9 @@ export const DeckStack = memo(function DeckStack({
           const animateTarget = isExtracting
             ? {
                 x: stackTarget.x,
-                y: stackTarget.y + DEAL_SLIDE,
+                y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
                 rotateZ: stackTarget.rotate,
-                opacity: dealPhase === "settled" ? 0 : 1
+                opacity: 1
               }
             : {
                 x: target.x,
@@ -203,7 +202,9 @@ export const DeckStack = memo(function DeckStack({
                 opacity: cardOpacity
               };
           const extractionTransition = isExtracting
-            ? { duration: DEAL_DURATION, ease: "easeInOut" }
+            ? dealPhase === "animating"
+              ? { duration: DEAL_DURATION, ease: "easeInOut" }
+              : { duration: 0.001 }
             : transition;
 
           return (
