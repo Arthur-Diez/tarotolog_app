@@ -25,6 +25,10 @@ const DEFAULT_FAN = 21;
 const STACK_PHASES = new Set<ReadingStage>(["collecting", "shuffling", "dealing", "await_open", "done"]);
 const FAN_PHASES = new Set<ReadingStage>(["fan", "sending", "ask"]);
 const SHUFFLE_ROUNDS = 6;
+const CARD_WIDTH = 144;
+const SHUFFLE_SWING = CARD_WIDTH * 0.9;
+const DEAL_SLIDE = 190;
+const DEAL_DURATION = 1.1;
 
 function randomRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -72,13 +76,31 @@ export const DeckStack = memo(function DeckStack({
   const [zLayers, setZLayers] = useState(() =>
     Array.from({ length: fanCount }, (_, index) => index)
   );
+  const [dealPhase, setDealPhase] = useState<"idle" | "animating" | "settled">("idle");
 
   useEffect(() => {
-    if (FAN_PHASES.has(mode)) {
+    if (FAN_PHASES.has(mode) || mode === "collecting") {
       setStackOffsets(buildStackOffsets(fanCount));
       setZLayers(Array.from({ length: fanCount }, (_, index) => index));
+      setDealPhase("idle");
     }
   }, [fanCount, mode]);
+  
+  useEffect(() => {
+    if (mode === "dealing") {
+      setDealPhase("animating");
+      return;
+    }
+    if (mode === "await_open" || mode === "done") {
+      setDealPhase((prev) => (prev === "idle" ? prev : "settled"));
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (dealPhase !== "animating") return;
+    const timer = setTimeout(() => setDealPhase("settled"), DEAL_DURATION * 1000);
+    return () => clearTimeout(timer);
+  }, [dealPhase]);
 
   useEffect(() => {
     if (mode !== "shuffling") return;
@@ -94,19 +116,18 @@ export const DeckStack = memo(function DeckStack({
         const index = pickIndex();
         const selector = `.card-${index}`;
         const base = stackOffsets[index];
-        const dir = step % 2 === 0 ? 24 : -24;
-        const tilt = dir > 0 ? 5 : -5;
+        const dir = step % 2 === 0 ? SHUFFLE_SWING : -SHUFFLE_SWING;
+        const tilt = dir > 0 ? 7 : -7;
         await animate(
           selector,
-          { x: base.x + dir, y: base.y - 10, rotateZ: base.rotate + tilt },
-          { duration: 0.25, ease: "easeInOut" }
+          {
+            x: [base.x, base.x + dir, base.x + dir * 0.85, base.x],
+            y: [base.y, base.y - 18, base.y - 6, base.y],
+            rotateZ: [base.rotate, base.rotate + tilt, base.rotate + tilt / 2, base.rotate]
+          },
+          { duration: 0.65, ease: "easeInOut" }
         );
         if (isCancelled) return;
-        await animate(
-          selector,
-          { x: base.x, y: base.y, rotateZ: base.rotate },
-          { duration: 0.25, ease: "easeInOut" }
-        );
         setZLayers((prev) => {
           const next = [...prev];
           const maxZ = Math.max(...prev);
@@ -130,23 +151,16 @@ export const DeckStack = memo(function DeckStack({
     };
   }, [animate, cards, centerIndex, mode, stackOffsets]);
 
-  useEffect(() => {
-    if (mode !== "dealing") return;
-    animate(
-      ".deck-stack-shell",
-      { y: [-50, -60, -50] },
-      { duration: 0.6, ease: "easeInOut", delay: 0.3 }
-    );
-  }, [animate, mode]);
-
   const isStackPhase = STACK_PHASES.has(mode);
-  const dealtCardHidden = { opacity: 0, y: -20, scale: 0.95 };
-  const dealtCardState =
-    mode === "dealing"
-      ? { opacity: 1, y: 150, scale: 1 }
-      : mode === "await_open" || mode === "done"
-        ? { opacity: 0, y: 220, scale: 1 }
-        : dealtCardHidden;
+  const dealIndex = centerIndex;
+  const stackLiftAnimation =
+    dealPhase === "animating"
+      ? { y: [-6, -42, -16] }
+      : { y: isStackPhase ? 0 : 0 };
+  const stackLiftTransition =
+    dealPhase === "animating"
+      ? { duration: 0.6, ease: "easeInOut" }
+      : { duration: 0.5, ease: "easeInOut" };
 
   return (
     <div
@@ -161,8 +175,8 @@ export const DeckStack = memo(function DeckStack({
       <motion.div
         className="deck-stack-shell pointer-events-none relative h-56 w-36"
         style={{ overflow: "visible" }}
-        animate={{ y: isStackPhase ? (mode === "dealing" ? -50 : 0) : 0 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
+        animate={stackLiftAnimation}
+        transition={stackLiftTransition}
       >
         {cards.map((_, index) => {
           const fanTarget = fanLayout[index];
@@ -172,6 +186,26 @@ export const DeckStack = memo(function DeckStack({
             mode === "collecting"
               ? { duration: 0.9, delay: gatherDelay(index, centerIndex), ease: "easeInOut" }
               : { duration: 0.5, ease: "easeOut" };
+          const isDealCard = index === dealIndex;
+          const isExtracting = isDealCard && dealPhase !== "idle";
+          const cardOpacity =
+            isStackPhase || mode === "collecting" ? stackTarget.opacity : 1;
+          const animateTarget = isExtracting
+            ? {
+                x: stackTarget.x,
+                y: stackTarget.y + DEAL_SLIDE,
+                rotateZ: stackTarget.rotate,
+                opacity: dealPhase === "animating" ? 1 : 0
+              }
+            : {
+                x: target.x,
+                y: target.y,
+                rotateZ: target.rotate,
+                opacity: cardOpacity
+              };
+          const extractionTransition = isExtracting
+            ? { duration: DEAL_DURATION, ease: "easeInOut", delay: 0.15 }
+            : transition;
 
           return (
             <motion.img
@@ -186,38 +220,16 @@ export const DeckStack = memo(function DeckStack({
               className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
               style={{
                 zIndex: zLayers[index],
-                opacity: isStackPhase || mode === "collecting" ? stackTarget.opacity : 1,
                 imageRendering: "auto",
                 backfaceVisibility: "hidden",
                 willChange: "transform"
               }}
-              animate={{
-                x: target.x,
-                y: target.y,
-                rotateZ: target.rotate
-              }}
-              transition={transition}
+              animate={animateTarget}
+              transition={extractionTransition}
             />
           );
         })}
       </motion.div>
-
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <motion.img
-          src={backSrc}
-          alt=""
-          className="dealt-card h-56 w-36 rounded-xl object-cover tarot-card-shadow"
-          initial={dealtCardHidden}
-          animate={dealtCardState}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          style={{
-            transformOrigin: "center top",
-            imageRendering: "auto",
-            backfaceVisibility: "hidden",
-            willChange: "transform"
-          }}
-        />
-      </div>
     </div>
   );
 });

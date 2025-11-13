@@ -33,7 +33,7 @@ export function CardSprite({ name, reversed, isOpen, onClick }: CardSpriteProps)
         alt={name}
         className="absolute inset-0 h-full w-full rounded-xl object-cover [backface-visibility:hidden]"
         style={{
-          transform: `rotateY(180deg)${reversed ? " rotate(180deg)" : ""}`,
+          transform: `rotateY(180deg) rotateZ(${reversed ? 180 : 0}deg)`,
           imageRendering: "auto",
           willChange: "transform"
         }}
