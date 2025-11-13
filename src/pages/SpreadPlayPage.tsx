@@ -3,7 +3,7 @@ import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { CardSprite } from "@/components/tarot/CardSprite";
-import { DeckStack } from "@/components/tarot/DeckStack";
+import { DeckStack, DEALT_CARD_OFFSET } from "@/components/tarot/DeckStack";
 import { backUrl } from "@/lib/cardAsset";
 import { useReadingState } from "@/stores/readingState";
 
@@ -40,6 +40,7 @@ export default function SpreadPlayPage() {
   const showResultCard = stage === "await_open" || stage === "done";
   const allCardsOpen = cards.every((card) => card.isOpen);
   const showActionButtons = stage === "done" || (stage === "await_open" && allCardsOpen);
+  const dealtCardY = DEALT_CARD_OFFSET;
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
@@ -144,23 +145,33 @@ export default function SpreadPlayPage() {
       >
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          {showResultCard && (
+          <div
+            className="absolute left-1/2 top-1/2 flex"
+            style={{ transform: "translate(-50%, -50%)" }}
+          >
             <motion.div
-              className="pointer-events-auto absolute inset-0 flex items-end justify-center pb-6"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={false}
+              animate={{
+                opacity: showResultCard ? 1 : 0,
+                y: showResultCard ? dealtCardY : dealtCardY - 24
+              }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
             >
               {cards.map((card) => (
-                <CardSprite
+                <div
                   key={card.positionIndex}
-                  name={card.name}
-                  reversed={card.reversed}
-                  isOpen={card.isOpen}
-                  onClick={() => openCard(card.positionIndex)}
-                />
+                  className={`transition-opacity ${showResultCard ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                >
+                  <CardSprite
+                    name={card.name}
+                    reversed={card.reversed}
+                    isOpen={card.isOpen}
+                    onClick={() => openCard(card.positionIndex)}
+                  />
+                </div>
               ))}
             </motion.div>
-          )}
+          </div>
           <div
             id="questionBubble"
             ref={questionBubbleRef}

@@ -32,6 +32,7 @@ const DEAL_SLIDE = CARD_HEIGHT + 36;
 const DEAL_DURATION = 1.1;
 const DEAL_LIFT = 90;
 const DEAL_GAP = 18;
+export const DEALT_CARD_OFFSET = DEAL_SLIDE + DEAL_GAP - DEAL_LIFT;
 
 function randomRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
