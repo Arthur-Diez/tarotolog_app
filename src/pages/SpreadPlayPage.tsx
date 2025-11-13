@@ -96,6 +96,22 @@ export default function SpreadPlayPage() {
     );
   }, [animate]);
 
+  const dealCard = useCallback(async () => {
+    if (!scope.current?.querySelector(".dealt-card")) {
+      return;
+    }
+    await animate(
+      ".dealt-card",
+      { y: 0, scale: 0.92, opacity: 0, zIndex: 20 },
+      { duration: 0 }
+    );
+    await animate(
+      ".dealt-card",
+      { y: 90, scale: 1, opacity: 1, zIndex: 50 },
+      { duration: 0.9, ease: "easeInOut" }
+    );
+  }, [animate, scope]);
+
   const runTimeline = useCallback(async () => {
     if (!scope.current || !trimmedQuestion) return;
     setIsRunning(true);
@@ -107,13 +123,14 @@ export default function SpreadPlayPage() {
       setStage("shuffling");
       await wait(DUR.shuffle * 1000);
       setStage("dealing");
-      await wait(DUR.deal * 1000);
+      await dealCard();
+      await wait(300);
       setStage("await_open");
       await animate("#flipHint", { opacity: 1, y: 0 }, { duration: DUR.hint });
     } finally {
       setIsRunning(false);
     }
-  }, [animate, flyQuestion, scope, setStage, trimmedQuestion]);
+  }, [animate, dealCard, flyQuestion, scope, setStage, trimmedQuestion]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
@@ -160,7 +177,8 @@ export default function SpreadPlayPage() {
               {cards.map((card) => (
                 <div
                   key={card.positionIndex}
-                  className={`transition-opacity ${showResultCard ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                  className={`dealt-card transition-opacity ${showResultCard ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                  style={{ transformOrigin: "center top" }}
                 >
                   <CardSprite
                     name={card.name}
