@@ -3,7 +3,7 @@ import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { CardSprite } from "@/components/tarot/CardSprite";
-import { DeckStack, DEALT_CARD_OFFSET } from "@/components/tarot/DeckStack";
+import { DeckStack } from "@/components/tarot/DeckStack";
 import { backUrl } from "@/lib/cardAsset";
 import { useReadingState } from "@/stores/readingState";
 
@@ -38,9 +38,9 @@ export default function SpreadPlayPage() {
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
   const showResultCard = stage === "await_open" || stage === "done";
+  const showDealtCard = stage === "dealing" || showResultCard;
   const allCardsOpen = cards.every((card) => card.isOpen);
   const showActionButtons = stage === "done" || (stage === "await_open" && allCardsOpen);
-  const dealtCardY = DEALT_CARD_OFFSET;
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
@@ -169,15 +169,17 @@ export default function SpreadPlayPage() {
             <motion.div
               initial={false}
               animate={{
-                opacity: showResultCard ? 1 : 0,
-                y: showResultCard ? dealtCardY : dealtCardY - 24
+                opacity: showDealtCard ? 1 : 0,
+                y: showDealtCard ? 0 : -24
               }}
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
               {cards.map((card) => (
                 <div
                   key={card.positionIndex}
-                  className={`dealt-card transition-opacity ${showResultCard ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                  className={`dealt-card transition-opacity ${
+                    showDealtCard ? "opacity-100" : "opacity-0"
+                  } ${showResultCard ? "pointer-events-auto" : "pointer-events-none"}`}
                   style={{ transformOrigin: "center top" }}
                 >
                   <CardSprite
