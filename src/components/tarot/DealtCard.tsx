@@ -13,28 +13,41 @@ export default function DealtCard({
   backSrc,
   faceSrc,
   isOpen,
-  reversed,
-  className,
+  reversed = false,
+  className = "",
   onClick
 }: DealtCardProps) {
+  const faceTransforms = ["rotateY(180deg)"];
+  if (isOpen && reversed) {
+    faceTransforms.push("rotateZ(180deg)");
+  }
+
   return (
     <motion.div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`relative h-60 w-36 cursor-pointer [transform-style:preserve-3d] z-[1001] ${className || ""}`}
+      className={`dealt-card relative z-[1000] h-60 w-36 cursor-pointer touch-manipulation [transform-style:preserve-3d] ${className}`}
       animate={{ rotateY: isOpen ? 180 : 0 }}
       transition={{ duration: 0.8, ease: "easeInOut" }}
       style={{ willChange: "transform" }}
     >
       <img
         src={backSrc}
-        className="absolute inset-0 h-full w-full rounded-xl shadow-xl [backface-visibility:hidden]"
         alt=""
+        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl [backface-visibility:hidden]"
+        draggable={false}
+        style={{ willChange: "transform" }}
       />
       <img
         src={faceSrc}
-        className="absolute inset-0 h-full w-full rounded-xl shadow-xl [transform:rotateY(180deg)] [backface-visibility:hidden]"
-        style={reversed && isOpen ? { rotate: "180deg" } : undefined}
         alt=""
+        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl [backface-visibility:hidden]"
+        draggable={false}
+        style={{
+          transform: faceTransforms.join(" "),
+          willChange: "transform"
+        }}
       />
     </motion.div>
   );

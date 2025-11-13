@@ -22,17 +22,16 @@ interface StackLayout extends Layout {
 }
 
 const DEFAULT_FAN = 21;
-const STACK_PHASES = new Set<ReadingStage>(["collecting", "shuffling", "dealing", "await_open", "done"]);
-const FAN_PHASES = new Set<ReadingStage>(["fan"]);
+const STACK_PHASES = new Set<ReadingStage>([
+  "collecting",
+  "shuffling",
+  "dealing",
+  "await_open",
+  "done"
+]);
 const SHUFFLE_ROUNDS = 6;
 const CARD_WIDTH = 144;
-const CARD_HEIGHT = 224;
 const SHUFFLE_SWING = CARD_WIDTH * 0.9;
-const DEAL_SLIDE = CARD_HEIGHT + 36;
-const DEAL_DURATION = 1.1;
-const DEAL_LIFT = 90;
-const DEAL_GAP = 18;
-export const DEALT_CARD_OFFSET = DEAL_SLIDE + DEAL_GAP - DEAL_LIFT;
 
 function randomRange(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -76,32 +75,19 @@ export const DeckStack = memo(function DeckStack({
   const cards = useMemo(() => Array.from({ length: fanCount }), [fanCount]);
   const centerIndex = Math.floor(fanCount / 2);
   const fanLayout = useMemo(() => buildFanLayout(fanCount), [fanCount]);
-  const [stackOffsets, setStackOffsets] = useState<StackLayout[]>(() => buildStackOffsets(fanCount));
+  const [stackOffsets, setStackOffsets] = useState<StackLayout[]>(() =>
+    buildStackOffsets(fanCount)
+  );
   const [zLayers, setZLayers] = useState(() =>
     Array.from({ length: fanCount }, (_, index) => index)
   );
-  const [dealPhase, setDealPhase] = useState<"idle" | "animating" | "settled">("idle");
 
   useEffect(() => {
-    if (FAN_PHASES.has(mode) || mode === "collecting") {
+    if (mode === "fan") {
       setStackOffsets(buildStackOffsets(fanCount));
       setZLayers(Array.from({ length: fanCount }, (_, index) => index));
-      setDealPhase("idle");
     }
   }, [fanCount, mode]);
-  
-  useEffect(() => {
-    if (mode === "dealing") {
-      setDealPhase("animating");
-      return;
-    }
-  }, [mode]);
-
-  useEffect(() => {
-    if (dealPhase !== "animating") return;
-    const timer = setTimeout(() => setDealPhase("settled"), DEAL_DURATION * 1000 + 150);
-    return () => clearTimeout(timer);
-  }, [dealPhase]);
 
   useEffect(() => {
     if (mode !== "shuffling") return;
@@ -153,13 +139,6 @@ export const DeckStack = memo(function DeckStack({
   }, [animate, cards, centerIndex, mode, stackOffsets]);
 
   const isStackPhase = STACK_PHASES.has(mode);
-  const dealIndex = centerIndex;
-  const stackRaised = dealPhase === "animating" || dealPhase === "settled";
-  const stackLiftAnimation = stackRaised ? { y: -DEAL_LIFT } : { y: 0 };
-  const stackLiftTransition =
-    dealPhase === "animating"
-      ? { duration: DEAL_DURATION, ease: "easeInOut" }
-      : { duration: 0.35, ease: "easeOut" };
 
   return (
     <div
@@ -172,51 +151,22 @@ export const DeckStack = memo(function DeckStack({
         className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
       />
       <motion.div
-        className="deck deck-stack-shell relative h-56 w-36 z-10"
-        style={{ overflow: "visible", willChange: "transform" }}
-        animate={stackLiftAnimation}
-        transition={stackLiftTransition}
+        className="deck deck-stack-shell relative z-10 h-56 w-36 overflow-visible"
+        style={{ willChange: "transform" }}
       >
         {cards.map((_, index) => {
           const fanTarget = fanLayout[index];
           const stackTarget = stackOffsets[index];
-          const target = isStackPhase || mode === "collecting" ? stackTarget : fanTarget;
+          const target = isStackPhase ? stackTarget : fanTarget;
           const transition =
             mode === "collecting"
-              ? { duration: 0.9, delay: gatherDelay(index, centerIndex), ease: "easeInOut" }
-              : { duration: 0.5, ease: "easeOut" };
-          const isDealCard = index === dealIndex;
-          const isExtracting = isDealCard && dealPhase !== "idle";
-          const cardOpacity =
-            isStackPhase || mode === "collecting" ? stackTarget.opacity : 1;
-          const animateTarget = isExtracting
-            ? dealPhase === "settled"
               ? {
-                  x: stackTarget.x,
-                  y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
-                  rotateZ: stackTarget.rotate,
-                  opacity: 0
+                  duration: 0.9,
+                  delay: gatherDelay(index, centerIndex),
+                  ease: "easeInOut"
                 }
-              : {
-                  x: stackTarget.x,
-                  y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
-                  rotateZ: stackTarget.rotate,
-                  opacity: 1
-                }
-            : {
-                x: target.x,
-                y: target.y,
-                rotateZ: target.rotate,
-                opacity: cardOpacity
-              };
-          const extractionTransition = isExtracting
-            ? dealPhase === "animating"
-              ? { duration: DEAL_DURATION, ease: "easeInOut" }
-              : { duration: 0.001 }
-            : transition;
-
-          const cappedStackZ = Math.min(zLayers[index], 50);
-          const cardZIndex = isExtracting ? Math.min(cappedStackZ, 20) : cappedStackZ;
+              : { duration: 0.5, ease: "easeOut" };
+          const opacity = isStackPhase ? stackTarget.opacity : 1;
 
           return (
             <motion.img
@@ -230,13 +180,18 @@ export const DeckStack = memo(function DeckStack({
               }}
               className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
               style={{
-                zIndex: cardZIndex,
+                zIndex: Math.min(zLayers[index], 50),
                 imageRendering: "auto",
                 backfaceVisibility: "hidden",
                 willChange: "transform"
               }}
-              animate={animateTarget}
-              transition={extractionTransition}
+              animate={{
+                x: target.x,
+                y: target.y,
+                rotateZ: target.rotate,
+                opacity
+              }}
+              transition={transition}
             />
           );
         })}

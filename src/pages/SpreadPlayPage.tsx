@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import type { AnimationPlaybackControls } from "framer-motion";
 import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -7,18 +8,15 @@ import { DeckStack } from "@/components/tarot/DeckStack";
 import { backUrl, faceUrl } from "@/lib/cardAsset";
 import { useReadingState } from "@/stores/readingState";
 
-const DUR = {
-  pause: 0.2,
-  fly: 0.9,
-  dissolve: 0.6,
-  collect: 2.8,
-  shuffle: 3.8,
-  deal: 1.4,
-  hint: 0.5
-};
+const DEAL_OFFSET = 96;
+const COLLECT_DURATION = 2.8;
+const SHUFFLE_DURATION = 3.8;
+const HINT_DURATION = 0.5;
+const QUESTION_FLY_DURATION = 0.9;
+const QUESTION_DISSOLVE_DURATION = 0.6;
+const WAIT_AFTER_DEAL = 150;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const DEAL_OFFSET = 96;
 
 export default function SpreadPlayPage() {
   const stage = useReadingState((state) => state.stage);
@@ -35,6 +33,8 @@ export default function SpreadPlayPage() {
   const [deckKey, setDeckKey] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
+  const timelineTokenRef = useRef(0);
+  const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
 
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
@@ -42,6 +42,7 @@ export default function SpreadPlayPage() {
   const faceSrc = dealtCard ? faceUrl("rws", dealtCard.name) : null;
   const showActionButtons = stage === "done";
   const hintVisible = stage === "await_open";
+  const showForm = stage === "fan";
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
@@ -51,14 +52,52 @@ export default function SpreadPlayPage() {
     bubble.style.transform = "";
   };
 
+  const stopActiveAnimation = useCallback(() => {
+    if (!activeAnimationRef.current) return;
+    activeAnimationRef.current.stop();
+    activeAnimationRef.current = null;
+  }, []);
+
+  const play = useCallback(
+    (...args: Parameters<typeof animate>) => {
+      const controls = animate(...args);
+      activeAnimationRef.current = controls;
+      return controls.finished;
+    },
+    [animate]
+  );
+
+  const cancelTimeline = useCallback(() => {
+    timelineTokenRef.current += 1;
+    stopActiveAnimation();
+    setIsRunning(false);
+  }, [stopActiveAnimation]);
+
+  const resetDealHost = useCallback(() => {
+    const host = scope.current?.querySelector(".deal-host") as HTMLElement | null;
+    if (!host) return;
+    void play(host, { y: -16, opacity: 0 }, { duration: 0 });
+  }, [play, scope]);
+
+  const resetHint = useCallback(() => {
+    void play("#flipHint", { opacity: 0, y: 12 }, { duration: 0 });
+  }, [play]);
+
+  const resetQuestionForm = useCallback(() => {
+    void play("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
+  }, [play]);
+
   const handleReset = () => {
+    cancelTimeline();
     storeReset();
     setStage("fan");
     setQuestion("");
-    setIsRunning(false);
     setDeckKey((value) => value + 1);
     resetQuestionBubble();
-    animate("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
+    resetDealHost();
+    resetHint();
+    resetQuestionForm();
+    void play(".deck", { y: 0 }, { duration: 0 });
   };
 
   useEffect(() => {
@@ -67,12 +106,14 @@ export default function SpreadPlayPage() {
     }
   }, [stage, trimmedQuestion]);
 
-  const flyQuestion = useCallback(async () => {
+  const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
     const target = fanCenterRef.current;
     if (!bubble || !target) {
+      await play("#questionForm", { opacity: 0 }, { duration: 0 });
       return;
     }
+
     const bubbleRect = bubble.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
     const dx =
@@ -80,56 +121,69 @@ export default function SpreadPlayPage() {
     const dy =
       targetRect.top + targetRect.height / 2 - (bubbleRect.top + bubbleRect.height / 2);
 
-    await animate(
-      bubble,
-      { x: dx, y: dy, scale: 0.92 },
-      { duration: DUR.fly, ease: "easeInOut" }
-    );
-    await animate(
-      bubble,
-      { opacity: 0, filter: "blur(6px)" },
-      { duration: DUR.dissolve, ease: "easeInOut" }
-    );
-    await animate(
-      "#questionForm",
-      { y: 40, opacity: 0 },
-      { duration: DUR.dissolve, ease: "easeInOut" }
-    );
-  }, [animate]);
+    await play([
+      [
+        bubble,
+        { x: dx, y: dy, scale: 0.92 },
+        { duration: QUESTION_FLY_DURATION, ease: "easeInOut" }
+      ],
+      [
+        bubble,
+        { opacity: 0, filter: "blur(6px)" },
+        { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut" }
+      ],
+      [
+        "#questionForm",
+        { y: 40, opacity: 0 },
+        { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut", at: "<" }
+      ]
+    ]);
+  }, [play]);
 
-  const dealCard = useCallback(async () => {
-    if (!scope.current?.querySelector(".dealt-card") || !dealtCard) {
-      return;
-    }
-    await animate(".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" });
-    await animate(
-      ".dealt-layer .dealt-card",
-      { opacity: 1, y: DEAL_OFFSET, zIndex: 1000 },
-      { duration: 0.9, ease: "easeInOut" }
-    );
-    await animate(".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" });
-    await animate(".dealt-layer .dealt-card", { y: DEAL_OFFSET }, { duration: 0 });
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    setStage("await_open");
-  }, [animate, dealtCard, scope, setStage]);
+  const runDealSequence = useCallback(async () => {
+    await play([
+      [".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" }],
+      [".deal-host", { y: DEAL_OFFSET, opacity: 1 }, { duration: 0.9, ease: "easeInOut" }],
+      [".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" }],
+      [".deal-host", { y: DEAL_OFFSET }, { duration: 0 }]
+    ]);
+  }, [play]);
 
   const runTimeline = useCallback(async () => {
     if (!scope.current || !trimmedQuestion) return;
+    const runToken = ++timelineTokenRef.current;
     setIsRunning(true);
+
+    const isActive = () => timelineTokenRef.current === runToken;
+
     try {
-      await animate(scope.current, {}, { duration: DUR.pause });
-      await flyQuestion();
+      await dissolveQuestion();
+      if (!isActive()) return;
+
       setStage("collecting");
-      await wait(DUR.collect * 1000);
+      await wait(COLLECT_DURATION * 1000);
+      if (!isActive()) return;
+
       setStage("shuffling");
-      await wait(DUR.shuffle * 1000);
+      await wait(SHUFFLE_DURATION * 1000);
+      if (!isActive()) return;
+
       setStage("dealing");
-      await dealCard();
-      await animate("#flipHint", { opacity: 1, y: 0 }, { duration: DUR.hint });
+      await runDealSequence();
+      if (!isActive()) return;
+
+      await wait(WAIT_AFTER_DEAL);
+      if (!isActive()) return;
+
+      setStage("await_open");
+      await play("#flipHint", { opacity: 1, y: 0 }, { duration: HINT_DURATION, ease: "easeOut" });
     } finally {
-      setIsRunning(false);
+      if (isActive()) {
+        setIsRunning(false);
+        activeAnimationRef.current = null;
+      }
     }
-  }, [animate, dealCard, flyQuestion, scope, setStage, trimmedQuestion]);
+  }, [dissolveQuestion, play, runDealSequence, scope, setStage, trimmedQuestion]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
@@ -138,12 +192,14 @@ export default function SpreadPlayPage() {
       }
       return;
     }
+
+    cancelTimeline();
     resetQuestionBubble();
+    resetDealHost();
+    resetHint();
     start(trimmedQuestion);
     await runTimeline();
   };
-
-  const showForm = stage === "fan";
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
@@ -161,19 +217,14 @@ export default function SpreadPlayPage() {
       >
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          {dealtCard && faceSrc && (
-            <div
-              className={`dealt-layer absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[999] ${
-                stage === "await_open" || stage === "dealing" ? "pointer-events-auto" : "pointer-events-none"
-              }`}
-              style={{ perspective: "1200px" }}
+          <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1100]">
+            <motion.div
+              key={`deal-host-${deckKey}`}
+              className="deal-host"
+              initial={{ y: -16, opacity: 0 }}
+              style={{ willChange: "transform" }}
             >
-              <motion.div
-                key={`dealt-card-${deckKey}`}
-                className="dealt-card"
-                initial={{ opacity: 0, y: -16 }}
-                style={{ willChange: "transform" }}
-              >
+              {dealtCard && faceSrc && (
                 <DealtCard
                   backSrc={backSrc}
                   faceSrc={faceSrc}
@@ -181,16 +232,14 @@ export default function SpreadPlayPage() {
                   reversed={dealtCard.reversed}
                   onClick={() => stage === "await_open" && openCard(dealtCard.positionIndex)}
                 />
-              </motion.div>
-            </div>
-          )}
+              )}
+            </motion.div>
+          </div>
           <div
             id="questionBubble"
             ref={questionBubbleRef}
             className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
-              trimmedQuestion && stage === "fan"
-                ? "opacity-100"
-                : "opacity-0"
+              trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
             }`}
           >
             {trimmedQuestion || "Введите вопрос, чтобы начать"}
