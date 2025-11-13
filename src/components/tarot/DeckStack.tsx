@@ -26,8 +26,9 @@ const STACK_PHASES = new Set<ReadingStage>(["collecting", "shuffling", "dealing"
 const FAN_PHASES = new Set<ReadingStage>(["fan", "sending", "ask"]);
 const SHUFFLE_ROUNDS = 6;
 const CARD_WIDTH = 144;
+const CARD_HEIGHT = 224;
 const SHUFFLE_SWING = CARD_WIDTH * 0.9;
-const DEAL_SLIDE = 190;
+const DEAL_SLIDE = CARD_HEIGHT + 36;
 const DEAL_DURATION = 1.1;
 
 function randomRange(min: number, max: number) {
@@ -91,14 +92,11 @@ export const DeckStack = memo(function DeckStack({
       setDealPhase("animating");
       return;
     }
-    if (mode === "await_open" || mode === "done") {
-      setDealPhase((prev) => (prev === "idle" ? prev : "settled"));
-    }
   }, [mode]);
 
   useEffect(() => {
     if (dealPhase !== "animating") return;
-    const timer = setTimeout(() => setDealPhase("settled"), DEAL_DURATION * 1000);
+    const timer = setTimeout(() => setDealPhase("settled"), DEAL_DURATION * 1000 + 150);
     return () => clearTimeout(timer);
   }, [dealPhase]);
 
@@ -155,12 +153,12 @@ export const DeckStack = memo(function DeckStack({
   const dealIndex = centerIndex;
   const stackLiftAnimation =
     dealPhase === "animating"
-      ? { y: [-6, -42, -16] }
-      : { y: isStackPhase ? 0 : 0 };
+      ? { y: [0, -22, -8, -2, 0] }
+      : { y: 0 };
   const stackLiftTransition =
     dealPhase === "animating"
-      ? { duration: 0.6, ease: "easeInOut" }
-      : { duration: 0.5, ease: "easeInOut" };
+      ? { duration: DEAL_DURATION, ease: "easeInOut" }
+      : { duration: 0.45, ease: "easeInOut" };
 
   return (
     <div
@@ -195,7 +193,7 @@ export const DeckStack = memo(function DeckStack({
                 x: stackTarget.x,
                 y: stackTarget.y + DEAL_SLIDE,
                 rotateZ: stackTarget.rotate,
-                opacity: dealPhase === "animating" ? 1 : 0
+                opacity: dealPhase === "settled" ? 0 : 1
               }
             : {
                 x: target.x,
@@ -204,7 +202,7 @@ export const DeckStack = memo(function DeckStack({
                 opacity: cardOpacity
               };
           const extractionTransition = isExtracting
-            ? { duration: DEAL_DURATION, ease: "easeInOut", delay: 0.15 }
+            ? { duration: DEAL_DURATION, ease: "easeInOut" }
             : transition;
 
           return (
@@ -219,7 +217,7 @@ export const DeckStack = memo(function DeckStack({
               }}
               className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
               style={{
-                zIndex: zLayers[index],
+                zIndex: isExtracting ? zLayers[index] + 200 : zLayers[index],
                 imageRendering: "auto",
                 backfaceVisibility: "hidden",
                 willChange: "transform"

@@ -13,7 +13,7 @@ const DUR = {
   dissolve: 0.6,
   collect: 2.8,
   shuffle: 3.8,
-  deal: 1.2,
+  deal: 1.4,
   hint: 0.5
 };
 
@@ -31,6 +31,7 @@ export default function SpreadPlayPage() {
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
+  const [deckKey, setDeckKey] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,6 +54,7 @@ export default function SpreadPlayPage() {
     setStage("fan");
     setQuestion("");
     setIsRunning(false);
+    setDeckKey((value) => value + 1);
     resetQuestionBubble();
     animate("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
   };
@@ -141,7 +143,7 @@ export default function SpreadPlayPage() {
         style={{ perspective: "1200px", pointerEvents: isRunning ? "none" : "auto" }}
       >
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
-          <DeckStack backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+          <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           {showResultCard && (
             <motion.div
               className="pointer-events-auto absolute inset-0 flex items-end justify-center pb-6"
