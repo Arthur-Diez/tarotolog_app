@@ -140,7 +140,7 @@ export default function SpreadPlayPage() {
         { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut", at: "<" }
       ]
     ]);
-  }, [play]);
+  }, [animateAndTrack]);
 
   const runDealSequence = useCallback(async () => {
     await animateAndTrack([
@@ -149,7 +149,7 @@ export default function SpreadPlayPage() {
       [".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" }],
       [".deal-host", { y: DEAL_OFFSET }, { duration: 0 }]
     ]);
-  }, [play]);
+  }, [animateAndTrack]);
 
   const runTimeline = useCallback(async () => {
     if (!scope.current || !trimmedQuestion) return;
@@ -185,7 +185,7 @@ export default function SpreadPlayPage() {
         activeAnimationRef.current = null;
       }
     }
-  }, [dissolveQuestion, play, runDealSequence, scope, setStage, trimmedQuestion]);
+  }, [animateAndTrack, dissolveQuestion, runDealSequence, scope, setStage, trimmedQuestion]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
