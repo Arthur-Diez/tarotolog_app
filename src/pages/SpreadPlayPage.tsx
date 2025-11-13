@@ -101,18 +101,14 @@ export default function SpreadPlayPage() {
     if (!scope.current?.querySelector(".dealt-card") || !dealtCard) {
       return;
     }
-    await animate(
-      ".dealt-card",
-      { opacity: 0, y: -16, zIndex: 20 },
-      { duration: 0 }
-    );
     await animate(".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" });
     await animate(
-      ".dealt-card",
-      { opacity: 1, y: DEAL_OFFSET, zIndex: 40 },
+      ".dealt-layer .dealt-card",
+      { opacity: 1, y: DEAL_OFFSET, zIndex: 1000 },
       { duration: 0.9, ease: "easeInOut" }
     );
     await animate(".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" });
+    await animate(".dealt-layer .dealt-card", { y: DEAL_OFFSET }, { duration: 0 });
     await new Promise((resolve) => setTimeout(resolve, 150));
     setStage("await_open");
   }, [animate, dealtCard, scope, setStage]);
@@ -167,30 +163,25 @@ export default function SpreadPlayPage() {
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           {dealtCard && faceSrc && (
             <div
-              className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2"
+              className={`dealt-layer absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[999] ${
+                stage === "await_open" || stage === "dealing" ? "pointer-events-auto" : "pointer-events-none"
+              }`}
               style={{ perspective: "1200px" }}
             >
-              <div
+              <motion.div
                 key={`dealt-card-${deckKey}`}
-                className="dealt-card relative"
-                style={{
-                  opacity: 0,
-                  transform: "translateY(-16px)"
-                }}
+                className="dealt-card"
+                initial={{ opacity: 0, y: -16 }}
+                style={{ willChange: "transform" }}
               >
                 <DealtCard
-                  className={`${stage === "await_open" ? "pointer-events-auto" : "pointer-events-none"}`}
                   backSrc={backSrc}
                   faceSrc={faceSrc}
                   isOpen={dealtCard.isOpen}
                   reversed={dealtCard.reversed}
-                  onClick={() => {
-                    if (stage === "await_open") {
-                      openCard(dealtCard.positionIndex);
-                    }
-                  }}
+                  onClick={() => stage === "await_open" && openCard(dealtCard.positionIndex)}
                 />
-              </div>
+              </motion.div>
             </div>
           )}
           <div

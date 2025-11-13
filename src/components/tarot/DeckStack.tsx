@@ -164,7 +164,7 @@ export const DeckStack = memo(function DeckStack({
   return (
     <div
       ref={scope}
-      className="deck-root pointer-events-none relative flex h-[320px] w-full items-center justify-center overflow-visible"
+      className="deck-root relative flex h-[320px] w-full items-center justify-center overflow-visible"
     >
       <div
         id="fanCenter"
@@ -172,7 +172,7 @@ export const DeckStack = memo(function DeckStack({
         className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
       />
       <motion.div
-        className="deck deck-stack-shell pointer-events-none relative h-56 w-36"
+        className="deck deck-stack-shell relative h-56 w-36 z-10"
         style={{ overflow: "visible", willChange: "transform" }}
         animate={stackLiftAnimation}
         transition={stackLiftTransition}
@@ -215,6 +215,9 @@ export const DeckStack = memo(function DeckStack({
               : { duration: 0.001 }
             : transition;
 
+          const cappedStackZ = Math.min(zLayers[index], 50);
+          const cardZIndex = isExtracting ? Math.min(cappedStackZ, 20) : cappedStackZ;
+
           return (
             <motion.img
               key={`card-${index}`}
@@ -227,7 +230,7 @@ export const DeckStack = memo(function DeckStack({
               }}
               className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
               style={{
-                zIndex: isExtracting ? zLayers[index] + 200 : zLayers[index],
+                zIndex: cardZIndex,
                 imageRendering: "auto",
                 backfaceVisibility: "hidden",
                 willChange: "transform"

@@ -20,7 +20,7 @@ export default function DealtCard({
   return (
     <motion.div
       onClick={onClick}
-      className={`relative h-60 w-36 cursor-pointer [transform-style:preserve-3d] ${className || ""}`}
+      className={`relative h-60 w-36 cursor-pointer [transform-style:preserve-3d] z-[1001] ${className || ""}`}
       animate={{ rotateY: isOpen ? 180 : 0 }}
       transition={{ duration: 0.8, ease: "easeInOut" }}
       style={{ willChange: "transform" }}
@@ -33,7 +33,7 @@ export default function DealtCard({
       <img
         src={faceSrc}
         className="absolute inset-0 h-full w-full rounded-xl shadow-xl [transform:rotateY(180deg)] [backface-visibility:hidden]"
-        style={reversed && isOpen ? { transform: "rotateY(180deg) rotateZ(180deg)" } : undefined}
+        style={reversed && isOpen ? { rotate: "180deg" } : undefined}
         alt=""
       />
     </motion.div>
