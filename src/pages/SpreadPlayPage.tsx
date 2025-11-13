@@ -58,11 +58,13 @@ export default function SpreadPlayPage() {
     activeAnimationRef.current = null;
   }, []);
 
-  const play = useCallback(
-    (...args: Parameters<typeof animate>) => {
-      const controls = animate(...args);
+  const animateAndTrack = useCallback(
+    (...args: any[]) => {
+      const controls = (animate as unknown as (...inner: any[]) => AnimationPlaybackControls)(
+        ...args
+      );
       activeAnimationRef.current = controls;
-      return controls.finished;
+      return controls;
     },
     [animate]
   );
@@ -76,16 +78,16 @@ export default function SpreadPlayPage() {
   const resetDealHost = useCallback(() => {
     const host = scope.current?.querySelector(".deal-host") as HTMLElement | null;
     if (!host) return;
-    void play(host, { y: -16, opacity: 0 }, { duration: 0 });
-  }, [play, scope]);
+    void animateAndTrack(host, { y: -16, opacity: 0 }, { duration: 0 });
+  }, [animateAndTrack, scope]);
 
   const resetHint = useCallback(() => {
-    void play("#flipHint", { opacity: 0, y: 12 }, { duration: 0 });
-  }, [play]);
+    void animateAndTrack("#flipHint", { opacity: 0, y: 12 }, { duration: 0 });
+  }, [animateAndTrack]);
 
   const resetQuestionForm = useCallback(() => {
-    void play("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
-  }, [play]);
+    void animateAndTrack("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
+  }, [animateAndTrack]);
 
   const handleReset = () => {
     cancelTimeline();
@@ -97,7 +99,7 @@ export default function SpreadPlayPage() {
     resetDealHost();
     resetHint();
     resetQuestionForm();
-    void play(".deck", { y: 0 }, { duration: 0 });
+    void animateAndTrack(".deck", { y: 0 }, { duration: 0 });
   };
 
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function SpreadPlayPage() {
     const bubble = questionBubbleRef.current;
     const target = fanCenterRef.current;
     if (!bubble || !target) {
-      await play("#questionForm", { opacity: 0 }, { duration: 0 });
+      await animateAndTrack("#questionForm", { opacity: 0 }, { duration: 0 });
       return;
     }
 
@@ -121,7 +123,7 @@ export default function SpreadPlayPage() {
     const dy =
       targetRect.top + targetRect.height / 2 - (bubbleRect.top + bubbleRect.height / 2);
 
-    await play([
+    await animateAndTrack([
       [
         bubble,
         { x: dx, y: dy, scale: 0.92 },
@@ -141,7 +143,7 @@ export default function SpreadPlayPage() {
   }, [play]);
 
   const runDealSequence = useCallback(async () => {
-    await play([
+    await animateAndTrack([
       [".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" }],
       [".deal-host", { y: DEAL_OFFSET, opacity: 1 }, { duration: 0.9, ease: "easeInOut" }],
       [".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" }],
@@ -176,7 +178,7 @@ export default function SpreadPlayPage() {
       if (!isActive()) return;
 
       setStage("await_open");
-      await play("#flipHint", { opacity: 1, y: 0 }, { duration: HINT_DURATION, ease: "easeOut" });
+      await animateAndTrack("#flipHint", { opacity: 1, y: 0 }, { duration: HINT_DURATION, ease: "easeOut" });
     } finally {
       if (isActive()) {
         setIsRunning(false);
