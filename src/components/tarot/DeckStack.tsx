@@ -1,157 +1,222 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
+import { motion, useAnimate } from "framer-motion";
+
+import type { ReadingStage } from "@/stores/readingState";
 
 interface DeckStackProps {
   backSrc: string;
-  mode: "fan" | "stack";
+  mode: ReadingStage;
   fanCount?: number;
-  dealCount?: number;
   fanCenterRef?: RefObject<HTMLDivElement>;
 }
 
+interface Layout {
+  x: number;
+  y: number;
+  rotate: number;
+}
+
+interface StackLayout extends Layout {
+  opacity: number;
+}
+
 const DEFAULT_FAN = 21;
-const DEFAULT_DEAL = 1;
+const STACK_PHASES = new Set<ReadingStage>(["collecting", "shuffling", "dealing", "await_open", "done"]);
+const FAN_PHASES = new Set<ReadingStage>(["fan", "sending", "ask"]);
+const SHUFFLE_ROUNDS = 6;
+
+function randomRange(min: number, max: number) {
+  return Math.random() * (max - min) + min;
+}
+
+function buildFanLayout(count: number): Layout[] {
+  return Array.from({ length: count }, (_, index) => {
+    const t = count === 1 ? 0.5 : index / (count - 1);
+    const spread = 280;
+    return {
+      x: (t - 0.5) * spread,
+      y: Math.abs(t - 0.5) * -14,
+      rotate: (t - 0.5) * 35
+    };
+  });
+}
+
+function buildStackOffsets(count: number): StackLayout[] {
+  return Array.from({ length: count }, () => ({
+    x: randomRange(-2, 2),
+    y: randomRange(-1, 1),
+    rotate: randomRange(-2, 2),
+    opacity: randomRange(0.98, 1)
+  }));
+}
+
+function gatherDelay(index: number, centerIndex: number) {
+  if (centerIndex === 0) return 0;
+  const maxDistance = centerIndex;
+  const distance = Math.abs(centerIndex - index);
+  return (maxDistance - distance) * 0.05;
+}
 
 export const DeckStack = memo(function DeckStack({
   backSrc,
   mode,
   fanCount = DEFAULT_FAN,
-  dealCount = DEFAULT_DEAL,
   fanCenterRef
 }: DeckStackProps) {
-  const fanCards = useMemo(() => Array.from({ length: fanCount }), [fanCount]);
-  const pileLeft = fanCards.slice(0, Math.ceil(fanCount / 2));
-  const pileRight = fanCards.slice(Math.ceil(fanCount / 2));
-  const edges = useMemo(() => Array.from({ length: 18 }), []);
-  const dealPlaceholders = useMemo(() => Array.from({ length: dealCount }), [dealCount]);
+  const [scope, animate] = useAnimate();
+  const cards = useMemo(() => Array.from({ length: fanCount }), [fanCount]);
+  const centerIndex = Math.floor(fanCount / 2);
+  const fanLayout = useMemo(() => buildFanLayout(fanCount), [fanCount]);
+  const [stackOffsets, setStackOffsets] = useState<StackLayout[]>(() => buildStackOffsets(fanCount));
+  const [zLayers, setZLayers] = useState(() =>
+    Array.from({ length: fanCount }, (_, index) => index)
+  );
+
+  useEffect(() => {
+    if (FAN_PHASES.has(mode)) {
+      setStackOffsets(buildStackOffsets(fanCount));
+      setZLayers(Array.from({ length: fanCount }, (_, index) => index));
+    }
+  }, [fanCount, mode]);
+
+  useEffect(() => {
+    if (mode !== "shuffling") return;
+    let isCancelled = false;
+
+    const pickIndex = () => {
+      const pool = cards.map((_, index) => index).filter((index) => index !== centerIndex);
+      return pool[Math.floor(Math.random() * pool.length)];
+    };
+
+    const runShuffle = async () => {
+      for (let step = 0; step < SHUFFLE_ROUNDS && !isCancelled; step += 1) {
+        const index = pickIndex();
+        const selector = `.card-${index}`;
+        const base = stackOffsets[index];
+        const dir = step % 2 === 0 ? 24 : -24;
+        const tilt = dir > 0 ? 5 : -5;
+        await animate(
+          selector,
+          { x: base.x + dir, y: base.y - 10, rotateZ: base.rotate + tilt },
+          { duration: 0.25, ease: "easeInOut" }
+        );
+        if (isCancelled) return;
+        await animate(
+          selector,
+          { x: base.x, y: base.y, rotateZ: base.rotate },
+          { duration: 0.25, ease: "easeInOut" }
+        );
+        setZLayers((prev) => {
+          const next = [...prev];
+          const maxZ = Math.max(...prev);
+          next[index] = maxZ + 1;
+          return next;
+        });
+      }
+      if (!isCancelled) {
+        await animate(
+          ".deck-stack-shell",
+          { scale: [1, 1.02, 1], y: [0, -6, 0] },
+          { duration: 0.9, ease: "easeInOut" }
+        );
+      }
+    };
+
+    runShuffle();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [animate, cards, centerIndex, mode, stackOffsets]);
+
+  useEffect(() => {
+    if (mode !== "dealing") return;
+    animate(
+      ".deck-stack-shell",
+      { y: [-50, -60, -50] },
+      { duration: 0.6, ease: "easeInOut", delay: 0.3 }
+    );
+  }, [animate, mode]);
+
+  const isStackPhase = STACK_PHASES.has(mode);
+  const dealtCardHidden = { opacity: 0, y: -20, scale: 0.95 };
+  const dealtCardState =
+    mode === "dealing"
+      ? { opacity: 1, y: 150, scale: 1 }
+      : mode === "await_open" || mode === "done"
+        ? { opacity: 0, y: 220, scale: 1 }
+        : dealtCardHidden;
 
   return (
-    <div className="deck-root relative flex h-[320px] w-full items-center justify-center">
+    <div
+      ref={scope}
+      className="deck-root pointer-events-none relative flex h-[320px] w-full items-center justify-center overflow-visible"
+    >
       <div
-        id="fan"
-        className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-          mode === "fan" ? "opacity-100" : "opacity-0"
-        }`}
+        id="fanCenter"
+        ref={fanCenterRef}
+        className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
+      />
+      <motion.div
+        className="deck-stack-shell pointer-events-none relative h-56 w-36"
+        style={{ overflow: "visible" }}
+        animate={{ y: isStackPhase ? (mode === "dealing" ? -50 : 0) : 0 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
       >
-        <div
-          id="fanCenter"
-          ref={fanCenterRef}
-          className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
-        />
-        {fanCards.map((_, index) => {
-          const t = fanCount === 1 ? 0.5 : index / (fanCount - 1);
-          const spread = 280;
-          const x = (t - 0.5) * spread;
-          const rotation = (t - 0.5) * 35;
-          const y = Math.abs(t - 0.5) * -14;
+        {cards.map((_, index) => {
+          const fanTarget = fanLayout[index];
+          const stackTarget = stackOffsets[index];
+          const target = isStackPhase || mode === "collecting" ? stackTarget : fanTarget;
+          const transition =
+            mode === "collecting"
+              ? { duration: 0.9, delay: gatherDelay(index, centerIndex), ease: "easeInOut" }
+              : { duration: 0.5, ease: "easeOut" };
+
           return (
-            <img
-              key={`fan-${index}`}
+            <motion.img
+              key={`card-${index}`}
               src={backSrc}
-              className={`fan-card fan-card-${index} absolute h-56 w-36 rounded-xl object-cover shadow-xl shadow-black/40`}
+              alt=""
+              initial={{
+                x: fanTarget.x,
+                y: fanTarget.y,
+                rotateZ: fanTarget.rotate
+              }}
+              className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
               style={{
-                transform: `translateX(${x}px) translateY(${y}px) rotateZ(${rotation}deg)`,
-                zIndex: index,
+                zIndex: zLayers[index],
+                opacity: isStackPhase || mode === "collecting" ? stackTarget.opacity : 1,
                 imageRendering: "auto",
                 backfaceVisibility: "hidden",
                 willChange: "transform"
               }}
-              alt=""
+              animate={{
+                x: target.x,
+                y: target.y,
+                rotateZ: target.rotate
+              }}
+              transition={transition}
             />
           );
         })}
-      </div>
+      </motion.div>
 
-      <div
-        id="stack"
-        className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-          mode === "stack" ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <div id="stackCore" className="relative h-56 w-36">
-          <div className="absolute inset-0 z-0">
-            {edges.map((_, index) => (
-              <div
-                key={`edge-${index}`}
-                className="stack-edge absolute rounded-sm bg-black/35 blur-[0.5px]"
-                style={{
-                  height: "88%",
-                  width: "6px",
-                  left: "50%",
-                  top: "6%",
-                  marginLeft: (index - edges.length / 2) * 0.6,
-                  transform: `translateZ(${index * 0.6}px)`
-                }}
-              />
-            ))}
-          </div>
-            <img
-              src={backSrc}
-              className="relative z-20 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-              style={{ imageRendering: "auto", backfaceVisibility: "hidden", willChange: "transform" }}
-              alt=""
-            />
-          <div
-            className="pile-left pointer-events-none absolute inset-0 flex items-center justify-center"
-            style={{ opacity: 0 }}
-          >
-            {pileLeft.map((_, index) => (
-              <img
-                key={`pile-left-${index}`}
-                src={backSrc}
-                className="absolute z-10 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-                style={{
-                  transform: `translateY(${index * -2}px)`,
-                  opacity: 0.95 - index * 0.05,
-                  imageRendering: "auto",
-                  backfaceVisibility: "hidden",
-                  willChange: "transform"
-                }}
-                alt=""
-              />
-            ))}
-          </div>
-          <div
-            className="pile-right pointer-events-none absolute inset-0 flex items-center justify-center"
-            style={{ opacity: 0 }}
-          >
-            {pileRight.map((_, index) => (
-              <img
-                key={`pile-right-${index}`}
-                src={backSrc}
-                className="absolute z-10 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40"
-                style={{
-                  transform: `translateY(${index * -2}px)`,
-                  opacity: 0.95 - index * 0.05,
-                  imageRendering: "auto",
-                  backfaceVisibility: "hidden",
-                  willChange: "transform"
-                }}
-                alt=""
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div
-        id="dealArea"
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-      >
-        {dealPlaceholders.map((_, index) => (
-          <img
-            key={`deal-card-${index}`}
-            src={backSrc}
-            className={`deal-card deal-card-${index} h-56 w-36 rounded-xl object-cover opacity-0 shadow-2xl shadow-black/50`}
-            style={{
-              transform: "translateY(0px)",
-              imageRendering: "auto",
-              backfaceVisibility: "hidden",
-              willChange: "transform"
-            }}
-            alt=""
-          />
-        ))}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <motion.img
+          src={backSrc}
+          alt=""
+          className="dealt-card h-56 w-36 rounded-xl object-cover tarot-card-shadow"
+          initial={dealtCardHidden}
+          animate={dealtCardState}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+          style={{
+            transformOrigin: "center top",
+            imageRendering: "auto",
+            backfaceVisibility: "hidden",
+            willChange: "transform"
+          }}
+        />
       </div>
     </div>
   );

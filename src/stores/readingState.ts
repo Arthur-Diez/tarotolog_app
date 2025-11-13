@@ -10,11 +10,11 @@ interface CardState {
   isOpen: boolean;
 }
 
-type ReadingStage =
+export type ReadingStage =
   | "ask"
   | "sending"
   | "fan"
-  | "stacking"
+  | "collecting"
   | "shuffling"
   | "dealing"
   | "await_open"
@@ -69,9 +69,34 @@ export const useReadingState = create<ReadingState>((set, get) => ({
 
     // timeline handled in UI; timers kept only as fallback fail-safe
     timers.push(
-      setTimeout(() => set({ stage: "shuffling" }), 5000),
-      setTimeout(() => set({ stage: "dealing" }), 9000),
-      setTimeout(() => set({ stage: "await_open" }), 11000)
+      setTimeout(
+        () =>
+          set((state) =>
+            state.stage === "sending" ? { stage: "collecting" } : {}
+          ),
+        2800
+      ),
+      setTimeout(
+        () =>
+          set((state) =>
+            state.stage === "collecting" ? { stage: "shuffling" } : {}
+          ),
+        6400
+      ),
+      setTimeout(
+        () =>
+          set((state) =>
+            state.stage === "shuffling" ? { stage: "dealing" } : {}
+          ),
+        9800
+      ),
+      setTimeout(
+        () =>
+          set((state) =>
+            state.stage === "dealing" ? { stage: "await_open" } : {}
+          ),
+        11200
+      )
     );
   },
   openCard: (index) => {

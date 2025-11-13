@@ -28,21 +28,16 @@ export function CardSprite({ name, reversed, isOpen, onClick }: CardSpriteProps)
         className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-xl shadow-black/40 [backface-visibility:hidden]"
         style={{ imageRendering: "auto", willChange: "transform" }}
       />
-      <div
-        className="absolute inset-0 rounded-xl bg-white shadow-xl shadow-black/30 [transform:rotateY(180deg)] [backface-visibility:hidden]"
-        style={{ padding: "6px" }}
-      >
-        <img
-          src={faceSrc}
-          alt={name}
-          className="h-full w-full rounded-lg object-cover"
-          style={{
-            imageRendering: "auto",
-            willChange: "transform",
-            transform: reversed ? "rotate(180deg)" : undefined
-          }}
-        />
-      </div>
+      <img
+        src={faceSrc}
+        alt={name}
+        className="absolute inset-0 h-full w-full rounded-xl object-cover [backface-visibility:hidden]"
+        style={{
+          transform: `rotateY(180deg)${reversed ? " rotate(180deg)" : ""}`,
+          imageRendering: "auto",
+          willChange: "transform"
+        }}
+      />
     </motion.div>
   );
 }

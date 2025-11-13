@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
-import { motion, stagger, useAnimate } from "framer-motion";
+import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { CardSprite } from "@/components/tarot/CardSprite";
@@ -7,19 +7,17 @@ import { DeckStack } from "@/components/tarot/DeckStack";
 import { backUrl } from "@/lib/cardAsset";
 import { useReadingState } from "@/stores/readingState";
 
-const FAN_COUNT = 21;
 const DUR = {
   pause: 0.2,
   fly: 0.9,
   dissolve: 0.6,
-  collapseSingle: 0.12,
-  stackFade: 0.3,
-  shuffle: 4.2,
-  merge: 0.4,
-  rise: 0.5,
-  deal: 1,
+  collect: 2.8,
+  shuffle: 3.8,
+  deal: 1.2,
   hint: 0.5
 };
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function SpreadPlayPage() {
   const stage = useReadingState((state) => state.stage);
@@ -33,8 +31,6 @@ export default function SpreadPlayPage() {
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
-  const [deckMode, setDeckMode] = useState<"fan" | "stack">("fan");
-  const [deckKey, setDeckKey] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
 
@@ -56,8 +52,6 @@ export default function SpreadPlayPage() {
     storeReset();
     setStage("fan");
     setQuestion("");
-    setDeckMode("fan");
-    setDeckKey((value) => value + 1);
     setIsRunning(false);
     resetQuestionBubble();
     animate("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
@@ -99,115 +93,24 @@ export default function SpreadPlayPage() {
     );
   }, [animate]);
 
-  const collapseFan = useCallback(async () => {
-    for (let i = 0; i < FAN_COUNT; i += 1) {
-      await animate(
-        `.fan-card-${i}`,
-        { x: 0, y: 0, rotateZ: 0 },
-        { duration: DUR.collapseSingle, ease: "easeInOut" }
-      );
-    }
-  }, [animate]);
-
-  const shuffleStack = useCallback(async () => {
-    await Promise.all([
-      animate(
-        ".pile-left",
-        {
-          x: [0, -60, -20, -50, 0],
-          rotateZ: [0, -8, -3, -6, 0]
-        },
-        { duration: DUR.shuffle, ease: "easeInOut" }
-      ),
-      animate(
-        ".pile-right",
-        {
-          x: [0, 60, 20, 50, 0],
-          rotateZ: [0, 8, 3, 6, 0]
-        },
-        { duration: DUR.shuffle, ease: "easeInOut" }
-      ),
-      animate(
-        ".stack-edge",
-        { scaleY: [1, 1.05, 1] },
-        { duration: DUR.shuffle, ease: "easeInOut", delay: stagger(0.05) }
-      ),
-      animate(
-        "#stackCore",
-        { rotateX: [4, 7, 5, 4], y: [0, -6, -2, 0] },
-        { duration: DUR.shuffle, ease: "easeInOut" }
-      )
-    ]);
-  }, [animate]);
-
-  const mergePiles = useCallback(async () => {
-    await Promise.all([
-      animate(".pile-left", { x: 0, rotateZ: 0, opacity: 0 }, { duration: DUR.merge }),
-      animate(".pile-right", { x: 0, rotateZ: 0, opacity: 0 }, { duration: DUR.merge })
-    ]);
-  }, [animate]);
-
-  const dealCards = useCallback(
-    async (count = 1) => {
-      for (let i = 0; i < count; i += 1) {
-        await animate(
-          `.deal-card-${i}`,
-          { opacity: 1, y: 70 + i * 6 },
-          { duration: DUR.deal, ease: "easeInOut" }
-        );
-      }
-      await animate(".deal-card", { opacity: 0 }, { duration: 0.2 });
-    },
-    [animate]
-  );
-
   const runTimeline = useCallback(async () => {
     if (!scope.current || !trimmedQuestion) return;
     setIsRunning(true);
     try {
       await animate(scope.current, {}, { duration: DUR.pause });
       await flyQuestion();
-      setStage("fan");
-      await collapseFan();
-      setDeckMode("stack");
-      setStage("stacking");
-      await animate("#fan", { opacity: 0 }, { duration: DUR.stackFade, ease: "easeInOut" });
-      await animate(
-        "#stack",
-        { opacity: 1 },
-        { duration: DUR.stackFade, ease: "easeInOut" }
-      );
-
+      setStage("collecting");
+      await wait(DUR.collect * 1000);
       setStage("shuffling");
-      await animate(".pile-left", { opacity: 1 }, { duration: 0 });
-      await animate(".pile-right", { opacity: 1 }, { duration: 0 });
-      await shuffleStack();
-      await mergePiles();
-
+      await wait(DUR.shuffle * 1000);
       setStage("dealing");
-      await animate(
-        "#stackCore",
-        { y: -80 },
-        { duration: DUR.rise, ease: "easeInOut" }
-      );
-      await dealCards(1);
-
+      await wait(DUR.deal * 1000);
       setStage("await_open");
       await animate("#flipHint", { opacity: 1, y: 0 }, { duration: DUR.hint });
     } finally {
       setIsRunning(false);
     }
-  }, [
-    animate,
-    collapseFan,
-    dealCards,
-    flyQuestion,
-    mergePiles,
-    scope,
-    setStage,
-    shuffleStack,
-    trimmedQuestion
-  ]);
+  }, [animate, flyQuestion, scope, setStage, trimmedQuestion]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
@@ -238,12 +141,7 @@ export default function SpreadPlayPage() {
         style={{ perspective: "1200px", pointerEvents: isRunning ? "none" : "auto" }}
       >
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
-          <DeckStack
-            key={deckKey}
-            backSrc={backSrc}
-            mode={deckMode}
-            fanCenterRef={fanCenterRef}
-          />
+          <DeckStack backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           {showResultCard && (
             <motion.div
               className="pointer-events-auto absolute inset-0 flex items-end justify-center pb-6"
