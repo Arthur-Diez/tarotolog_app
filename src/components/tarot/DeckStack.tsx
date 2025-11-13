@@ -189,12 +189,19 @@ export const DeckStack = memo(function DeckStack({
           const cardOpacity =
             isStackPhase || mode === "collecting" ? stackTarget.opacity : 1;
           const animateTarget = isExtracting
-            ? {
-                x: stackTarget.x,
-                y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
-                rotateZ: stackTarget.rotate,
-                opacity: 1
-              }
+            ? dealPhase === "settled"
+              ? {
+                  x: stackTarget.x,
+                  y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
+                  rotateZ: stackTarget.rotate,
+                  opacity: 0
+                }
+              : {
+                  x: stackTarget.x,
+                  y: stackTarget.y + DEAL_SLIDE + DEAL_GAP,
+                  rotateZ: stackTarget.rotate,
+                  opacity: 1
+                }
             : {
                 x: target.x,
                 y: target.y,
