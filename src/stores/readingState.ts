@@ -11,8 +11,6 @@ interface CardState {
 }
 
 export type ReadingStage =
-  | "ask"
-  | "sending"
   | "fan"
   | "collecting"
   | "shuffling"
@@ -61,7 +59,7 @@ export const useReadingState = create<ReadingState>((set, get) => ({
 
     set({
       question,
-      stage: "sending",
+      stage: "fan",
       cards: [{ positionIndex: 1, name: card, reversed, isOpen: false }],
       mustOpenIndex: 1,
       warnedOnce: false
@@ -70,10 +68,7 @@ export const useReadingState = create<ReadingState>((set, get) => ({
     // timeline handled in UI; timers kept only as fallback fail-safe
     timers.push(
       setTimeout(
-        () =>
-          set((state) =>
-            state.stage === "sending" ? { stage: "collecting" } : {}
-          ),
+        () => set((state) => (state.stage === "fan" ? { stage: "collecting" } : {})),
         2800
       ),
       setTimeout(
@@ -101,6 +96,9 @@ export const useReadingState = create<ReadingState>((set, get) => ({
   },
   openCard: (index) => {
     const state = get();
+    if (state.stage !== "await_open") {
+      return;
+    }
     if (index !== state.mustOpenIndex) {
       if (!state.warnedOnce) {
         alert("Открывайте карты по порядку!");

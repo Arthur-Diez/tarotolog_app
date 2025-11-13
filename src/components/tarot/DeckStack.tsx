@@ -23,7 +23,7 @@ interface StackLayout extends Layout {
 
 const DEFAULT_FAN = 21;
 const STACK_PHASES = new Set<ReadingStage>(["collecting", "shuffling", "dealing", "await_open", "done"]);
-const FAN_PHASES = new Set<ReadingStage>(["fan", "sending", "ask"]);
+const FAN_PHASES = new Set<ReadingStage>(["fan"]);
 const SHUFFLE_ROUNDS = 6;
 const CARD_WIDTH = 144;
 const CARD_HEIGHT = 224;
@@ -172,8 +172,8 @@ export const DeckStack = memo(function DeckStack({
         className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
       />
       <motion.div
-        className="deck-stack-shell pointer-events-none relative h-56 w-36"
-        style={{ overflow: "visible" }}
+        className="deck deck-stack-shell pointer-events-none relative h-56 w-36"
+        style={{ overflow: "visible", willChange: "transform" }}
         animate={stackLiftAnimation}
         transition={stackLiftTransition}
       >

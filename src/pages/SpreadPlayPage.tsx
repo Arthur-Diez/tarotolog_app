@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { CardSprite } from "@/components/tarot/CardSprite";
+import DealtCard from "@/components/tarot/DealtCard";
 import { DeckStack } from "@/components/tarot/DeckStack";
-import { backUrl } from "@/lib/cardAsset";
+import { backUrl, faceUrl } from "@/lib/cardAsset";
 import { useReadingState } from "@/stores/readingState";
 
 const DUR = {
@@ -18,6 +18,7 @@ const DUR = {
 };
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const DEAL_OFFSET = 96;
 
 export default function SpreadPlayPage() {
   const stage = useReadingState((state) => state.stage);
@@ -37,10 +38,10 @@ export default function SpreadPlayPage() {
 
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
-  const showResultCard = stage === "await_open" || stage === "done";
-  const showDealtCard = stage === "dealing" || showResultCard;
-  const allCardsOpen = cards.every((card) => card.isOpen);
-  const showActionButtons = stage === "done" || (stage === "await_open" && allCardsOpen);
+  const dealtCard = cards[0];
+  const faceSrc = dealtCard ? faceUrl("rws", dealtCard.name) : null;
+  const showActionButtons = stage === "done";
+  const hintVisible = stage === "await_open";
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
@@ -97,20 +98,24 @@ export default function SpreadPlayPage() {
   }, [animate]);
 
   const dealCard = useCallback(async () => {
-    if (!scope.current?.querySelector(".dealt-card")) {
+    if (!scope.current?.querySelector(".dealt-card") || !dealtCard) {
       return;
     }
     await animate(
       ".dealt-card",
-      { y: 0, scale: 0.92, opacity: 0, zIndex: 20 },
+      { opacity: 0, y: -16, zIndex: 20 },
       { duration: 0 }
     );
+    await animate(".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" });
     await animate(
       ".dealt-card",
-      { y: 90, scale: 1, opacity: 1, zIndex: 50 },
+      { opacity: 1, y: DEAL_OFFSET, zIndex: 40 },
       { duration: 0.9, ease: "easeInOut" }
     );
-  }, [animate, scope]);
+    await animate(".deck", { y: 0 }, { duration: 0.25, ease: "easeOut" });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    setStage("await_open");
+  }, [animate, dealtCard, scope, setStage]);
 
   const runTimeline = useCallback(async () => {
     if (!scope.current || !trimmedQuestion) return;
@@ -124,8 +129,6 @@ export default function SpreadPlayPage() {
       await wait(DUR.shuffle * 1000);
       setStage("dealing");
       await dealCard();
-      await wait(300);
-      setStage("await_open");
       await animate("#flipHint", { opacity: 1, y: 0 }, { duration: DUR.hint });
     } finally {
       setIsRunning(false);
@@ -144,7 +147,7 @@ export default function SpreadPlayPage() {
     await runTimeline();
   };
 
-  const showForm = stage === "fan" || stage === "sending";
+  const showForm = stage === "fan";
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
@@ -162,41 +165,39 @@ export default function SpreadPlayPage() {
       >
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          <div
-            className="absolute left-1/2 top-1/2 flex"
-            style={{ transform: "translate(-50%, -50%)" }}
-          >
-            <motion.div
-              initial={false}
-              animate={{
-                opacity: showDealtCard ? 1 : 0,
-                y: showDealtCard ? 0 : -24
-              }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
+          {dealtCard && faceSrc && (
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2"
+              style={{ perspective: "1200px" }}
             >
-              {cards.map((card) => (
-                <div
-                  key={card.positionIndex}
-                  className={`dealt-card transition-opacity ${
-                    showDealtCard ? "opacity-100" : "opacity-0"
-                  } ${showResultCard ? "pointer-events-auto" : "pointer-events-none"}`}
-                  style={{ transformOrigin: "center top" }}
-                >
-                  <CardSprite
-                    name={card.name}
-                    reversed={card.reversed}
-                    isOpen={card.isOpen}
-                    onClick={() => openCard(card.positionIndex)}
-                  />
-                </div>
-              ))}
-            </motion.div>
-          </div>
+              <div
+                key={`dealt-card-${deckKey}`}
+                className="dealt-card relative"
+                style={{
+                  opacity: 0,
+                  transform: "translateY(-16px)"
+                }}
+              >
+                <DealtCard
+                  className={`${stage === "await_open" ? "pointer-events-auto" : "pointer-events-none"}`}
+                  backSrc={backSrc}
+                  faceSrc={faceSrc}
+                  isOpen={dealtCard.isOpen}
+                  reversed={dealtCard.reversed}
+                  onClick={() => {
+                    if (stage === "await_open") {
+                      openCard(dealtCard.positionIndex);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
           <div
             id="questionBubble"
             ref={questionBubbleRef}
             className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
-              trimmedQuestion && (stage === "fan" || stage === "sending")
+              trimmedQuestion && stage === "fan"
                 ? "opacity-100"
                 : "opacity-0"
             }`}
@@ -234,7 +235,7 @@ export default function SpreadPlayPage() {
           id="flipHint"
           initial={{ opacity: 0, y: 12 }}
           className={`text-wrap-anywhere text-sm ${
-            showResultCard ? "text-white/80" : "text-transparent"
+            hintVisible ? "text-white/80" : "text-transparent"
           }`}
         >
           Нажмите на карту, чтобы открыть послание
