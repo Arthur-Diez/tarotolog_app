@@ -64,10 +64,10 @@ export default function SpreadPlayPage() {
   };
 
   useEffect(() => {
-    if (stage === "fan") {
+    if (stage === "fan" && !trimmedQuestion) {
       resetQuestionBubble();
     }
-  }, [stage]);
+  }, [stage, trimmedQuestion]);
 
   const flyQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -312,7 +312,7 @@ export default function SpreadPlayPage() {
         {showActionButtons && (
           <div className="w-full space-y-3">
             <Button
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => alert("Интерпретация расклада появится здесь")}
             >
