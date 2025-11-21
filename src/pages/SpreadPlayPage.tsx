@@ -3,9 +3,13 @@ import type { AnimationPlaybackControls } from "framer-motion";
 import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
+import { ReadingResultModal } from "@/components/tarot/ReadingResultModal";
 import DealtCard from "@/components/tarot/DealtCard";
 import { DeckStack } from "@/components/tarot/DeckStack";
+import { useEnergyBalance } from "@/hooks/useEnergyBalance";
+import { ApiError, createReading, getReading, viewReading, type BackendReadingStatus } from "@/lib/api";
 import { backUrl, faceUrl } from "@/lib/cardAsset";
+import { mapCardNameToCode } from "@/lib/cardCode";
 import { useReadingState } from "@/stores/readingState";
 
 const DEAL_OFFSET = 96;
@@ -15,8 +19,18 @@ const HINT_DURATION = 0.5;
 const QUESTION_FLY_DURATION = 0.9;
 const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
+const POLL_INTERVAL = 2500;
+const MAX_POLL_DURATION = 30000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const STATUS_TEXT: Record<BackendReadingStatus, string> = {
+  pending: "Готовим расклад",
+  queued: "Расклад в очереди",
+  processing: "Расклад обрабатывается",
+  ready: "Расклад готов",
+  error: "Ошибка при подготовке"
+};
 
 export default function SpreadPlayPage() {
   const stage = useReadingState((state) => state.stage);
@@ -27,14 +41,23 @@ export default function SpreadPlayPage() {
   const openCard = useReadingState((state) => state.openCard);
   const storeReset = useReadingState((state) => state.reset);
   const setStage = useReadingState((state) => state.setStage);
+  const readingId = useReadingState((state) => state.readingId);
+  const backendStatus = useReadingState((state) => state.backendStatus);
+  const setBackendMeta = useReadingState((state) => state.setBackendMeta);
+  const setReadingResult = useReadingState((state) => state.setReadingResult);
+  const readingResult = useReadingState((state) => state.readingResult);
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
+  const [isViewingResult, setIsViewingResult] = useState(false);
+  const [isResultModalOpen, setResultModalOpen] = useState(false);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
+  const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
+    useEnergyBalance();
 
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
@@ -95,6 +118,7 @@ export default function SpreadPlayPage() {
     setStage("fan");
     setQuestion("");
     setDeckKey((value) => value + 1);
+    setResultModalOpen(false);
     resetQuestionBubble();
     resetDealHost();
     resetHint();
@@ -196,12 +220,150 @@ export default function SpreadPlayPage() {
     }
 
     cancelTimeline();
+    setResultModalOpen(false);
     resetQuestionBubble();
     resetDealHost();
     resetHint();
     start(trimmedQuestion);
+
+    const stateAfterStart = useReadingState.getState();
+    const drawnCard = stateAfterStart.cards[0];
+
+    if (!drawnCard) {
+      alert("Не удалось подготовить карту. Попробуйте снова.");
+      return;
+    }
+
+    const cardCode = mapCardNameToCode(drawnCard.name);
+    if (!cardCode) {
+      alert("Не удалось определить код карты. Попробуйте снова.");
+      return;
+    }
+
+    void (async () => {
+      try {
+        setBackendMeta({ readingId: undefined, backendStatus: "pending" });
+        const response = await createReading({
+          type: "tarot",
+          spread_id: stateAfterStart.spreadId,
+          deck_id: stateAfterStart.deckId,
+          question: trimmedQuestion,
+          cards: [
+            {
+              position_index: drawnCard.positionIndex,
+              card_code: cardCode,
+              reversed: drawnCard.reversed
+            }
+          ],
+          locale: "ru"
+        });
+        setBackendMeta({ readingId: response.id, backendStatus: response.status });
+      } catch (error) {
+        console.error(error);
+        setBackendMeta({ readingId: undefined, backendStatus: "error" });
+        const message = error instanceof Error ? error.message : "Не удалось создать расклад";
+        alert(message);
+      }
+    })();
+
     await runTimeline();
   };
+
+  useEffect(() => {
+    if (!readingId) {
+      return;
+    }
+    if (stage !== "await_open" && stage !== "done") {
+      return;
+    }
+    if (!backendStatus || backendStatus === "ready" || backendStatus === "error") {
+      return;
+    }
+
+    let isActive = true;
+    let latestStatus: BackendReadingStatus | undefined = backendStatus;
+    const startedAt = Date.now();
+
+    const poll = async () => {
+      while (isActive && Date.now() - startedAt < MAX_POLL_DURATION) {
+        try {
+          const response = await getReading(readingId);
+          if (!isActive) break;
+          latestStatus = response.status;
+          setBackendMeta({ backendStatus: response.status });
+
+          if (response.status === "ready") {
+            break;
+          }
+
+          if (response.status === "error") {
+            alert(response.error || "Произошла ошибка при подготовке расклада");
+            break;
+          }
+        } catch (error) {
+          if (!isActive) break;
+          console.error(error);
+          alert(error instanceof Error ? error.message : "Не удалось получить статус расклада");
+          setBackendMeta({ backendStatus: "error" });
+          break;
+        }
+
+        await wait(POLL_INTERVAL);
+      }
+
+      if (isActive && latestStatus !== "ready" && Date.now() - startedAt >= MAX_POLL_DURATION) {
+        alert("Расклад готовится дольше обычного. Попробуйте позже.");
+      }
+    };
+
+    void poll();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendStatus, readingId, setBackendMeta, stage]);
+
+  const handleInterpretationRequest = async () => {
+    if (!readingId) {
+      alert("Расклад ещё не создан. Начните заново и попробуйте снова.");
+      return;
+    }
+
+    if (readingResult) {
+      setResultModalOpen(true);
+      return;
+    }
+
+    setIsViewingResult(true);
+    try {
+      const response = await viewReading(readingId);
+      setReadingResult({
+        summaryText: response.summary_text,
+        outputPayload: response.output_payload,
+        energySpent: response.energy_spent,
+        balance: response.balance
+      });
+      setEnergyBalance(response.balance);
+      setResultModalOpen(true);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "not_enough_energy") {
+        alert("Недостаточно энергии, чтобы открыть интерпретацию. Пополните баланс и попробуйте снова.");
+      } else {
+        console.error(error);
+        alert(error instanceof Error ? error.message : "Не удалось получить интерпретацию");
+      }
+    } finally {
+      setIsViewingResult(false);
+    }
+  };
+
+  const handleSaveReading = () => {
+    alert("Сохранение в дневник появится позже");
+  };
+
+  const energyLabel = energyLoading ? "…" : energy ?? "—";
+  const canRequestInterpretation = showActionButtons && Boolean(readingId && backendStatus === "ready");
+  const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
@@ -217,6 +379,23 @@ export default function SpreadPlayPage() {
         className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center gap-8 px-4 pb-16 pt-10"
         style={{ perspective: "1200px", pointerEvents: isRunning ? "none" : "auto" }}
       >
+        <div className="w-full">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-inner">
+            Энергия: {energyLabel} ⚡
+            {energyError && (
+              <button
+                type="button"
+                className="ml-3 text-xs font-semibold text-secondary underline"
+                onClick={() => {
+                  void reloadEnergy();
+                }}
+              >
+                Обновить
+              </button>
+            )}
+            {energyError && <p className="mt-1 text-xs text-red-200">{energyError}</p>}
+          </div>
+        </div>
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1100]">
@@ -288,16 +467,30 @@ export default function SpreadPlayPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => alert("Интерпретация расклада появится здесь")}
+              disabled={!canRequestInterpretation || isViewingResult}
+              onClick={handleInterpretationRequest}
             >
-              Получить интерпретацию расклада
+              {isViewingResult ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
             </Button>
+            {statusLabel && (
+              <p className="text-center text-sm text-white/70">
+                Статус расклада: {statusLabel}
+                {!canRequestInterpretation && backendStatus !== "error" ? "…" : ""}
+              </p>
+            )}
             <Button variant="ghost" className="w-full text-white/70" onClick={handleReset}>
               Начать заново
             </Button>
           </div>
         )}
       </div>
+      <ReadingResultModal
+        open={isResultModalOpen && Boolean(readingResult)}
+        onClose={() => setResultModalOpen(false)}
+        onSave={handleSaveReading}
+        summaryText={readingResult?.summaryText}
+        outputPayload={readingResult?.outputPayload}
+      />
     </div>
   );
 }

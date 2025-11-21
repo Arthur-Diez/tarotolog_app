@@ -1,3 +1,5 @@
+import type { SpreadId } from "@/data/rws_spreads";
+
 // api.ts
 export const API_BASE = "https://tarotapi.freakdev.site/api";
 
@@ -11,6 +13,20 @@ export const WIDGET_KEYS = [
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];
 export const DEFAULT_WIDGET_KEYS: WidgetKey[] = ["card_of_day", "astro_forecast"];
+
+export class ApiError extends Error {
+  code?: string;
+  status?: number;
+  payload?: unknown;
+
+  constructor(message: string, options?: { code?: string; status?: number; payload?: unknown }) {
+    super(message);
+    this.name = "ApiError";
+    this.code = options?.code;
+    this.status = options?.status;
+    this.payload = options?.payload;
+  }
+}
 
 // ====== ВСПОМОГАТЕЛЬНОЕ ======
 function getSessionFromUrl(): string | null {
@@ -36,17 +52,30 @@ async function parseResponse(res: Response): Promise<unknown> {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await parseResponse(res);
+  const maybeObject = typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+
   if (!res.ok) {
+    const detail = maybeObject?.detail;
+    const code =
+      (typeof maybeObject?.code === "string" && maybeObject.code) ||
+      (typeof detail === "object" && detail !== null && typeof (detail as Record<string, unknown>).code === "string"
+        ? ((detail as Record<string, unknown>).code as string)
+        : undefined);
     const msg =
       typeof data === "string"
         ? data
-        : (data as any)?.detail ?? (data as any)?.message ?? `API Error: ${res.status}`;
-    throw new Error(msg);
+        : (typeof detail === "object" && detail !== null && typeof (detail as Record<string, unknown>).message === "string"
+            ? ((detail as Record<string, unknown>).message as string)
+            : (maybeObject?.message as string | undefined)) ?? `API Error: ${res.status}`;
+
+    throw new ApiError(msg, { code, status: res.status, payload: data });
   }
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Некорректный ответ сервера");
+
+  if (!maybeObject) {
+    throw new ApiError("Некорректный ответ сервера", { status: res.status, payload: data });
   }
-  return data as T;
+
+  return maybeObject as T;
 }
 
 // ====== ТИПЫ ПОД РЕАЛЬНЫЙ БЭКЕНД ======
@@ -121,6 +150,64 @@ export interface UpdateProfilePayload {
     birth_tz_offset_min?: number | null;
     gender?: "male" | "female" | "other" | null;
   };
+}
+
+export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
+
+export interface ReadingPositionResult {
+  position_index: number;
+  title?: string | null;
+  short_text?: string | null;
+  full_text?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ReadingOutputPayload {
+  positions?: ReadingPositionResult[];
+  [key: string]: unknown;
+}
+
+export interface CreateReadingCardInput {
+  position_index: number;
+  card_code: string;
+  reversed: boolean;
+}
+
+export interface CreateReadingPayload {
+  type: "tarot";
+  spread_id: SpreadId;
+  deck_id: "rws";
+  question: string;
+  cards: CreateReadingCardInput[];
+  locale: string;
+}
+
+export interface CreateReadingResponse {
+  id: string;
+  status: BackendReadingStatus;
+}
+
+export interface ReadingResponse {
+  id: string;
+  status: BackendReadingStatus;
+  input_payload: unknown;
+  output_payload: ReadingOutputPayload | null;
+  summary_text: string | null;
+  energy_spent: number;
+  error: string | null;
+}
+
+export interface ViewReadingResponse {
+  id: string;
+  status: BackendReadingStatus;
+  output_payload: ReadingOutputPayload | null;
+  summary_text: string | null;
+  energy_spent: number;
+  balance: number;
+}
+
+export interface EnergyBalanceResponse {
+  energy_balance: number;
 }
 
 // ====== ВЫЗОВЫ API ======
@@ -205,4 +292,39 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
     body: JSON.stringify(bodyPayload),
   });
   return handleResponse<ProfileResponse>(res);
+}
+
+export async function createReading(payload: CreateReadingPayload): Promise<CreateReadingResponse> {
+  const res = await fetch(`${API_BASE}/readings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<CreateReadingResponse>(res);
+}
+
+export async function getReading(readingId: string): Promise<ReadingResponse> {
+  const res = await fetch(`${API_BASE}/readings/${readingId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return handleResponse<ReadingResponse>(res);
+}
+
+export async function viewReading(readingId: string): Promise<ViewReadingResponse> {
+  const res = await fetch(`${API_BASE}/readings/${readingId}/view`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+  return handleResponse<ViewReadingResponse>(res);
+}
+
+export async function getEnergy(): Promise<EnergyBalanceResponse> {
+  const res = await fetch(`${API_BASE}/profile/energy`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return handleResponse<EnergyBalanceResponse>(res);
 }
