@@ -250,12 +250,10 @@ export default function SpreadPlayPage() {
           question: trimmedQuestion,
           cards: [
             {
-              position_index: drawnCard.positionIndex,
-              card_code: cardCode,
+              code: cardCode,
               reversed: drawnCard.reversed
             }
-          ],
-          locale: "ru"
+          ]
         });
         setBackendMeta({ readingId: response.id, backendStatus: response.status });
       } catch (error) {
