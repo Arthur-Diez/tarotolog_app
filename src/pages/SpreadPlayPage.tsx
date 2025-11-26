@@ -250,7 +250,8 @@ export default function SpreadPlayPage() {
           question: trimmedQuestion,
           cards: [
             {
-              code: cardCode,
+              position_index: drawnCard.positionIndex,
+              card_code: cardCode,
               reversed: drawnCard.reversed
             }
           ]

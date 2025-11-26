@@ -181,16 +181,18 @@ export interface ReadingOutputPayload {
 }
 
 export interface CreateReadingCardInput {
-  code: string;
+  position_index: number;
+  card_code: string;
   reversed: boolean;
 }
 
 export interface CreateReadingPayload {
   type: "tarot";
   spread_id: SpreadId;
-  deck_id: "rws";
+  deck_id: string;
   question: string;
   cards: CreateReadingCardInput[];
+  locale?: string;
 }
 
 export interface CreateReadingResponse {
