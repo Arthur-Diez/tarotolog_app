@@ -40,6 +40,19 @@ function getTelegramId(): number | null {
   return user?.id ?? null;
 }
 
+function buildAuthedUrl(path: string): string {
+  const session = getSessionFromUrl();
+  const telegramId = getTelegramId();
+  if (!session || !telegramId) {
+    throw new Error("Не найдены session или telegram_id");
+  }
+
+  const url = new URL(`${API_BASE}${path}`);
+  url.searchParams.set("telegram_id", String(telegramId));
+  url.searchParams.set("session", session);
+  return url.toString();
+}
+
 async function parseResponse(res: Response): Promise<unknown> {
   const text = await res.text();
   if (!text) return null;
@@ -222,13 +235,7 @@ export async function initWebApp(payload: InitWebAppPayload): Promise<InitWebApp
 }
 
 export async function getProfile(): Promise<ProfileResponse> {
-  const session = getSessionFromUrl();
-  const telegram_id = getTelegramId();
-  if (!session || !telegram_id) throw new Error("Не найдены session или telegram_id");
-
-  const url = `${API_BASE}/profile?telegram_id=${telegram_id}&session=${encodeURIComponent(
-    session
-  )}`;
+  const url = buildAuthedUrl("/profile");
 
   const res = await fetch(url, {
     method: "GET",
@@ -295,36 +302,36 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
 }
 
 export async function createReading(payload: CreateReadingPayload): Promise<CreateReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings`, {
+  const url = buildAuthedUrl("/readings");
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<CreateReadingResponse>(res);
 }
 
 export async function getReading(readingId: string): Promise<ReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings/${readingId}`, {
+  const url = buildAuthedUrl(`/readings/${readingId}`);
+  const res = await fetch(url, {
     method: "GET",
-    credentials: "include",
   });
   return handleResponse<ReadingResponse>(res);
 }
 
 export async function viewReading(readingId: string): Promise<ViewReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings/${readingId}/view`, {
+  const url = buildAuthedUrl(`/readings/${readingId}/view`);
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
   });
   return handleResponse<ViewReadingResponse>(res);
 }
 
 export async function getEnergy(): Promise<EnergyBalanceResponse> {
-  const res = await fetch(`${API_BASE}/profile/energy`, {
+  const url = buildAuthedUrl("/profile/energy");
+  const res = await fetch(url, {
     method: "GET",
-    credentials: "include",
   });
   return handleResponse<EnergyBalanceResponse>(res);
 }
