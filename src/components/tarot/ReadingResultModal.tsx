@@ -22,7 +22,8 @@ export function ReadingResultModal({
     return null;
   }
 
-  const positions = outputPayload?.positions ?? [];
+  const cards = outputPayload?.cards ?? [];
+  const interpretation = outputPayload?.interpretation;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
@@ -34,26 +35,27 @@ export function ReadingResultModal({
         <div className="space-y-3 rounded-2xl bg-white/5 p-4 text-left">
           <p className="text-sm text-white/70">Краткий итог</p>
           <p className="text-base font-medium text-white">
-            {summaryText || "Скоро здесь появится интерпретация для вашей карты."}
+            {summaryText || interpretation || "Скоро здесь появится интерпретация для вашей карты."}
           </p>
         </div>
-        {positions.length > 0 && (
-          <div className="max-h-64 space-y-4 overflow-y-auto rounded-2xl bg-white/5 p-4">
-            {positions.map((position) => (
-              <div key={position.position_index} className="space-y-1">
-                <p className="text-sm font-semibold text-secondary">
-                  {position.title || `Позиция ${position.position_index}`}
-                </p>
-                <p className="text-sm text-white/80">
-                  {position.full_text || position.short_text || "Интерпретация готовится..."}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-        {positions.length === 0 && (
-          <div className="rounded-2xl bg-white/5 p-4 text-sm text-white/70">
-            Детальная расшифровка пока недоступна. Попробуйте обновить страницу чуть позже.
+        <div className="rounded-2xl bg-white/5 p-4 text-white/80">
+          <p className="text-sm uppercase tracking-[0.3em] text-white/50">Интерпретация</p>
+          <p className="mt-2 text-sm leading-relaxed">{interpretation ?? "Интерпретация готовится..."}</p>
+        </div>
+        {cards.length > 0 && (
+          <div className="rounded-2xl bg-white/5 p-4 text-sm text-white/80">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Карты</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {cards.map((card) => (
+                <span
+                  key={`${card.position_index}-${card.card_code}`}
+                  className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium"
+                >
+                  {card.card_code.replace("RWS_", "").replaceAll("_", " ")}
+                  {card.reversed ? " (пер.)" : ""}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         <div className="flex flex-col gap-3 pt-2 sm:flex-row">

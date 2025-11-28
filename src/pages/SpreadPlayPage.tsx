@@ -1,13 +1,21 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { AnimationPlaybackControls } from "framer-motion";
 import { motion, useAnimate } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
-import { ReadingResultModal } from "@/components/tarot/ReadingResultModal";
 import DealtCard from "@/components/tarot/DealtCard";
 import { DeckStack } from "@/components/tarot/DeckStack";
+import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { useEnergyBalance } from "@/hooks/useEnergyBalance";
-import { ApiError, createReading, getReading, viewReading, type BackendReadingStatus } from "@/lib/api";
+import {
+  ApiError,
+  createReading,
+  getReading,
+  viewReading,
+  type BackendReadingStatus,
+  type ViewReadingResponse
+} from "@/lib/api";
 import { backUrl, faceUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { useReadingState } from "@/stores/readingState";
@@ -21,6 +29,9 @@ const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
 const POLL_INTERVAL = 2500;
 const MAX_POLL_DURATION = 30000;
+const VIEW_POLL_INTERVAL = 2000;
+const VIEW_POLL_TIMEOUT = 30000;
+const LONG_WAIT_THRESHOLD = 15000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -45,19 +56,38 @@ export default function SpreadPlayPage() {
   const backendStatus = useReadingState((state) => state.backendStatus);
   const setBackendMeta = useReadingState((state) => state.setBackendMeta);
   const setReadingResult = useReadingState((state) => state.setReadingResult);
-  const readingResult = useReadingState((state) => state.readingResult);
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
-  const [isViewingResult, setIsViewingResult] = useState(false);
-  const [isResultModalOpen, setResultModalOpen] = useState(false);
+  const [isViewLoading, setIsViewLoading] = useState(false);
+  const [isLongWait, setIsLongWait] = useState(false);
+  const [viewError, setViewError] = useState<string | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
+  const navigate = useNavigate();
+
+  const finishReading = useCallback(
+    (response: ViewReadingResponse) => {
+      if (!response.output_payload) {
+        throw new Error("Интерпретация ещё не сформирована");
+      }
+      setReadingResult({
+        summaryText: response.summary_text ?? "",
+        outputPayload: response.output_payload,
+        energySpent: response.energy_spent,
+        balance: response.balance
+      });
+      setEnergyBalance(response.balance);
+      setIsViewLoading(false);
+      navigate(`/reading/${response.id}`, { state: { reading: response } });
+    },
+    [navigate, setEnergyBalance, setReadingResult]
+  );
 
   const backSrc = useMemo(() => backUrl("rws"), []);
   const trimmedQuestion = question.trim();
@@ -118,7 +148,9 @@ export default function SpreadPlayPage() {
     setStage("fan");
     setQuestion("");
     setDeckKey((value) => value + 1);
-    setResultModalOpen(false);
+    setViewError(null);
+    setIsLongWait(false);
+    setIsViewLoading(false);
     resetQuestionBubble();
     resetDealHost();
     resetHint();
@@ -220,7 +252,9 @@ export default function SpreadPlayPage() {
     }
 
     cancelTimeline();
-    setResultModalOpen(false);
+    setViewError(null);
+    setIsLongWait(false);
+    setIsViewLoading(false);
     resetQuestionBubble();
     resetDealHost();
     resetHint();
@@ -328,36 +362,75 @@ export default function SpreadPlayPage() {
       return;
     }
 
-    if (readingResult) {
-      setResultModalOpen(true);
-      return;
-    }
+    setViewError(null);
+    setIsLongWait(false);
+    setIsViewLoading(true);
 
-    setIsViewingResult(true);
+    const startedAt = Date.now();
+    let notifiedLongWait = false;
+
     try {
-      const response = await viewReading(readingId);
-      setReadingResult({
-        summaryText: response.summary_text,
-        outputPayload: response.output_payload,
-        energySpent: response.energy_spent,
-        balance: response.balance
-      });
-      setEnergyBalance(response.balance);
-      setResultModalOpen(true);
+      const initialResponse = await viewReading(readingId);
+      let latestBalance = initialResponse.balance;
+
+      if (initialResponse.status === "ready" && initialResponse.output_payload) {
+        finishReading({
+          ...initialResponse,
+          summary_text: initialResponse.summary_text ?? ""
+        });
+        return;
+      }
+
+      const deadline = startedAt + VIEW_POLL_TIMEOUT;
+
+      while (Date.now() < deadline) {
+        if (!notifiedLongWait && Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
+          setIsLongWait(true);
+          notifiedLongWait = true;
+        }
+
+        await wait(VIEW_POLL_INTERVAL);
+        const pollResponse = await getReading(readingId);
+
+        if (typeof pollResponse.balance === "number") {
+          latestBalance = pollResponse.balance;
+        }
+
+        if (pollResponse.status === "ready" && pollResponse.output_payload) {
+          finishReading({
+            id: pollResponse.id,
+            status: "ready",
+            output_payload: pollResponse.output_payload,
+            summary_text: pollResponse.summary_text ?? "",
+            energy_spent: pollResponse.energy_spent,
+            balance: latestBalance ?? initialResponse.balance ?? 0
+          });
+          return;
+        }
+
+        if (pollResponse.status === "error") {
+          throw new Error(pollResponse.error || "Расклад завершился с ошибкой");
+        }
+      }
+
+      setIsLongWait(true);
+      setViewError("Расклад готовится дольше обычного. Попробуйте обратиться к нему чуть позже.");
     } catch (error) {
-      if (error instanceof ApiError && error.code === "not_enough_energy") {
-        alert("Недостаточно энергии, чтобы открыть интерпретацию. Пополните баланс и попробуйте снова.");
+      console.error(error);
+      if (error instanceof ApiError) {
+        if (error.code === "not_enough_energy") {
+          setViewError("Недостаточно энергии, чтобы открыть интерпретацию. Пополните баланс и попробуйте снова.");
+        } else if (error.status === 401) {
+          setViewError("Сессия невалидна. Перезапустите мини-приложение через Telegram.");
+        } else {
+          setViewError(error.message || "Не удалось получить интерпретацию");
+        }
       } else {
-        console.error(error);
-        alert(error instanceof Error ? error.message : "Не удалось получить интерпретацию");
+        setViewError(error instanceof Error ? error.message : "Не удалось получить интерпретацию");
       }
     } finally {
-      setIsViewingResult(false);
+      setIsViewLoading(false);
     }
-  };
-
-  const handleSaveReading = () => {
-    alert("Сохранение в дневник появится позже");
   };
 
   const energyLabel = energyLoading ? "…" : energy ?? "—";
@@ -466,10 +539,10 @@ export default function SpreadPlayPage() {
             <Button
               variant="outline"
               className="w-full"
-              disabled={!canRequestInterpretation || isViewingResult}
+              disabled={!canRequestInterpretation || isViewLoading}
               onClick={handleInterpretationRequest}
             >
-              {isViewingResult ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
+              {isViewLoading ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
             </Button>
             {statusLabel && (
               <p className="text-center text-sm text-white/70">
@@ -477,19 +550,25 @@ export default function SpreadPlayPage() {
                 {!canRequestInterpretation && backendStatus !== "error" ? "…" : ""}
               </p>
             )}
+            {viewError && <p className="text-center text-sm text-red-200">{viewError}</p>}
             <Button variant="ghost" className="w-full text-white/70" onClick={handleReset}>
               Начать заново
             </Button>
           </div>
         )}
       </div>
-      <ReadingResultModal
-        open={isResultModalOpen && Boolean(readingResult)}
-        onClose={() => setResultModalOpen(false)}
-        onSave={handleSaveReading}
-        summaryText={readingResult?.summaryText}
-        outputPayload={readingResult?.outputPayload}
-      />
+      {isViewLoading && (
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6 backdrop-blur">
+          <LoadingTarot
+            message={isLongWait ? "Расклад готовится дольше обычного" : "Получаем интерпретацию"}
+            subMessage={
+              isLongWait
+                ? "Колода всё ещё работает... немного терпения"
+                : "Собираем карты и ждём подсказку мастера"
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }

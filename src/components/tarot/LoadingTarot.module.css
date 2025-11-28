@@ -1,0 +1,122 @@
+.wrapper {
+  width: 100%;
+  max-width: 380px;
+  border-radius: 28px;
+  padding: 32px 24px 36px;
+  text-align: center;
+  background: radial-gradient(circle at top, rgba(190, 148, 255, 0.2), transparent 60%),
+    linear-gradient(160deg, rgba(15, 8, 32, 0.95), rgba(44, 16, 72, 0.85));
+  box-shadow: 0 20px 45px rgba(3, 3, 10, 0.7), inset 0 0 80px rgba(116, 82, 195, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cards {
+  display: flex;
+  justify-content: center;
+  gap: 1.4rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.card {
+  width: 76px;
+  height: 118px;
+  border-radius: 18px;
+  background: var(--card-color, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), 0 0 25px var(--glow-color, rgba(186, 164, 255, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  animation: float 3s ease-in-out infinite;
+  --base-rotation: 0deg;
+  --base-scale: 1;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.35));
+  mix-blend-mode: screen;
+}
+
+.cardOne {
+  --base-rotation: -8deg;
+  animation-delay: 0s;
+}
+
+.cardTwo {
+  --base-rotation: 0deg;
+  --base-scale: 1.05;
+  animation-delay: 0.4s;
+}
+
+.cardThree {
+  --base-rotation: 8deg;
+  animation-delay: 0.8s;
+}
+
+.glowOrbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(194, 147, 255, 0.35),
+    rgba(107, 81, 201, 0.12),
+    transparent 70%
+  );
+  filter: blur(4px);
+  transform: translate(-50%, -60%);
+  animation: pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.message {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.subMessage {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+.sparkles {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--base-rotation, 0deg)) scale(var(--base-scale, 1));
+  }
+  50% {
+    transform: translateY(-12px) rotate(calc(var(--base-rotation, 0deg) + 2deg))
+      scale(calc(var(--base-scale, 1) + 0.015));
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -60%) scale(0.95);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(-50%, -60%) scale(1.05);
+  }
+}

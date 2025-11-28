@@ -167,32 +167,31 @@ export interface UpdateProfilePayload {
 
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
 
-export interface ReadingPositionResult {
+export interface ReadingViewCard {
   position_index: number;
-  title?: string | null;
-  short_text?: string | null;
-  full_text?: string | null;
-  [key: string]: unknown;
+  card_code: string;
+  reversed: boolean;
+  image_path?: string | null;
 }
 
 export interface ReadingOutputPayload {
-  positions?: ReadingPositionResult[];
-  [key: string]: unknown;
+  interpretation: string;
+  cards: ReadingViewCard[];
+  question: string;
+  generated_at: string;
 }
 
 export interface CreateReadingCardInput {
-  position_index: number;
-  card_code: string;
+  code: string;
   reversed: boolean;
 }
 
 export interface CreateReadingPayload {
   type: "tarot";
   spread_id: SpreadId;
-  deck_id: string;
+  deck_id: "rws";
   question: string;
   cards: CreateReadingCardInput[];
-  locale?: string;
 }
 
 export interface CreateReadingResponse {
@@ -207,6 +206,7 @@ export interface ReadingResponse {
   output_payload: ReadingOutputPayload | null;
   summary_text: string | null;
   energy_spent: number;
+  balance?: number;
   error: string | null;
 }
 
