@@ -13,10 +13,14 @@ export function LoadingTarot({ message, subMessage }: LoadingTarotProps) {
   const glowColor = theme?.button_color ?? "#c084fc";
   const textColor = theme?.text_color ?? "#f8f5ff";
 
-  const cardsStyle: CSSProperties = {
-    // CSS variables consumed by module
-    ["--card-color" as "--card-color"]: cardColor,
-    ["--glow-color" as "--glow-color"]: glowColor
+  type TarotCSSVars = CSSProperties & {
+    "--card-color": string;
+    "--glow-color": string;
+  };
+
+  const cardsStyle: TarotCSSVars = {
+    "--card-color": cardColor,
+    "--glow-color": glowColor
   };
 
   return (

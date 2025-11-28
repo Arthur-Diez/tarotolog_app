@@ -75,7 +75,8 @@ export default function InterpretationPage() {
     }
   }, [fetchReading, id, initialReading]);
 
-  const cards = reading?.output_payload.cards ?? [];
+  const output = reading?.output_payload ?? null;
+  const cards = output?.cards ?? [];
 
   return (
     <div className="space-y-5 text-white">
@@ -96,8 +97,8 @@ export default function InterpretationPage() {
         <h1 className="mt-3 text-2xl font-semibold text-white">Послание вашей карты</h1>
         <p className="mt-1 text-sm text-white/70">
           Расклад № {reading?.id ?? id} •{" "}
-          {reading?.output_payload.generated_at
-            ? new Date(reading.output_payload.generated_at).toLocaleString("ru-RU", {
+          {output?.generated_at
+            ? new Date(output.generated_at).toLocaleString("ru-RU", {
                 hour: "2-digit",
                 minute: "2-digit",
                 day: "2-digit",
@@ -158,20 +159,24 @@ export default function InterpretationPage() {
             )}
           </div>
 
-          <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Вопрос</p>
-            <p className="text-base text-white">{reading.output_payload.question}</p>
-          </div>
+          {output && (
+            <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5">
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">Вопрос</p>
+              <p className="text-base text-white">{output.question}</p>
+            </div>
+          )}
 
           <div className="space-y-4 rounded-3xl border border-secondary/40 bg-secondary/20 p-5 text-white shadow-2xl">
             <p className="text-xs uppercase tracking-[0.3em] text-white/80">Краткий итог</p>
             <p className="text-lg font-semibold leading-relaxed text-white">{reading.summary_text}</p>
           </div>
 
-          <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-white/90">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Полная интерпретация</p>
-            <p className="text-base leading-relaxed">{reading.output_payload.interpretation}</p>
-          </div>
+          {output && (
+            <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-white/90">
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">Полная интерпретация</p>
+              <p className="text-base leading-relaxed">{output.interpretation}</p>
+            </div>
+          )}
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
             Энергия списана:{" "}
