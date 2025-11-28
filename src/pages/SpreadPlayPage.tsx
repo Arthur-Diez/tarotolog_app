@@ -260,46 +260,7 @@ export default function SpreadPlayPage() {
     resetHint();
     start(trimmedQuestion);
 
-    const stateAfterStart = useReadingState.getState();
-    const drawnCard = stateAfterStart.cards[0];
-
-    if (!drawnCard) {
-      alert("Не удалось подготовить карту. Попробуйте снова.");
-      return;
-    }
-
-    const cardCode = mapCardNameToCode(drawnCard.name);
-    if (!cardCode) {
-      alert("Не удалось определить код карты. Попробуйте снова.");
-      return;
-    }
-
-    void (async () => {
-      try {
-        setBackendMeta({ readingId: undefined, backendStatus: "pending" });
-        const response = await createReading({
-          type: "tarot",
-          spread_id: stateAfterStart.spreadId,
-          deck_id: stateAfterStart.deckId,
-          question: trimmedQuestion,
-          cards: [
-            {
-              position_index: drawnCard.positionIndex,
-              card_code: cardCode,
-              reversed: drawnCard.reversed
-            }
-          ],
-          locale: "ru"
-        });
-        setBackendMeta({ readingId: response.id, backendStatus: response.status });
-      } catch (error) {
-        console.error(error);
-        setBackendMeta({ readingId: undefined, backendStatus: "error" });
-        const message = error instanceof Error ? error.message : "Не удалось создать расклад";
-        alert(message);
-      }
-    })();
-
+    // FIX: creation of backend reading happens on interpretation request to avoid early queueing
     await runTimeline();
   };
 
@@ -358,20 +319,53 @@ export default function SpreadPlayPage() {
   }, [backendStatus, readingId, setBackendMeta, stage]);
 
   const handleInterpretationRequest = async () => {
-    if (!readingId) {
-      alert("Расклад ещё не создан. Начните заново и попробуйте снова.");
-      return;
-    }
-
+    // FIX: now we create the reading lazily and then go through view/poll flow
     setViewError(null);
     setIsLongWait(false);
     setIsViewLoading(true);
 
     const startedAt = Date.now();
     let notifiedLongWait = false;
+    let ensuredReadingId = readingId;
 
     try {
-      const initialResponse = await viewReading(readingId);
+      if (!ensuredReadingId) {
+        const snapshot = useReadingState.getState();
+        const drawnCard = snapshot.cards[0];
+        if (!drawnCard) {
+          setViewError("Карта расклада не найдена. Перезапустите расклад.");
+          return;
+        }
+        const cardCode = mapCardNameToCode(drawnCard.name);
+        if (!cardCode) {
+          setViewError("Не удалось определить код карты. Попробуйте снова.");
+          return;
+        }
+        setBackendMeta({ readingId: undefined, backendStatus: "pending" });
+        const response = await createReading({
+          type: "tarot",
+          spread_id: snapshot.spreadId,
+          deck_id: snapshot.deckId,
+          question: snapshot.question,
+          cards: [
+            {
+              position_index: drawnCard.positionIndex,
+              card_code: cardCode,
+              reversed: drawnCard.reversed
+            }
+          ],
+          locale: "ru"
+        });
+        ensuredReadingId = response.id;
+        setBackendMeta({ readingId: response.id, backendStatus: response.status });
+      }
+
+      if (!ensuredReadingId) {
+        setViewError("Не удалось создать расклад. Попробуйте снова.");
+        return;
+      }
+
+      const initialResponse = await viewReading(ensuredReadingId);
       let latestBalance = initialResponse.balance;
 
       if (initialResponse.status === "ready" && initialResponse.output_payload) {
@@ -391,7 +385,7 @@ export default function SpreadPlayPage() {
         }
 
         await wait(VIEW_POLL_INTERVAL);
-        const pollResponse = await getReading(readingId);
+        const pollResponse = await getReading(ensuredReadingId);
 
         if (typeof pollResponse.balance === "number") {
           latestBalance = pollResponse.balance;
@@ -435,7 +429,7 @@ export default function SpreadPlayPage() {
   };
 
   const energyLabel = energyLoading ? "…" : energy ?? "—";
-  const canRequestInterpretation = showActionButtons && Boolean(readingId && backendStatus === "ready");
+  const canRequestInterpretation = showActionButtons; // FIX: allow pressing button even before backend reading exists
   const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
 
   return (
