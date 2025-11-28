@@ -182,7 +182,8 @@ export interface ReadingOutputPayload {
 }
 
 export interface CreateReadingCardInput {
-  code: string;
+  position_index: number;
+  card_code: string;
   reversed: boolean;
 }
 
@@ -192,6 +193,7 @@ export interface CreateReadingPayload {
   deck_id: "rws";
   question: string;
   cards: CreateReadingCardInput[];
+  locale: string;
 }
 
 export interface CreateReadingResponse {
