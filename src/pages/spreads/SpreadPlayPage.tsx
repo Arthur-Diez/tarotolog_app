@@ -43,7 +43,7 @@ const STATUS_TEXT: Record<BackendReadingStatus, string> = {
 };
 
 export default function SpreadPlayPage() {
-  const { spreadId } = useParams<{ spreadId?: string }>();
+  const { spreadId } = useParams<{ spreadId?: SpreadId }>();
   const schema: SpreadSchema = (spreadId && SPREAD_SCHEMAS[spreadId]) || SpreadOneCard;
 
   const stage = useSpreadStore((state) => state.stage);
