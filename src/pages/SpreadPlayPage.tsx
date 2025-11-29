@@ -27,8 +27,6 @@ const HINT_DURATION = 0.5;
 const QUESTION_FLY_DURATION = 0.9;
 const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
-const POLL_INTERVAL = 2500;
-const MAX_POLL_DURATION = 30000;
 const VIEW_POLL_INTERVAL = 2000;
 const VIEW_POLL_TIMEOUT = 30000;
 const LONG_WAIT_THRESHOLD = 15000;
@@ -54,6 +52,7 @@ export default function SpreadPlayPage() {
   const setStage = useReadingState((state) => state.setStage);
   const readingId = useReadingState((state) => state.readingId);
   const backendStatus = useReadingState((state) => state.backendStatus);
+  const isReadingCreated = useReadingState((state) => state.isReadingCreated);
   const setBackendMeta = useReadingState((state) => state.setBackendMeta);
   const setReadingResult = useReadingState((state) => state.setReadingResult);
 
@@ -83,7 +82,6 @@ export default function SpreadPlayPage() {
         balance: response.balance
       });
       setEnergyBalance(response.balance);
-      setIsViewLoading(false);
       navigate(`/reading/${response.id}`, { state: { reading: response } });
     },
     [navigate, setEnergyBalance, setReadingResult]
@@ -264,60 +262,6 @@ export default function SpreadPlayPage() {
     await runTimeline();
   };
 
-  useEffect(() => {
-    if (!readingId) {
-      return;
-    }
-    if (stage !== "await_open" && stage !== "done") {
-      return;
-    }
-    if (!backendStatus || backendStatus === "ready" || backendStatus === "error") {
-      return;
-    }
-
-    let isActive = true;
-    let latestStatus: BackendReadingStatus | undefined = backendStatus;
-    const startedAt = Date.now();
-
-    const poll = async () => {
-      while (isActive && Date.now() - startedAt < MAX_POLL_DURATION) {
-        try {
-          const response = await getReading(readingId);
-          if (!isActive) break;
-          latestStatus = response.status;
-          setBackendMeta({ backendStatus: response.status });
-
-          if (response.status === "ready") {
-            break;
-          }
-
-          if (response.status === "error") {
-            alert(response.error || "Произошла ошибка при подготовке расклада");
-            break;
-          }
-        } catch (error) {
-          if (!isActive) break;
-          console.error(error);
-          alert(error instanceof Error ? error.message : "Не удалось получить статус расклада");
-          setBackendMeta({ backendStatus: "error" });
-          break;
-        }
-
-        await wait(POLL_INTERVAL);
-      }
-
-      if (isActive && latestStatus !== "ready" && Date.now() - startedAt >= MAX_POLL_DURATION) {
-        alert("Расклад готовится дольше обычного. Попробуйте позже.");
-      }
-    };
-
-    void poll();
-
-    return () => {
-      isActive = false;
-    };
-  }, [backendStatus, readingId, setBackendMeta, stage]);
-
   const handleInterpretationRequest = async () => {
     // FIX: now we create the reading lazily and then go through view/poll flow
     setViewError(null);
@@ -325,7 +269,6 @@ export default function SpreadPlayPage() {
     setIsViewLoading(true);
 
     const startedAt = Date.now();
-    let notifiedLongWait = false;
     let ensuredReadingId = readingId;
 
     try {
@@ -333,20 +276,18 @@ export default function SpreadPlayPage() {
         const snapshot = useReadingState.getState();
         const drawnCard = snapshot.cards[0];
         if (!drawnCard) {
-          setViewError("Карта расклада не найдена. Перезапустите расклад.");
-          return;
+          throw new Error("Карта расклада не найдена. Перезапустите расклад.");
         }
         const cardCode = mapCardNameToCode(drawnCard.name);
         if (!cardCode) {
-          setViewError("Не удалось определить код карты. Попробуйте снова.");
-          return;
+          throw new Error("Не удалось определить код карты. Попробуйте снова.");
         }
-        setBackendMeta({ readingId: undefined, backendStatus: "pending" });
+        setBackendMeta({ readingId: undefined, backendStatus: "pending", isReadingCreated: false });
         const response = await createReading({
           type: "tarot",
           spread_id: snapshot.spreadId,
           deck_id: snapshot.deckId,
-          question: snapshot.question,
+          question: snapshot.question.trim(),
           cards: [
             {
               position_index: drawnCard.positionIndex,
@@ -357,61 +298,48 @@ export default function SpreadPlayPage() {
           locale: "ru"
         });
         ensuredReadingId = response.id;
-        setBackendMeta({ readingId: response.id, backendStatus: response.status });
+        setBackendMeta({ readingId: response.id, backendStatus: response.status, isReadingCreated: true });
       }
 
       if (!ensuredReadingId) {
-        setViewError("Не удалось создать расклад. Попробуйте снова.");
-        return;
-      }
-
-      const initialResponse = await viewReading(ensuredReadingId);
-      let latestBalance = initialResponse.balance;
-
-      if (initialResponse.status === "ready" && initialResponse.output_payload) {
-        finishReading({
-          ...initialResponse,
-          summary_text: initialResponse.summary_text ?? ""
-        });
-        return;
+        throw new Error("Не удалось создать расклад. Попробуйте снова.");
       }
 
       const deadline = startedAt + VIEW_POLL_TIMEOUT;
 
       while (Date.now() < deadline) {
-        if (!notifiedLongWait && Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
-          setIsLongWait(true);
-          notifiedLongWait = true;
-        }
+        const reading = await getReading(ensuredReadingId);
+        setBackendMeta({ backendStatus: reading.status, isReadingCreated: true });
 
-        await wait(VIEW_POLL_INTERVAL);
-        const pollResponse = await getReading(ensuredReadingId);
-
-        if (typeof pollResponse.balance === "number") {
-          latestBalance = pollResponse.balance;
-        }
-
-        if (pollResponse.status === "ready" && pollResponse.output_payload) {
+        if (reading.status === "ready") {
+          setBackendMeta({ backendStatus: "ready", isReadingCreated: true });
+          const viewResponse = await viewReading(ensuredReadingId);
+          if (!viewResponse.output_payload) {
+            throw new Error("Интерпретация ещё не готова. Попробуйте снова.");
+          }
           finishReading({
-            id: pollResponse.id,
-            status: "ready",
-            output_payload: pollResponse.output_payload,
-            summary_text: pollResponse.summary_text ?? "",
-            energy_spent: pollResponse.energy_spent,
-            balance: latestBalance ?? initialResponse.balance ?? 0
+            ...viewResponse,
+            summary_text: viewResponse.summary_text ?? ""
           });
           return;
         }
 
-        if (pollResponse.status === "error") {
-          throw new Error(pollResponse.error || "Расклад завершился с ошибкой");
+        if (reading.status === "error") {
+          throw new Error(reading.error || "Произошла ошибка при подготовке расклада");
         }
+
+        if (Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
+          setIsLongWait(true);
+        }
+
+        await wait(VIEW_POLL_INTERVAL);
       }
 
       setIsLongWait(true);
       setViewError("Расклад готовится дольше обычного. Попробуйте обратиться к нему чуть позже.");
     } catch (error) {
       console.error(error);
+      setBackendMeta({ backendStatus: "error", isReadingCreated: Boolean(ensuredReadingId) });
       if (error instanceof ApiError) {
         if (error.code === "not_enough_energy") {
           setViewError("Недостаточно энергии, чтобы открыть интерпретацию. Пополните баланс и попробуйте снова.");
@@ -430,7 +358,7 @@ export default function SpreadPlayPage() {
 
   const energyLabel = energyLoading ? "…" : energy ?? "—";
   const canRequestInterpretation = showActionButtons; // FIX: allow pressing button even before backend reading exists
-  const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
+  const statusLabel = isReadingCreated && backendStatus ? STATUS_TEXT[backendStatus] : null;
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">

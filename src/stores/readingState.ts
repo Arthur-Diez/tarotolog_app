@@ -34,13 +34,18 @@ interface ReadingState {
   cards: CardState[];
   readingId?: string | null;
   backendStatus?: BackendReadingStatus | null;
+  isReadingCreated: boolean;
   readingResult: ReadingResultState | null;
   setQuestion: (value: string) => void;
   setStage: (stage: ReadingStage) => void;
   start: (question: string) => void;
   openCard: (index: number) => void;
   reset: () => void;
-  setBackendMeta: (meta: { readingId?: string | null; backendStatus?: BackendReadingStatus | null }) => void;
+  setBackendMeta: (meta: {
+    readingId?: string | null;
+    backendStatus?: BackendReadingStatus | null;
+    isReadingCreated?: boolean;
+  }) => void;
   setReadingResult: (result: ReadingResultState | null) => void;
 }
 
@@ -52,6 +57,7 @@ export const useReadingState = create<ReadingState>((set, get) => ({
   cards: [],
   readingId: undefined,
   backendStatus: undefined,
+  isReadingCreated: false,
   readingResult: null,
   setQuestion: (value) => set({ question: value }),
   setStage: (nextStage) => set({ stage: nextStage }),
@@ -66,7 +72,8 @@ export const useReadingState = create<ReadingState>((set, get) => ({
       cards: [{ positionIndex: 1, name: card, reversed, isOpen: false }],
       readingId: undefined,
       backendStatus: undefined,
-      readingResult: null
+      readingResult: null,
+      isReadingCreated: false
     });
   },
   openCard: (index) => {
@@ -98,7 +105,8 @@ export const useReadingState = create<ReadingState>((set, get) => ({
       cards: [],
       readingId: undefined,
       backendStatus: undefined,
-      readingResult: null
+      readingResult: null,
+      isReadingCreated: false
     });
   },
   setBackendMeta: (meta) => set(meta),
