@@ -38,7 +38,7 @@ export const SpreadYesNo: SpreadSchema = {
   ]
 };
 
-export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
+export const SPREAD_SCHEMAS = {
   [SpreadOneCard.id]: SpreadOneCard,
   [SpreadYesNo.id]: SpreadYesNo
-};
+} satisfies Record<SpreadId, SpreadSchema>;
