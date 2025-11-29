@@ -9,6 +9,7 @@ import EnergyPage from "@/pages/EnergyPage";
 import ProfilePage from "@/pages/ProfilePage";
 import InterpretationPage from "@/pages/InterpretationPage";
 import SpreadPlayPage from "@/pages/SpreadPlayPage";
+import PlayYesNoSpread from "@/pages/PlayYesNoSpread";
 import { TabBar } from "@/components/layout/TabBar";
 import { ErrorScreen } from "@/components/layout/ErrorScreen";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
@@ -115,6 +116,7 @@ export default function App() {
                 }
               />
               <Route path="/spreads/play/one_card" element={<SpreadPlayPage />} />
+              <Route path="/spreads/play/yes_no" element={<PlayYesNoSpread />} />
               <Route path="/reading/:id" element={<InterpretationPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

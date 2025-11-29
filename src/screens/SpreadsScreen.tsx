@@ -23,11 +23,18 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   };
 
   const handleSelectSpread = (spreadId: string) => {
-    if (deck.id === "rws" && spreadId === "one_card") {
-      navigate("/spreads/play/one_card");
-    } else {
-      alert("Этот расклад будет доступен позже");
+    if (deck.id === "rws") {
+      if (spreadId === "one_card") {
+        navigate("/spreads/play/one_card");
+        return;
+      }
+      if (spreadId === "yes_no") {
+        navigate("/spreads/play/yes_no");
+        return;
+      }
     }
+
+    alert("Этот расклад будет доступен позже");
   };
 
   return (
@@ -56,7 +63,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             expanded={expandedSpread === spread.id}
             onToggle={() => toggleSpread(spread.id)}
             onSelect={() => handleSelectSpread(spread.id)}
-            canSelect={deck.id === "rws" && spread.id === "one_card"}
+            canSelect={deck.id === "rws" && (spread.id === "one_card" || spread.id === "yes_no")}
           />
         ))}
       </div>
