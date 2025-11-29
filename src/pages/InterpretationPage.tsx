@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
 import { DECKS } from "@/data/decks";
-import { RWS_SPREADS_MAP } from "@/data/rws_spreads";
+import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode } from "@/lib/cardCode";
 
@@ -170,8 +170,13 @@ export default function InterpretationPage() {
   const questionText = inputMeta?.question ?? "Вопрос не указан";
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
-  const spreadTitle =
-    (inputMeta?.spreadId && RWS_SPREADS_MAP[inputMeta.spreadId]?.title) || "Расклад";
+  const spreadTitle = useMemo(() => {
+    const spreadId = inputMeta?.spreadId;
+    if (spreadId && (spreadId in RWS_SPREADS_MAP)) {
+      return RWS_SPREADS_MAP[spreadId as SpreadId]?.title ?? "Расклад";
+    }
+    return "Расклад";
+  }, [inputMeta?.spreadId]);
   const generatedAt = output.generatedAt;
   const summaryText = output.summary ?? reading?.summary_text ?? "Интерпретация готовится...";
 
