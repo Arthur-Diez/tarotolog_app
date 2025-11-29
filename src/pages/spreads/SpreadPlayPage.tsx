@@ -20,6 +20,7 @@ import { backUrl, faceUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
+import type { SpreadId } from "@/data/rws_spreads";
 
 const DEAL_OFFSET = 96;
 const COLLECT_DURATION = 2.8;
