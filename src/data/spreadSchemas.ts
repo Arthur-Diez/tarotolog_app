@@ -1,3 +1,5 @@
+import type { SpreadId } from "@/data/rws_spreads";
+
 export interface SpreadPosition {
   id: number;
   label: string;
@@ -6,7 +8,7 @@ export interface SpreadPosition {
 }
 
 export interface SpreadSchema {
-  id: string;
+  id: SpreadId;
   name: string;
   cardCount: number;
   deckType: "rws";
@@ -36,7 +38,7 @@ export const SpreadYesNo: SpreadSchema = {
   ]
 };
 
-export const SPREAD_SCHEMAS: Record<string, SpreadSchema> = {
+export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   [SpreadOneCard.id]: SpreadOneCard,
   [SpreadYesNo.id]: SpreadYesNo
 };
