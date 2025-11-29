@@ -23,15 +23,9 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   };
 
   const handleSelectSpread = (spreadId: string) => {
-    if (deck.id === "rws") {
-      if (spreadId === "one_card") {
-        navigate("/spreads/play/one_card");
-        return;
-      }
-      if (spreadId === "yes_no") {
-        navigate("/spreads/play/yes_no");
-        return;
-      }
+    if (deck.id === "rws" && (spreadId === "one_card" || spreadId === "yes_no")) {
+      navigate(`/spreads/play/${spreadId}`);
+      return;
     }
 
     alert("Этот расклад будет доступен позже");

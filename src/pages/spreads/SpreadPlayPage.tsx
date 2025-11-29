@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import type { AnimationPlaybackControls } from "framer-motion";
 import { motion, useAnimate } from "framer-motion";
 
@@ -18,7 +18,8 @@ import {
 } from "@/lib/api";
 import { backUrl, faceUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
-import { useReadingState } from "@/stores/readingState";
+import { useSpreadStore } from "@/stores/spreadStore";
+import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 
 const DEAL_OFFSET = 96;
 const COLLECT_DURATION = 2.8;
@@ -42,19 +43,23 @@ const STATUS_TEXT: Record<BackendReadingStatus, string> = {
 };
 
 export default function SpreadPlayPage() {
-  const stage = useReadingState((state) => state.stage);
-  const cards = useReadingState((state) => state.cards);
-  const question = useReadingState((state) => state.question);
-  const setQuestion = useReadingState((state) => state.setQuestion);
-  const start = useReadingState((state) => state.start);
-  const openCard = useReadingState((state) => state.openCard);
-  const storeReset = useReadingState((state) => state.reset);
-  const setStage = useReadingState((state) => state.setStage);
-  const readingId = useReadingState((state) => state.readingId);
-  const backendStatus = useReadingState((state) => state.backendStatus);
-  const isReadingCreated = useReadingState((state) => state.isReadingCreated);
-  const setBackendMeta = useReadingState((state) => state.setBackendMeta);
-  const setReadingResult = useReadingState((state) => state.setReadingResult);
+  const { spreadId } = useParams<{ spreadId?: string }>();
+  const schema: SpreadSchema = (spreadId && SPREAD_SCHEMAS[spreadId]) || SpreadOneCard;
+
+  const stage = useSpreadStore((state) => state.stage);
+  const cards = useSpreadStore((state) => state.cards);
+  const question = useSpreadStore((state) => state.question);
+  const setQuestion = useSpreadStore((state) => state.setQuestion);
+  const start = useSpreadStore((state) => state.startSpread);
+  const openCard = useSpreadStore((state) => state.openCard);
+  const allowFreeOpening = useSpreadStore((state) => state.allowFreeOpening);
+  const resetStore = useSpreadStore((state) => state.reset);
+  const setStage = useSpreadStore((state) => state.setStage);
+  const setSchema = useSpreadStore((state) => state.setSchema);
+  const readingId = useSpreadStore((state) => state.readingId);
+  const backendStatus = useSpreadStore((state) => state.backendStatus);
+  const setBackendMeta = useSpreadStore((state) => state.setBackendMeta);
+  const setReadingResult = useSpreadStore((state) => state.setReadingResult);
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
@@ -62,6 +67,7 @@ export default function SpreadPlayPage() {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isLongWait, setIsLongWait] = useState(false);
   const [viewError, setViewError] = useState<string | null>(null);
+  const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
@@ -69,6 +75,10 @@ export default function SpreadPlayPage() {
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setSchema(schema);
+  }, [schema, setSchema]);
 
   const finishReading = useCallback(
     (response: ViewReadingResponse) => {
@@ -87,10 +97,8 @@ export default function SpreadPlayPage() {
     [navigate, setEnergyBalance, setReadingResult]
   );
 
-  const backSrc = useMemo(() => backUrl("rws"), []);
+  const backSrc = useMemo(() => backUrl(schema.deckType), [schema.deckType]);
   const trimmedQuestion = question.trim();
-  const dealtCard = cards[0];
-  const faceSrc = dealtCard ? faceUrl("rws", dealtCard.name) : null;
   const showActionButtons = stage === "done";
   const hintVisible = stage === "await_open";
   const showForm = stage === "fan";
@@ -111,9 +119,7 @@ export default function SpreadPlayPage() {
 
   const animateAndTrack = useCallback(
     (...args: any[]) => {
-      const controls = (animate as unknown as (...inner: any[]) => AnimationPlaybackControls)(
-        ...args
-      );
+      const controls = (animate as unknown as (...inner: any[]) => AnimationPlaybackControls)(...args);
       activeAnimationRef.current = controls;
       return controls;
     },
@@ -142,11 +148,12 @@ export default function SpreadPlayPage() {
 
   const handleReset = () => {
     cancelTimeline();
-    storeReset();
+    resetStore();
     setStage("fan");
     setQuestion("");
     setDeckKey((value) => value + 1);
     setViewError(null);
+    setOrderWarning(null);
     setIsLongWait(false);
     setIsViewLoading(false);
     resetQuestionBubble();
@@ -172,22 +179,12 @@ export default function SpreadPlayPage() {
 
     const bubbleRect = bubble.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
-    const dx =
-      targetRect.left + targetRect.width / 2 - (bubbleRect.left + bubbleRect.width / 2);
-    const dy =
-      targetRect.top + targetRect.height / 2 - (bubbleRect.top + bubbleRect.height / 2);
+    const dx = targetRect.left + targetRect.width / 2 - (bubbleRect.left + bubbleRect.width / 2);
+    const dy = targetRect.top + targetRect.height / 2 - (bubbleRect.top + bubbleRect.height / 2);
 
     await animateAndTrack([
-      [
-        bubble,
-        { x: dx, y: dy, scale: 0.92 },
-        { duration: QUESTION_FLY_DURATION, ease: "easeInOut" }
-      ],
-      [
-        bubble,
-        { opacity: 0, filter: "blur(6px)" },
-        { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut" }
-      ],
+      [bubble, { x: dx, y: dy, scale: 0.92 }, { duration: QUESTION_FLY_DURATION, ease: "easeInOut" }],
+      [bubble, { opacity: 0, filter: "blur(6px)" }, { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut" }],
       [
         "#questionForm",
         { y: 40, opacity: 0 },
@@ -251,6 +248,7 @@ export default function SpreadPlayPage() {
 
     cancelTimeline();
     setViewError(null);
+    setOrderWarning(null);
     setIsLongWait(false);
     setIsViewLoading(false);
     resetQuestionBubble();
@@ -258,12 +256,23 @@ export default function SpreadPlayPage() {
     resetHint();
     start(trimmedQuestion);
 
-    // FIX: creation of backend reading happens on interpretation request to avoid early queueing
     await runTimeline();
   };
 
+  const handleCardClick = (positionIndex: number) => {
+    if (stage !== "await_open" && stage !== "done") return;
+    const { blocked } = openCard(positionIndex);
+    if (blocked) {
+      if (!orderWarning) {
+        setOrderWarning("Пожалуйста, откройте карты по порядку");
+        allowFreeOpening();
+      }
+      return;
+    }
+    setOrderWarning(null);
+  };
+
   const handleInterpretationRequest = async () => {
-    // FIX: now we create the reading lazily and then go through view/poll flow
     setViewError(null);
     setIsLongWait(false);
     setIsViewLoading(true);
@@ -273,32 +282,29 @@ export default function SpreadPlayPage() {
 
     try {
       if (!ensuredReadingId) {
-        const snapshot = useReadingState.getState();
-        const drawnCard = snapshot.cards[0];
-        if (!drawnCard) {
-          throw new Error("Карта расклада не найдена. Перезапустите расклад.");
-        }
-        const cardCode = mapCardNameToCode(drawnCard.name);
-        if (!cardCode) {
-          throw new Error("Не удалось определить код карты. Попробуйте снова.");
-        }
-        setBackendMeta({ readingId: undefined, backendStatus: "pending", isReadingCreated: false });
+        const snapshot = useSpreadStore.getState();
+        const cardsPayload = snapshot.cards.map((card) => {
+          const code = mapCardNameToCode(card.name);
+          if (!code) {
+            throw new Error("Не удалось определить код карты. Попробуйте заново.");
+          }
+          return {
+            position_index: card.positionIndex,
+            card_code: code,
+            reversed: card.reversed
+          };
+        });
+
         const response = await createReading({
           type: "tarot",
-          spread_id: snapshot.spreadId,
-          deck_id: snapshot.deckId,
+          spread_id: snapshot.schema.id,
+          deck_id: snapshot.schema.deckType,
           question: snapshot.question.trim(),
-          cards: [
-            {
-              position_index: drawnCard.positionIndex,
-              card_code: cardCode,
-              reversed: drawnCard.reversed
-            }
-          ],
-          locale: "ru"
+          locale: "ru",
+          cards: cardsPayload
         });
         ensuredReadingId = response.id;
-        setBackendMeta({ readingId: response.id, backendStatus: response.status, isReadingCreated: true });
+        setBackendMeta({ readingId: response.id, backendStatus: response.status });
       }
 
       if (!ensuredReadingId) {
@@ -306,16 +312,14 @@ export default function SpreadPlayPage() {
       }
 
       const deadline = startedAt + VIEW_POLL_TIMEOUT;
-
       while (Date.now() < deadline) {
         const reading = await getReading(ensuredReadingId);
-        setBackendMeta({ backendStatus: reading.status, isReadingCreated: true });
+        setBackendMeta({ backendStatus: reading.status, readingId: ensuredReadingId });
 
-        if (reading.status === "ready") {
-          setBackendMeta({ backendStatus: "ready", isReadingCreated: true });
+        if (reading.status === "ready" && reading.output_payload) {
           const viewResponse = await viewReading(ensuredReadingId);
           if (!viewResponse.output_payload) {
-            throw new Error("Интерпретация ещё не готова. Попробуйте снова.");
+            throw new Error("Интерпретация ещё не готова. Попробуйте позже.");
           }
           finishReading({
             ...viewResponse,
@@ -336,13 +340,13 @@ export default function SpreadPlayPage() {
       }
 
       setIsLongWait(true);
-      setViewError("Расклад готовится дольше обычного. Попробуйте обратиться к нему чуть позже.");
+      setViewError("Расклад готовится дольше обычного. Попробуйте позже.");
     } catch (error) {
       console.error(error);
-      setBackendMeta({ backendStatus: "error", isReadingCreated: Boolean(ensuredReadingId) });
+      setBackendMeta({ backendStatus: "error", readingId: ensuredReadingId });
       if (error instanceof ApiError) {
         if (error.code === "not_enough_energy") {
-          setViewError("Недостаточно энергии, чтобы открыть интерпретацию. Пополните баланс и попробуйте снова.");
+          setViewError("Недостаточно энергии. Пополните баланс и попробуйте снова.");
         } else if (error.status === 401) {
           setViewError("Сессия невалидна. Перезапустите мини-приложение через Telegram.");
         } else {
@@ -357,8 +361,12 @@ export default function SpreadPlayPage() {
   };
 
   const energyLabel = energyLoading ? "…" : energy ?? "—";
-  const canRequestInterpretation = showActionButtons; // FIX: allow pressing button even before backend reading exists
-  const statusLabel = isReadingCreated && backendStatus ? STATUS_TEXT[backendStatus] : null;
+  const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
+
+  const cardsWithPosition = schema.positions.map((position, index) => ({
+    position,
+    card: cards[index]
+  }));
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
@@ -393,22 +401,36 @@ export default function SpreadPlayPage() {
         </div>
         <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
           <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1100]">
+          <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2 gap-6">
             <motion.div
-              key={`deal-host-${deckKey}`}
-              className="deal-host"
+              className="deal-host flex items-center gap-6"
               initial={{ y: -16, opacity: 0 }}
               style={{ willChange: "transform" }}
             >
-              {dealtCard && faceSrc && (
-                <DealtCard
-                  backSrc={backSrc}
-                  faceSrc={faceSrc}
-                  isOpen={dealtCard.isOpen}
-                  reversed={dealtCard.reversed}
-                  onClick={() => stage === "await_open" && openCard(dealtCard.positionIndex)}
-                />
-              )}
+              {cardsWithPosition.map(({ position, card }) => {
+                const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
+                return (
+                  <div key={position.id} className="relative flex flex-col items-center">
+                    {card && faceSrc && (
+                      <DealtCard
+                        backSrc={backSrc}
+                        faceSrc={faceSrc}
+                        isOpen={card.isOpen}
+                        reversed={card.reversed}
+                        onClick={() => handleCardClick(position.id)}
+                      />
+                    )}
+                    {!card?.isOpen && (
+                      <span className="pointer-events-none absolute top-3 text-3xl font-bold text-white/80">
+                        {position.id}
+                      </span>
+                    )}
+                    {card?.isOpen && (
+                      <p className="mt-2 text-xs text-white/70">{position.label}</p>
+                    )}
+                  </div>
+                );
+              })}
             </motion.div>
           </div>
           <div
@@ -428,11 +450,11 @@ export default function SpreadPlayPage() {
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
           >
             <div className="space-y-1">
-              <h1 className="text-wrap-anywhere text-xl font-semibold text-white">
-                Одна карта (карта дня)
-              </h1>
+              <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
               <p className="text-wrap-anywhere text-sm text-white/70">
-                Сформулируйте запрос и получите энергию дня.
+                {schema.id === "one_card"
+                  ? "Сформулируйте запрос и получите энергию дня."
+                  : "Три карты покажут факторы ДА/НЕТ и итог."}
               </p>
             </div>
             <textarea
@@ -450,30 +472,26 @@ export default function SpreadPlayPage() {
         <motion.p
           id="flipHint"
           initial={{ opacity: 0, y: 12 }}
-          className={`text-wrap-anywhere text-sm ${
-            hintVisible ? "text-white/80" : "text-transparent"
-          }`}
+          className={`text-wrap-anywhere text-sm ${hintVisible ? "text-white/80" : "text-transparent"}`}
         >
           Нажмите на карту, чтобы открыть послание
         </motion.p>
+
+        {(orderWarning || viewError) && (
+          <p className="text-center text-sm text-amber-300">{orderWarning || viewError}</p>
+        )}
 
         {showActionButtons && (
           <div className="w-full space-y-3">
             <Button
               variant="outline"
               className="w-full"
-              disabled={!canRequestInterpretation || isViewLoading}
+              disabled={isViewLoading}
               onClick={handleInterpretationRequest}
             >
               {isViewLoading ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
             </Button>
-            {statusLabel && (
-              <p className="text-center text-sm text-white/70">
-                Статус расклада: {statusLabel}
-                {!canRequestInterpretation && backendStatus !== "error" ? "…" : ""}
-              </p>
-            )}
-            {viewError && <p className="text-center text-sm text-red-200">{viewError}</p>}
+            {statusLabel && <p className="text-center text-sm text-white/70">Статус расклада: {statusLabel}</p>}
             <Button variant="ghost" className="w-full text-white/70" onClick={handleReset}>
               Начать заново
             </Button>

@@ -2,11 +2,11 @@ import { memo, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import { motion, useAnimate } from "framer-motion";
 
-import type { ReadingStage } from "@/stores/readingState";
+import type { SpreadStage } from "@/stores/spreadStore";
 
 interface DeckStackProps {
   backSrc: string;
-  mode: ReadingStage;
+  mode: SpreadStage;
   fanCount?: number;
   fanCenterRef?: RefObject<HTMLDivElement>;
 }
@@ -22,7 +22,7 @@ interface StackLayout extends Layout {
 }
 
 const DEFAULT_FAN = 21;
-const STACK_PHASES = new Set<ReadingStage>([
+const STACK_PHASES = new Set<SpreadStage>([
   "collecting",
   "shuffling",
   "dealing",
