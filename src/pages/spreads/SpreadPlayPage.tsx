@@ -421,18 +421,18 @@ export default function SpreadPlayPage() {
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
             <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2 gap-6">
-              <motion.div
-                className="deal-host flex items-center gap-6"
-                initial={{ y: -16, opacity: 0 }}
-                style={{ willChange: "transform" }}
-              >
+            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2">
+              <motion.div className="deal-host relative" initial={{ y: -16, opacity: 0 }} style={{ willChange: "transform" }}>
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                   const showOrderLabel =
                     !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
                   return (
-                    <div key={position.id} className="relative flex flex-col items-center">
+                    <div
+                      key={position.id}
+                      className="absolute flex flex-col items-center"
+                      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+                    >
                       {card && faceSrc && (
                         <div className="relative">
                           {showOrderLabel && (

@@ -63,10 +63,10 @@ export const SpreadCross: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4],
   positions: [
-    { id: 1, label: "Суть ситуации", x: 0, y: 0 },
-    { id: 2, label: "Против", x: -120, y: 0 },
-    { id: 3, label: "За", x: 120, y: 0 },
-    { id: 4, label: "Результат", x: 0, y: -140 }
+    { id: 1, label: "Суть ситуации", x: -140, y: 0 },
+    { id: 2, label: "Против", x: 0, y: -160 },
+    { id: 3, label: "Поддержка", x: 0, y: 160 },
+    { id: 4, label: "Результат", x: 140, y: 0 }
   ]
 };
 

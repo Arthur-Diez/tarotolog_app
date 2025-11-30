@@ -57,10 +57,10 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Четыре карты: ситуация, препятствие, поддержка, результат.",
     cardsCount: 4,
     positions: [
-      { index: 1, x: 50, y: 50, rotate: 0, label: "Суть ситуации" },
-      { index: 2, x: 30, y: 50, rotate: -5, label: "Против" },
-      { index: 3, x: 70, y: 50, rotate: 5, label: "За" },
-      { index: 4, x: 50, y: 30, rotate: 0, label: "Результат" }
+      { index: 1, x: 35, y: 55, rotate: 0, label: "Суть ситуации" },
+      { index: 2, x: 50, y: 35, rotate: 0, label: "Против" },
+      { index: 3, x: 50, y: 75, rotate: 0, label: "Поддержка" },
+      { index: 4, x: 65, y: 55, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4]
   }
