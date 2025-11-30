@@ -139,6 +139,27 @@ export const SpreadPyramid: SpreadSchema = {
   ]
 };
 
+export const SpreadCelticCross: SpreadSchema = {
+  id: "celtic_cross",
+  name: "Кельтский крест",
+  cardCount: 10,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  positions: [
+    { id: 1, label: "Ситуация", x: 0, y: 0 },
+    { id: 2, label: "Препятствие", x: 0, y: 0 },
+    { id: 3, label: "Далекое прошлое", x: 0, y: 60 },
+    { id: 4, label: "Недавнее прошлое", x: 0, y: 120 },
+    { id: 5, label: "Сознательное", x: 120, y: 60 },
+    { id: 6, label: "Бессознательное", x: -120, y: 60 },
+    { id: 7, label: "Ваша позиция", x: 200, y: 0 },
+    { id: 8, label: "Окружение", x: 200, y: 60 },
+    { id: 9, label: "Надежды и страхи", x: 200, y: 120 },
+    { id: 10, label: "Результат", x: 200, y: 180 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -147,5 +168,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   five_cards: SpreadFiveCards,
   horseshoe: SpreadHorseshoe,
   star: SpreadStar,
-  pyramid: SpreadPyramid
+  pyramid: SpreadPyramid,
+  celtic_cross: SpreadCelticCross
 };
