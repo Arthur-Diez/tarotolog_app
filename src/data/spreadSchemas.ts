@@ -70,9 +70,26 @@ export const SpreadCross: SpreadSchema = {
   ]
 };
 
+export const SpreadFiveCards: SpreadSchema = {
+  id: "five_cards",
+  name: "Пятикарточный расклад",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Прошлое", x: -150, y: -40 },
+    { id: 2, label: "Настоящее", x: -70, y: 0 },
+    { id: 3, label: "Скрытые влияния", x: 0, y: 40 },
+    { id: 4, label: "Совет", x: 80, y: 80 },
+    { id: 5, label: "Результат", x: -230, y: 80 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
   three_cards: SpreadThreeCards,
-  cross: SpreadCross
+  cross: SpreadCross,
+  five_cards: SpreadFiveCards
 };
