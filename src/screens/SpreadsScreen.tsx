@@ -23,7 +23,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   };
 
   const handleSelectSpread = (spreadId: string) => {
-    if (deck.id === "rws" && (spreadId === "one_card" || spreadId === "yes_no")) {
+    if (deck.id === "rws" && (spreadId === "one_card" || spreadId === "yes_no" || spreadId === "three_cards")) {
       navigate(`/spreads/play/${spreadId}`);
       return;
     }
@@ -57,7 +57,9 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             expanded={expandedSpread === spread.id}
             onToggle={() => toggleSpread(spread.id)}
             onSelect={() => handleSelectSpread(spread.id)}
-            canSelect={deck.id === "rws" && (spread.id === "one_card" || spread.id === "yes_no")}
+            canSelect={
+              deck.id === "rws" && (spread.id === "one_card" || spread.id === "yes_no" || spread.id === "three_cards")
+            }
           />
         ))}
       </div>
