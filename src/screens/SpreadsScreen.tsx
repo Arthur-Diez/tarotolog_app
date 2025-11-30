@@ -29,7 +29,9 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
         spreadId === "yes_no" ||
         spreadId === "three_cards" ||
         spreadId === "cross" ||
-        spreadId === "five_cards")
+        spreadId === "five_cards" ||
+        spreadId === "horseshoe" ||
+        spreadId === "star")
     ) {
       navigate(`/spreads/play/${spreadId}`);
       return;
@@ -70,7 +72,9 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                 spread.id === "yes_no" ||
                 spread.id === "three_cards" ||
                 spread.id === "cross" ||
-                spread.id === "five_cards")
+                spread.id === "five_cards" ||
+                spread.id === "horseshoe" ||
+                spread.id === "star")
             }
           />
         ))}

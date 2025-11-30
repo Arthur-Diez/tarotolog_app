@@ -86,10 +86,48 @@ export const SpreadFiveCards: SpreadSchema = {
   ]
 };
 
+export const SpreadHorseshoe: SpreadSchema = {
+  id: "horseshoe",
+  name: "Подкова",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Прошлое", x: -160, y: -40 },
+    { id: 2, label: "Настоящее", x: -80, y: 0 },
+    { id: 3, label: "Скрытые влияния", x: -20, y: 60 },
+    { id: 4, label: "Препятствия", x: 40, y: 100 },
+    { id: 5, label: "Окружение", x: 100, y: 60 },
+    { id: 6, label: "Совет", x: 140, y: 0 },
+    { id: 7, label: "Результат", x: 180, y: -40 }
+  ]
+};
+
+export const SpreadStar: SpreadSchema = {
+  id: "star",
+  name: "Звезда",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Корневая чакра", x: -160, y: -40 },
+    { id: 2, label: "Сакральная чакра", x: -80, y: 0 },
+    { id: 3, label: "Чакра солнечного сплетения", x: -20, y: 60 },
+    { id: 4, label: "Сердечная чакра", x: 40, y: 100 },
+    { id: 5, label: "Горловая чакра", x: 100, y: 60 },
+    { id: 6, label: "Чакра третьего глаза", x: 140, y: 0 },
+    { id: 7, label: "Коронная чакра", x: 180, y: -40 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
   three_cards: SpreadThreeCards,
   cross: SpreadCross,
-  five_cards: SpreadFiveCards
+  five_cards: SpreadFiveCards,
+  horseshoe: SpreadHorseshoe,
+  star: SpreadStar
 };

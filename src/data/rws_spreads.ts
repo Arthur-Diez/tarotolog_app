@@ -1,4 +1,4 @@
-export type SpreadId = "one_card" | "yes_no" | "three_cards" | "cross" | "five_cards";
+export type SpreadId = "one_card" | "yes_no" | "three_cards" | "cross" | "five_cards" | "horseshoe" | "star";
 
 export interface SpreadPosition {
   index: number;
@@ -77,6 +77,38 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 5, x: 32, y: 70, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "horseshoe",
+    title: "Подкова",
+    description: "Семь карт: от прошлого к результату, учитывая препятствия и окружение.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 40, y: 40, rotate: 0, label: "Прошлое" },
+      { index: 2, x: 50, y: 50, rotate: 0, label: "Настоящее" },
+      { index: 3, x: 60, y: 60, rotate: 0, label: "Скрытые влияния" },
+      { index: 4, x: 70, y: 70, rotate: 0, label: "Препятствия" },
+      { index: 5, x: 80, y: 60, rotate: 0, label: "Окружение" },
+      { index: 6, x: 90, y: 50, rotate: 0, label: "Совет" },
+      { index: 7, x: 100, y: 40, rotate: 0, label: "Результат" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "star",
+    title: "Звезда",
+    description: "Семь карт, каждая соответствует чакре и отражает энергетическое состояние.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 40, y: 40, rotate: 0, label: "Корневая чакра" },
+      { index: 2, x: 50, y: 50, rotate: 0, label: "Сакральная чакра" },
+      { index: 3, x: 60, y: 60, rotate: 0, label: "Чакра солнечного сплетения" },
+      { index: 4, x: 70, y: 70, rotate: 0, label: "Сердечная чакра" },
+      { index: 5, x: 80, y: 60, rotate: 0, label: "Горловая чакра" },
+      { index: 6, x: 90, y: 50, rotate: 0, label: "Чакра третьего глаза" },
+      { index: 7, x: 100, y: 40, rotate: 0, label: "Коронная чакра" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
   }
 ];
 
