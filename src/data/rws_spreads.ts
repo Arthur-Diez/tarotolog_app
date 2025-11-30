@@ -70,11 +70,11 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Баланс прошлого, настоящего, скрытых влияний, совета и результата.",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 45, y: 40, rotate: 0, label: "Прошлое" },
-      { index: 2, x: 35, y: 55, rotate: 0, label: "Настоящее" },
-      { index: 3, x: 55, y: 55, rotate: 0, label: "Скрытые влияния" },
-      { index: 4, x: 65, y: 70, rotate: 0, label: "Совет" },
-      { index: 5, x: 25, y: 70, rotate: 0, label: "Результат" }
+      { index: 1, x: 55, y: 40, rotate: 0, label: "Прошлое" },
+      { index: 2, x: 47, y: 50, rotate: 0, label: "Настоящее" },
+      { index: 3, x: 63, y: 60, rotate: 0, label: "Скрытые влияния" },
+      { index: 4, x: 70, y: 70, rotate: 0, label: "Совет" },
+      { index: 5, x: 32, y: 70, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5]
   }

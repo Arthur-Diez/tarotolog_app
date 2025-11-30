@@ -78,11 +78,11 @@ export const SpreadFiveCards: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4, 5],
   positions: [
-    { id: 1, label: "Прошлое", x: -150, y: -40 },
-    { id: 2, label: "Настоящее", x: -70, y: 0 },
-    { id: 3, label: "Скрытые влияния", x: 0, y: 40 },
-    { id: 4, label: "Совет", x: 80, y: 80 },
-    { id: 5, label: "Результат", x: -230, y: 80 }
+    { id: 1, label: "Прошлое", x: 0, y: -140 },
+    { id: 2, label: "Настоящее", x: -70, y: -90 },
+    { id: 3, label: "Скрытые влияния", x: 70, y: -40 },
+    { id: 4, label: "Совет", x: 150, y: 10 },
+    { id: 5, label: "Результат", x: -150, y: 10 }
   ]
 };
 
