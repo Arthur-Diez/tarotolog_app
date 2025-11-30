@@ -37,8 +37,19 @@ export default function App() {
   }, [settingsTheme]);
 
   useEffect(() => {
-    const scheme = window.Telegram?.WebApp?.colorScheme ?? "light";
-    console.debug("[ui] colorScheme", scheme);
+    const applyTelegramTheme = () => {
+      const scheme = window.Telegram?.WebApp?.colorScheme ?? "dark";
+      document.documentElement.classList.toggle("tg-light", scheme === "light");
+      document.documentElement.classList.toggle("tg-dark", scheme !== "light");
+    };
+
+    applyTelegramTheme();
+    const tg = window.Telegram?.WebApp;
+    tg?.onEvent("themeChanged", applyTelegramTheme);
+
+    return () => {
+      tg?.offEvent("themeChanged", applyTelegramTheme);
+    };
   }, []);
 
   useEffect(() => {

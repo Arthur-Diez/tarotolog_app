@@ -90,6 +90,45 @@
     --ring: 289 67% 88%;
   }
 
+  .tg-dark {
+    --bg-main: #120e17;
+    --bg-card: rgba(255, 255, 255, 0.06);
+    --bg-card-strong: rgba(255, 255, 255, 0.1);
+    --bg-blur: rgba(255, 255, 255, 0.08);
+    --text-primary: rgba(255, 255, 255, 0.9);
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-tertiary: rgba(255, 255, 255, 0.4);
+  }
+
+  .tg-light {
+    --bg-main: #f8f5fb;
+    --bg-card: rgba(18, 14, 23, 0.08);
+    --bg-card-strong: rgba(18, 14, 23, 0.12);
+    --bg-blur: rgba(18, 14, 23, 0.08);
+
+    --text-primary: rgba(18, 14, 23, 0.9);
+    --text-secondary: rgba(18, 14, 23, 0.65);
+    --text-tertiary: rgba(18, 14, 23, 0.45);
+
+    --background: 282 28% 96%;
+    --foreground: 266 24% 12%;
+    --card: 280 40% 96% / 0.8;
+    --card-foreground: 266 24% 12%;
+    --border: 280 15% 82%;
+    --input: 282 20% 86%;
+    --primary: 289 67% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 40% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 285 27% 92%;
+    --muted-foreground: 280 24% 45%;
+    --accent: 289 67% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 79% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 289 67% 55%;
+  }
+
   *,
   *::before,
   *::after {
