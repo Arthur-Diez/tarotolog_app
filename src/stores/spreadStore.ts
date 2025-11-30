@@ -21,12 +21,18 @@ export interface SpreadReadingResult {
   balance?: number;
 }
 
+const computeExpectedNext = (schema: SpreadSchema, cards: SpreadCardState[]): number | null => {
+  const openedCount = cards.filter((card) => card.isOpen).length;
+  return schema.openOrder[openedCount] ?? null;
+};
+
 interface SpreadStoreState {
   schema: SpreadSchema;
   question: string;
   stage: SpreadStage;
   cards: SpreadCardState[];
-  forcedFreeOpening: boolean;
+  hasOrderWarningShown: boolean;
+  expectedNextCardIndex: number | null;
   readingId?: string | null;
   backendStatus?: BackendReadingStatus | null;
   readingResult: SpreadReadingResult | null;
@@ -34,8 +40,9 @@ interface SpreadStoreState {
   setQuestion: (value: string) => void;
   setStage: (stage: SpreadStage) => void;
   startSpread: (question: string) => void;
-  openCard: (positionIndex: number) => { blocked: boolean };
-  allowFreeOpening: () => void;
+  openCard: (positionIndex: number) => void;
+  checkOpeningAllowed: (positionIndex: number) => { allowed: boolean; expected: number | null };
+  markOrderWarningShown: () => void;
   reset: () => void;
   setBackendMeta: (meta: { readingId?: string | null; backendStatus?: BackendReadingStatus | null }) => void;
   setReadingResult: (result: SpreadReadingResult | null) => void;
@@ -46,7 +53,8 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
   question: "",
   stage: "fan",
   cards: [],
-  forcedFreeOpening: false,
+  hasOrderWarningShown: false,
+  expectedNextCardIndex: SpreadOneCard.openOrder[0] ?? null,
   readingId: undefined,
   backendStatus: undefined,
   readingResult: null,
@@ -56,7 +64,8 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
       question: "",
       stage: "fan",
       cards: [],
-      forcedFreeOpening: false,
+      hasOrderWarningShown: false,
+      expectedNextCardIndex: schema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,
       readingResult: null
@@ -76,7 +85,8 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
       question,
       stage: "fan",
       cards,
-      forcedFreeOpening: false,
+      hasOrderWarningShown: false,
+      expectedNextCardIndex: schema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,
       readingResult: null
@@ -85,32 +95,43 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
   openCard: (positionIndex) => {
     const state = get();
     if (state.stage !== "await_open" && state.stage !== "done") {
-      return { blocked: false };
-    }
-    if (!state.forcedFreeOpening && state.schema.openingRules === "in-order") {
-      const firstClosed = state.cards.find((card) => !card.isOpen);
-      if (firstClosed && firstClosed.positionIndex !== positionIndex) {
-        return { blocked: true };
-      }
+      return;
     }
     const updatedCards = state.cards.map((card) =>
       card.positionIndex === positionIndex ? { ...card, isOpen: true } : card
     );
     const allOpen = updatedCards.every((card) => card.isOpen);
-    set({ cards: updatedCards, stage: allOpen ? "done" : state.stage });
-    return { blocked: false };
+    set({
+      cards: updatedCards,
+      stage: allOpen ? "done" : state.stage,
+      expectedNextCardIndex: computeExpectedNext(state.schema, updatedCards)
+    });
   },
-  allowFreeOpening: () => set({ forcedFreeOpening: true }),
-  reset: () =>
+  checkOpeningAllowed: (positionIndex) => {
+    const state = get();
+    if (state.schema.openingRules !== "in-order" || state.hasOrderWarningShown) {
+      return { allowed: true, expected: state.expectedNextCardIndex };
+    }
+    const expected = state.expectedNextCardIndex;
+    if (!expected) {
+      return { allowed: true, expected: null };
+    }
+    return { allowed: expected === positionIndex, expected };
+  },
+  markOrderWarningShown: () => set({ hasOrderWarningShown: true }),
+  reset: () => {
+    const currentSchema = get().schema;
     set({
       question: "",
       stage: "fan",
       cards: [],
-      forcedFreeOpening: false,
+      hasOrderWarningShown: false,
+      expectedNextCardIndex: currentSchema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,
       readingResult: null
-    }),
+    });
+  },
   setBackendMeta: (meta) => set(meta),
   setReadingResult: (result) => set({ readingResult: result })
 }));

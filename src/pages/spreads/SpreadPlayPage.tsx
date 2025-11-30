@@ -54,7 +54,9 @@ export default function SpreadPlayPage() {
   const setQuestion = useSpreadStore((state) => state.setQuestion);
   const start = useSpreadStore((state) => state.startSpread);
   const openCard = useSpreadStore((state) => state.openCard);
-  const allowFreeOpening = useSpreadStore((state) => state.allowFreeOpening);
+  const hasOrderWarningShown = useSpreadStore((state) => state.hasOrderWarningShown);
+  const checkOpeningAllowed = useSpreadStore((state) => state.checkOpeningAllowed);
+  const markOrderWarningShown = useSpreadStore((state) => state.markOrderWarningShown);
   const resetStore = useSpreadStore((state) => state.reset);
   const setStage = useSpreadStore((state) => state.setStage);
   const setSchema = useSpreadStore((state) => state.setSchema);
@@ -264,15 +266,16 @@ export default function SpreadPlayPage() {
 
   const handleCardClick = (positionIndex: number) => {
     if (stage !== "await_open" && stage !== "done") return;
-    const { blocked } = openCard(positionIndex);
-    if (blocked) {
-      if (!orderWarning) {
-        setOrderWarning("Пожалуйста, откройте карты по порядку");
-        allowFreeOpening();
+    const { allowed } = checkOpeningAllowed(positionIndex);
+    if (!allowed) {
+      setOrderWarning("Открывайте карты по порядку: сначала №1, затем №2, затем №3");
+      if (!hasOrderWarningShown) {
+        markOrderWarningShown();
       }
       return;
     }
     setOrderWarning(null);
+    openCard(positionIndex);
   };
 
   const handleInterpretationRequest = async () => {
@@ -366,9 +369,18 @@ export default function SpreadPlayPage() {
   const energyLabel = energyLoading ? "…" : energy ?? "—";
   const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
 
+  const orderMap = useMemo(() => {
+    const map = new Map<number, number>();
+    schema.openOrder.forEach((positionId, index) => {
+      map.set(positionId, index + 1);
+    });
+    return map;
+  }, [schema]);
+
   const cardsWithPosition = schema.positions.map((position, index) => ({
     position,
-    card: cards[index]
+    card: cards[index],
+    orderNumber: orderMap.get(position.id)
   }));
 
   return (
@@ -415,23 +427,31 @@ export default function SpreadPlayPage() {
                 initial={{ y: -16, opacity: 0 }}
                 style={{ willChange: "transform" }}
               >
-                {cardsWithPosition.map(({ position, card }) => {
+                {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
+                  const showOrderLabel =
+                    !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
                   return (
                     <div key={position.id} className="relative flex flex-col items-center">
                       {card && faceSrc && (
-                        <DealtCard
-                          backSrc={backSrc}
-                          faceSrc={faceSrc}
-                          isOpen={card.isOpen}
-                          reversed={card.reversed}
-                          onClick={() => handleCardClick(position.id)}
-                        />
-                      )}
-                      {!card?.isOpen && (
-                        <span className="pointer-events-none absolute top-3 text-3xl font-bold text-white/80">
-                          {position.id}
-                        </span>
+                        <div className="relative">
+                          {showOrderLabel && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="absolute -top-5 left-1/2 z-[1200] h-7 w-7 -translate-x-1/2 rounded-full bg-white/85 text-center text-sm font-semibold text-black shadow-lg"
+                            >
+                              {orderNumber}
+                            </motion.div>
+                          )}
+                          <DealtCard
+                            backSrc={backSrc}
+                            faceSrc={faceSrc}
+                            isOpen={card.isOpen}
+                            reversed={card.reversed}
+                            onClick={() => handleCardClick(position.id)}
+                          />
+                        </div>
                       )}
                       {card?.isOpen && <p className="mt-2 text-xs text-white/70">{position.label}</p>}
                     </div>

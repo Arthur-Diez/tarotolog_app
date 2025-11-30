@@ -13,6 +13,7 @@ export interface SpreadSchema {
   cardCount: number;
   deckType: "rws";
   openingRules: "in-order" | "any-order";
+  openOrder: number[];
   positions: SpreadPosition[];
 }
 
@@ -22,6 +23,7 @@ export const SpreadOneCard: SpreadSchema = {
   cardCount: 1,
   deckType: "rws",
   openingRules: "any-order",
+  openOrder: [1],
   positions: [{ id: 1, label: "Карта дня", x: 0, y: 0 }]
 };
 
@@ -31,6 +33,7 @@ export const SpreadYesNo: SpreadSchema = {
   cardCount: 3,
   deckType: "rws",
   openingRules: "in-order",
+  openOrder: [1, 2, 3],
   positions: [
     { id: 1, label: "Фактор ДА", x: -120, y: 0 },
     { id: 2, label: "Фактор НЕТ", x: 0, y: 0 },
