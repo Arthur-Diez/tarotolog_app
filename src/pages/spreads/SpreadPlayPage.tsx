@@ -439,9 +439,9 @@ export default function SpreadPlayPage() {
                             <motion.div
                               initial={{ opacity: 0, y: -4 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="absolute -top-5 left-1/2 z-[1200] h-7 w-7 -translate-x-1/2 rounded-full bg-white/85 text-center text-sm font-semibold text-black shadow-lg"
+                              className="absolute -top-8 left-1/2 z-[1200] -translate-x-1/2 rounded-full bg-white/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-black shadow-[0_5px_15px_rgba(0,0,0,0.25)]"
                             >
-                              {orderNumber}
+                              №{orderNumber}
                             </motion.div>
                           )}
                           <DealtCard
