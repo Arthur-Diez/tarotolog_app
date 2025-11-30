@@ -55,8 +55,24 @@ export const SpreadThreeCards: SpreadSchema = {
   ]
 };
 
+export const SpreadCross: SpreadSchema = {
+  id: "cross",
+  name: "Крест",
+  cardCount: 4,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4],
+  positions: [
+    { id: 1, label: "Суть ситуации", x: 0, y: 0 },
+    { id: 2, label: "Против", x: -120, y: 0 },
+    { id: 3, label: "За", x: 120, y: 0 },
+    { id: 4, label: "Результат", x: 0, y: -140 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
-  three_cards: SpreadThreeCards
+  three_cards: SpreadThreeCards,
+  cross: SpreadCross
 };

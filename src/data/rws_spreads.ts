@@ -1,4 +1,4 @@
-export type SpreadId = "one_card" | "yes_no" | "three_cards";
+export type SpreadId = "one_card" | "yes_no" | "three_cards" | "cross";
 
 export interface SpreadPosition {
   index: number;
@@ -50,6 +50,19 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 3, x: 70, y: 50, rotate: 5, label: "Будущее" }
     ],
     openOrder: [1, 2, 3]
+  },
+  {
+    id: "cross",
+    title: "Крест",
+    description: "Четыре карты: ситуация, препятствие, поддержка, результат.",
+    cardsCount: 4,
+    positions: [
+      { index: 1, x: 50, y: 50, rotate: 0, label: "Суть ситуации" },
+      { index: 2, x: 30, y: 50, rotate: -5, label: "Против" },
+      { index: 3, x: 70, y: 50, rotate: 5, label: "За" },
+      { index: 4, x: 50, y: 30, rotate: 0, label: "Результат" }
+    ],
+    openOrder: [1, 2, 3, 4]
   }
 ];
 
