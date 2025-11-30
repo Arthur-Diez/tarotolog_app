@@ -33,7 +33,8 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
         spreadId === "horseshoe" ||
         spreadId === "star" ||
         spreadId === "pyramid" ||
-        spreadId === "celtic_cross")
+        spreadId === "celtic_cross" ||
+        spreadId === "wheel_of_year")
     ) {
       navigate(`/spreads/play/${spreadId}`);
       return;
@@ -78,7 +79,8 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                 spread.id === "horseshoe" ||
                 spread.id === "star" ||
                 spread.id === "pyramid" ||
-                spread.id === "celtic_cross")
+                spread.id === "celtic_cross" ||
+                spread.id === "wheel_of_year")
             }
           />
         ))}

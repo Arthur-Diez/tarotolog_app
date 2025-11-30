@@ -160,6 +160,29 @@ export const SpreadCelticCross: SpreadSchema = {
   ]
 };
 
+export const SpreadWheelOfYear: SpreadSchema = {
+  id: "wheel_of_year",
+  name: "Колесо года",
+  cardCount: 12,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  positions: [
+    { id: 1, label: "Январь", x: -200, y: -20 },
+    { id: 2, label: "Февраль", x: -140, y: -100 },
+    { id: 3, label: "Март", x: 0, y: -160 },
+    { id: 4, label: "Апрель", x: 140, y: -100 },
+    { id: 5, label: "Май", x: 200, y: -20 },
+    { id: 6, label: "Июнь", x: 200, y: 80 },
+    { id: 7, label: "Июль", x: 0, y: 160 },
+    { id: 8, label: "Август", x: -200, y: 80 },
+    { id: 9, label: "Сентябрь", x: -60, y: -20 },
+    { id: 10, label: "Октябрь", x: 60, y: -20 },
+    { id: 11, label: "Ноябрь", x: -60, y: 60 },
+    { id: 12, label: "Декабрь", x: 60, y: 60 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -169,5 +192,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   horseshoe: SpreadHorseshoe,
   star: SpreadStar,
   pyramid: SpreadPyramid,
-  celtic_cross: SpreadCelticCross
+  celtic_cross: SpreadCelticCross,
+  wheel_of_year: SpreadWheelOfYear
 };

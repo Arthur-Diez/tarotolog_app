@@ -7,6 +7,8 @@ export type SpreadId =
   | "horseshoe"
   | "star"
   | "pyramid"
+  | "celtic_cross"
+  | "wheel_of_year"
   | "celtic_cross";
 
 export interface SpreadPosition {
@@ -152,6 +154,27 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 10, x: 80, y: 90, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  },
+  {
+    id: "wheel_of_year",
+    title: "Колесо года",
+    description: "Годовой расклад из 12 карт — каждый месяц как отдельный этап.",
+    cardsCount: 12,
+    positions: [
+      { index: 1, x: 30, y: 45, rotate: 0, label: "Январь" },
+      { index: 2, x: 35, y: 35, rotate: 0, label: "Февраль" },
+      { index: 3, x: 50, y: 30, rotate: 0, label: "Март" },
+      { index: 4, x: 65, y: 35, rotate: 0, label: "Апрель" },
+      { index: 5, x: 70, y: 45, rotate: 0, label: "Май" },
+      { index: 6, x: 70, y: 60, rotate: 0, label: "Июнь" },
+      { index: 7, x: 50, y: 70, rotate: 0, label: "Июль" },
+      { index: 8, x: 30, y: 60, rotate: 0, label: "Август" },
+      { index: 9, x: 45, y: 45, rotate: 0, label: "Сентябрь" },
+      { index: 10, x: 55, y: 45, rotate: 0, label: "Октябрь" },
+      { index: 11, x: 45, y: 55, rotate: 0, label: "Ноябрь" },
+      { index: 12, x: 55, y: 55, rotate: 0, label: "Декабрь" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   }
 ];
 
