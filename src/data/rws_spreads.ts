@@ -1,4 +1,12 @@
-export type SpreadId = "one_card" | "yes_no" | "three_cards" | "cross" | "five_cards" | "horseshoe" | "star";
+export type SpreadId =
+  | "one_card"
+  | "yes_no"
+  | "three_cards"
+  | "cross"
+  | "five_cards"
+  | "horseshoe"
+  | "star"
+  | "pyramid";
 
 export interface SpreadPosition {
   index: number;
@@ -109,6 +117,21 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 7, x: 100, y: 40, rotate: 0, label: "Коронная чакра" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "pyramid",
+    title: "Пирамида",
+    description: "Шесть карт от основания к вершине: прошлое, настоящее, внешнее, внутреннее, вызов и итог.",
+    cardsCount: 6,
+    positions: [
+      { index: 1, x: 50, y: 75, rotate: 0, label: "Прошлое" },
+      { index: 2, x: 40, y: 60, rotate: 0, label: "Настоящее" },
+      { index: 3, x: 60, y: 60, rotate: 0, label: "Внешние факторы" },
+      { index: 4, x: 30, y: 45, rotate: 0, label: "Внутренние процессы" },
+      { index: 5, x: 70, y: 45, rotate: 0, label: "Вызовы" },
+      { index: 6, x: 50, y: 30, rotate: 0, label: "Результат" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6]
   }
 ];
 

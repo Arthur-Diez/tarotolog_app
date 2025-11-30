@@ -31,7 +31,8 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
         spreadId === "cross" ||
         spreadId === "five_cards" ||
         spreadId === "horseshoe" ||
-        spreadId === "star")
+        spreadId === "star" ||
+        spreadId === "pyramid")
     ) {
       navigate(`/spreads/play/${spreadId}`);
       return;
@@ -74,7 +75,8 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                 spread.id === "cross" ||
                 spread.id === "five_cards" ||
                 spread.id === "horseshoe" ||
-                spread.id === "star")
+                spread.id === "star" ||
+                spread.id === "pyramid")
             }
           />
         ))}
