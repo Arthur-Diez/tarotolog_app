@@ -8,6 +8,7 @@ import DealtCard from "@/components/tarot/DealtCard";
 import { DeckStack } from "@/components/tarot/DeckStack";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { useEnergyBalance } from "@/hooks/useEnergyBalance";
+import { useSpreadScale } from "@/hooks/useSpreadScale";
 import {
   ApiError,
   createReading,
@@ -76,6 +77,7 @@ export default function SpreadPlayPage() {
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
   const navigate = useNavigate();
+  const scale = useSpreadScale(schema);
 
   useEffect(() => {
     setSchema(schema);
@@ -375,7 +377,8 @@ export default function SpreadPlayPage() {
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.12) 0%, transparent 40%), radial-gradient(circle at 80% 0%, rgba(177,111,255,0.25) 0%, transparent 45%)"
+            "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.12) 0%, transparent 40%), radial-gradient(circle at 80% 0%, rgba(177,111,255,0.25) 0%, transparent 45%)",
+          filter: scale < 0.85 ? "blur(1.5px)" : undefined
         }}
       />
       <div
@@ -400,48 +403,51 @@ export default function SpreadPlayPage() {
             {energyError && <p className="mt-1 text-xs text-red-200">{energyError}</p>}
           </div>
         </div>
-        <div className="relative flex w-full flex-col items-center" style={{ transformStyle: "preserve-3d" }}>
-          <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2 gap-6">
-            <motion.div
-              className="deal-host flex items-center gap-6"
-              initial={{ y: -16, opacity: 0 }}
-              style={{ willChange: "transform" }}
-            >
-              {cardsWithPosition.map(({ position, card }) => {
-                const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
-                return (
-                  <div key={position.id} className="relative flex flex-col items-center">
-                    {card && faceSrc && (
-                      <DealtCard
-                        backSrc={backSrc}
-                        faceSrc={faceSrc}
-                        isOpen={card.isOpen}
-                        reversed={card.reversed}
-                        onClick={() => handleCardClick(position.id)}
-                      />
-                    )}
-                    {!card?.isOpen && (
-                      <span className="pointer-events-none absolute top-3 text-3xl font-bold text-white/80">
-                        {position.id}
-                      </span>
-                    )}
-                    {card?.isOpen && (
-                      <p className="mt-2 text-xs text-white/70">{position.label}</p>
-                    )}
-                  </div>
-                );
-              })}
-            </motion.div>
-          </div>
+        <div style={{ width: "100%", display: "flex", justifyContent: "center", marginTop: `${20 / scale}px` }}>
           <div
-            id="questionBubble"
-            ref={questionBubbleRef}
-            className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
-              trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
-            }`}
+            className="relative flex w-full flex-col items-center"
+            style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
-            {trimmedQuestion || "Введите вопрос, чтобы начать"}
+            <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2 gap-6">
+              <motion.div
+                className="deal-host flex items-center gap-6"
+                initial={{ y: -16, opacity: 0 }}
+                style={{ willChange: "transform" }}
+              >
+                {cardsWithPosition.map(({ position, card }) => {
+                  const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
+                  return (
+                    <div key={position.id} className="relative flex flex-col items-center">
+                      {card && faceSrc && (
+                        <DealtCard
+                          backSrc={backSrc}
+                          faceSrc={faceSrc}
+                          isOpen={card.isOpen}
+                          reversed={card.reversed}
+                          onClick={() => handleCardClick(position.id)}
+                        />
+                      )}
+                      {!card?.isOpen && (
+                        <span className="pointer-events-none absolute top-3 text-3xl font-bold text-white/80">
+                          {position.id}
+                        </span>
+                      )}
+                      {card?.isOpen && <p className="mt-2 text-xs text-white/70">{position.label}</p>}
+                    </div>
+                  );
+                })}
+              </motion.div>
+            </div>
+            <div
+              id="questionBubble"
+              ref={questionBubbleRef}
+              className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
+                trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              {trimmedQuestion || "Введите вопрос, чтобы начать"}
+            </div>
           </div>
         </div>
 
