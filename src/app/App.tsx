@@ -45,10 +45,10 @@ export default function App() {
 
     applyTelegramTheme();
     const tg = window.Telegram?.WebApp;
-    tg?.onEvent("themeChanged", applyTelegramTheme);
+    tg?.onEvent?.("themeChanged", applyTelegramTheme);
 
     return () => {
-      tg?.offEvent("themeChanged", applyTelegramTheme);
+      tg?.offEvent?.("themeChanged", applyTelegramTheme);
     };
   }, []);
 
