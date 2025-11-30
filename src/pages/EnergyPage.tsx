@@ -10,25 +10,25 @@ export default function EnergyPage() {
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel flex items-center gap-4 rounded-3xl p-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary/15">
-          <Zap className="h-7 w-7 text-secondary" />
+      <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
+        <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">
+          <Zap className="h-7 w-7 text-[var(--accent-gold)]" strokeWidth={1.4} />
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Энергия аккаунта</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Энергия аккаунта</p>
           {loading && !profile ? (
-            <div className="h-8 w-24 animate-pulse rounded-md bg-muted/30" />
+            <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-white/10" />
           ) : (
-            <p className="text-2xl font-semibold text-foreground">{energyBalance} ⚡</p>
+            <p className="mt-2 text-3xl font-semibold text-[var(--accent-pink)]">{energyBalance} ⚡</p>
           )}
           {user?.telegram.username ? (
-            <p className="text-xs text-muted-foreground">@{user.telegram.username}</p>
+            <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p>
           ) : null}
         </div>
       </div>
 
-      <Card className="glass-panel border-none p-6 text-center text-muted-foreground">
-        <h2 className="text-lg font-semibold text-foreground">Энергия</h2>
+      <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-6 text-center text-[var(--text-secondary)]">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Энергия</h2>
         <p className="mt-2 text-sm">
           Скоро здесь появится аналитика энергии, рекомендации по пополнению и история операций.
         </p>

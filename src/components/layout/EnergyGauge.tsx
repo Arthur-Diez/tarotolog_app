@@ -11,35 +11,49 @@ export interface EnergyGaugeProps {
 
 export function EnergyGauge({ level, glowIntensity, max = 100, className }: EnergyGaugeProps) {
   const percentage = Math.min(level / max, 1) * 100;
-  const glowOpacity = Math.min(0.5 + glowIntensity * 0.25, 0.95);
+  const glowOpacity = Math.min(0.45 + glowIntensity * 0.25, 0.9);
 
   return (
-    <div className={cn("glass-panel relative overflow-hidden rounded-3xl p-6", className)}>
-      <div className="flex items-center justify-between">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[28px] border border-[rgba(217,194,163,0.25)] bg-[var(--bg-card-strong)] p-6 shadow-[0_30px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl",
+        className
+      )}
+    >
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm uppercase tracking-wider text-muted-foreground">Энергия</p>
-          <p className="text-3xl font-semibold text-foreground">{Math.round(percentage)}%</p>
+          <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Энергетика</p>
+          <p className="mt-2 text-4xl font-semibold text-[var(--accent-pink)]">{Math.round(percentage)}%</p>
         </div>
-        <div className="text-right text-xs text-muted-foreground">
+        <div className="text-right text-xs text-[var(--text-secondary)]">
           <p>Максимум: {max}</p>
           <p>Баланс гармонии</p>
         </div>
       </div>
-      <div className="mt-5 h-3 w-full rounded-full bg-white/10">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${percentage}%` }}
-          transition={{ type: "spring", stiffness: 120, damping: 20 }}
-          className="h-full rounded-full bg-energy-gradient"
-          style={{ boxShadow: `0 0 25px rgba(112, 83, 244, ${glowOpacity})` }}
-        />
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">
+          <span>низкая</span>
+          <span>высокая</span>
+        </div>
+        <div className="relative h-4 w-full rounded-full bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${percentage}%` }}
+            transition={{ type: "spring", stiffness: 140, damping: 22 }}
+            className="absolute inset-y-0 left-0 rounded-full bg-energy-gradient"
+            style={{
+              boxShadow: `0 12px 30px rgba(255, 216, 187, ${glowOpacity}), inset 0 0 12px rgba(255,255,255,0.35)`
+            }}
+          />
+        </div>
       </div>
       <motion.div
-        className="pointer-events-none absolute -inset-10 opacity-40 blur-3xl"
+        className="pointer-events-none absolute inset-0 opacity-30"
         animate={{ opacity: glowOpacity }}
-        style={{ background: "radial-gradient(circle at top, rgba(112,83,244,0.45), transparent 65%)" }}
-        transition={{ duration: 0.6, ease: "easeInOut" }}
+        style={{ background: "radial-gradient(circle at 30% 0%, rgba(238,205,245,0.35), transparent 50%)" }}
+        transition={{ duration: 0.7, ease: "easeInOut" }}
       />
+      <div className="pointer-events-none absolute inset-0 rounded-[28px] shadow-[inset_0_0_35px_rgba(255,255,255,0.05)]" />
     </div>
   );
 }

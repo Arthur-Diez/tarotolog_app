@@ -35,7 +35,12 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))"
-        }
+        },
+        "accent-pink": "var(--accent-pink)",
+        "accent-gold": "var(--accent-gold)",
+        "text-primary": "var(--text-primary)",
+        "text-secondary": "var(--text-secondary)",
+        "text-tertiary": "var(--text-tertiary)"
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -43,14 +48,16 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)"
       },
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans]
+        sans: ["Manrope", ...defaultTheme.fontFamily.sans],
+        serif: ["Cormorant Garamond", ...defaultTheme.fontFamily.serif]
       },
       boxShadow: {
-        glow: "0 0 25px rgba(112, 83, 244, 0.35)"
+        glow: "0 0 32px rgba(238, 205, 245, 0.35)"
       },
       backgroundImage: {
-        "energy-gradient": "linear-gradient(135deg, #7053f4 0%, #a855f7 50%, #ec4899 100%)",
-        "card-glow": "linear-gradient(145deg, rgba(112,83,244,0.2), rgba(236,72,153,0.2))"
+        "energy-gradient": "linear-gradient(135deg, #f3c6ff 0%, #ffd8bb 100%)",
+        "card-glow": "linear-gradient(145deg, rgba(238,205,245,0.35), rgba(18,14,23,0.3))",
+        "accent-energy": "linear-gradient(45deg, #f3c6ff, #ffd8bb)"
       }
     }
   },

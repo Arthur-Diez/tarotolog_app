@@ -50,14 +50,12 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
           <button
             type="button"
             onClick={onBack}
-            className="text-sm font-semibold text-secondary transition hover:text-secondary/80"
+            className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
           >
             ← Назад
           </button>
-          <h2 className="mt-1 text-xl font-semibold text-foreground">{deck.title}</h2>
-          {deck.subtitle ? (
-            <p className="text-xs text-muted-foreground">{deck.subtitle}</p>
-          ) : null}
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{deck.title}</h2>
+          {deck.subtitle ? <p className="text-xs text-[var(--text-secondary)]">{deck.subtitle}</p> : null}
         </div>
       </div>
 
@@ -99,18 +97,18 @@ interface SpreadCardProps {
 
 function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
   return (
-    <Card className="rounded-2xl border border-border/40 bg-card/70 p-4 shadow-lg shadow-black/5">
+    <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-foreground">{spread.title}</h3>
-          <p className="text-xs text-muted-foreground">7 карт • 15 мин</p>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">{spread.title}</h3>
+          <p className="text-xs text-[var(--text-secondary)]">7 карт • 15 мин</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1"
+            className="gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`spread-desc-${spread.id}`}
@@ -123,7 +121,14 @@ function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadC
               <ChevronDown className="h-4 w-4" />
             </motion.span>
           </Button>
-          <Button type="button" size="sm" onClick={onSelect} disabled={!canSelect}>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            className="text-xs"
+            onClick={onSelect}
+            disabled={!canSelect}
+          >
             Выбрать
           </Button>
         </div>

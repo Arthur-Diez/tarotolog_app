@@ -191,22 +191,23 @@ export default function InterpretationPage() {
   });
 
   return (
-    <div className="space-y-5 text-white">
+    <div className="space-y-5 text-[var(--text-primary)]">
       <Button
-        className="group gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90"
+        variant="outline"
+        className="group gap-2 border-white/15 bg-[var(--bg-card)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
         onClick={() => navigate("/spreads")}
       >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+        <ArrowLeft className="h-4 w-4 text-[var(--accent-pink)] transition-transform group-hover:-translate-x-1" strokeWidth={1.4} />
         Вернуться к колодам
       </Button>
 
-      <div className="rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur">
-        <div className="flex items-center gap-3 text-sm uppercase tracking-[0.25em] text-white/60">
-          <Sparkles className="h-5 w-5 text-secondary" />
+      <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 backdrop-blur-2xl shadow-[0_35px_70px_rgba(0,0,0,0.65)]">
+        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">
+          <Sparkles className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
           <span>Интерпретация расклада</span>
         </div>
-        <h1 className="mt-3 text-2xl font-semibold text-white">Послание вашей карты</h1>
-        <p className="mt-1 text-sm text-white/70">
+        <h1 className="mt-3 text-3xl font-semibold mystic-heading text-[var(--accent-pink)]">Послание вашей карты</h1>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Расклад № {reading?.id ?? id} •{" "}
           {generatedAt
             ? new Date(generatedAt).toLocaleString("ru-RU", {
@@ -217,7 +218,7 @@ export default function InterpretationPage() {
               })
             : "ожидание данных"}
         </p>
-        <p className="mt-2 text-sm text-white/70">
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
           {spreadTitle} • {deckTitle}
         </p>
       </div>
@@ -225,7 +226,7 @@ export default function InterpretationPage() {
       {loading && <LoadingTarot message="Готовим красивую интерпретацию" subMessage="Колода перетасовывается..." />}
 
       {!loading && error && (
-        <div className="space-y-4 rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-red-100">
+        <div className="space-y-4 rounded-[28px] border border-red-500/40 bg-red-500/10 p-5 text-red-100 shadow-[0_35px_70px_rgba(0,0,0,0.6)]">
           <p className="text-base font-semibold">Не удалось загрузить интерпретацию</p>
           <p className="text-sm opacity-80">{error}</p>
           {id && (
@@ -244,45 +245,45 @@ export default function InterpretationPage() {
 
       {!loading && !error && reading && (
         <div className="space-y-5">
-          <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Вопрос</p>
-            <p className="text-base text-white">{questionText}</p>
-          </div>
+        <div className="space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+          <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
+          <p className="text-base text-[var(--text-primary)]">{questionText}</p>
+        </div>
 
-          <div className="flex gap-3 overflow-x-auto rounded-3xl border border-white/5 bg-white/5 p-4">
+        <div className="flex gap-3 overflow-x-auto rounded-[28px] border border-white/10 bg-[var(--bg-card)]/70 p-4">
+          {cardDisplayList.length > 0 ? (
+            cardDisplayList.map((card) => (
+              <div
+                key={`${card.position}-${card.card_code}`}
+                className="flex min-w-[120px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/90 p-3 text-center text-xs text-[var(--text-secondary)] shadow-[0_20px_40px_rgba(0,0,0,0.6)]"
+              >
+                <div className="mb-2 flex h-36 w-full items-center justify-center rounded-xl border border-white/15 bg-gradient-to-b from-[var(--accent-pink)]/15 to-transparent px-2 text-[var(--text-secondary)]">
+                  {card.displayName}
+                </div>
+                <p className="font-semibold uppercase tracking-[0.2em] text-[var(--accent-gold)]">{card.position}</p>
+                <p className="mt-1 text-[11px] opacity-80">
+                  {card.displayName}
+                  {card.reversed ? " • Перевёрнута" : ""}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-[var(--text-secondary)]">Данные по картам появятся сразу после генерации.</p>
+          )}
+        </div>
+
+        <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Краткий итог</p>
+          <p className="text-lg font-semibold leading-relaxed">{summaryText}</p>
+        </div>
+
+        <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
+          <ul className="mt-3 space-y-2 text-base leading-relaxed">
             {cardDisplayList.length > 0 ? (
               cardDisplayList.map((card) => (
-                <div
-                  key={`${card.position}-${card.card_code}`}
-                  className="flex min-w-[110px] flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-white/15 to-white/5 p-3 text-center text-xs text-white/80 shadow-lg"
-                >
-                  <div className="mb-2 flex h-36 w-full items-center justify-center rounded-xl border border-white/10 bg-gradient-to-b from-secondary/20 to-transparent text-white/70">
-                    {card.displayName}
-                  </div>
-                  <p className="font-semibold uppercase tracking-[0.2em]">{card.position}</p>
-                  <p className="mt-1 text-[11px] opacity-80">
-                    {card.displayName}
-                    {card.reversed ? " • Перевёрнута" : ""}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-white/70">Данные по картам появятся сразу после генерации.</p>
-            )}
-          </div>
-
-          <div className="space-y-4 rounded-3xl border border-secondary/40 bg-secondary/20 p-5 text-white shadow-2xl">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/80">Краткий итог</p>
-            <p className="text-lg font-semibold leading-relaxed text-white">{summaryText}</p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/90">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Карты</p>
-            <ul className="mt-3 space-y-2 text-base leading-relaxed">
-              {cardDisplayList.length > 0 ? (
-                cardDisplayList.map((card) => (
-                  <li key={`${card.position}-${card.card_code}`}>
-                    {card.position}. {card.displayName} {card.reversed ? "(перевернута)" : ""}
+                <li key={`${card.position}-${card.card_code}`}>
+                  {card.position}. {card.displayName} {card.reversed ? "(перевернута)" : ""}
                   </li>
                 ))
               ) : (
@@ -291,13 +292,10 @@ export default function InterpretationPage() {
             </ul>
           </div>
 
-          <Button
-            className="w-full bg-white/20 text-white hover:bg-white/30"
-            onClick={() => alert("Скоро будет реализовано")}
-          >
-            Записать расклад в дневник
-          </Button>
-        </div>
+        <Button className="w-full border border-white/15 bg-[var(--bg-card)]/60 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]" onClick={() => alert("Скоро будет реализовано")}>
+          Записать расклад в дневник
+        </Button>
+      </div>
       )}
     </div>
   );

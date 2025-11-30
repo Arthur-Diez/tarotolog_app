@@ -88,7 +88,7 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden bg-background px-4 pb-24 pt-6">
+    <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden px-4 pb-28 pt-8 text-[var(--text-primary)]">
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div

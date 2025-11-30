@@ -33,17 +33,16 @@ export function SectionGrid({ sections, onSectionSelect }: SectionGridProps) {
         >
           <Card
             className={cn(
-              "glass-panel flex h-full flex-col items-start justify-between rounded-3xl border-none bg-gradient-to-br from-white/80 via-white/60 to-white/40 p-4 text-left shadow-md transition group-hover:-translate-y-1 group-hover:shadow-lg dark:from-white/10 dark:via-white/5 dark:to-white/0",
-              index === 0 && "row-span-2"
+              "flex h-full min-h-[150px] flex-col items-start justify-between rounded-[24px] border border-white/10 bg-[var(--bg-card)]/90 p-5 text-left shadow-[0_20px_40px_rgba(0,0,0,0.45)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:border-white/20"
             )}
           >
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
-                {section.icon}
-              </span>
-              <h4 className="text-base font-semibold text-foreground">{section.title}</h4>
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[var(--accent-gold)]">
+              {section.icon}
+            </span>
+            <div className="mt-4 space-y-1.5">
+              <h4 className="text-base font-semibold text-[var(--text-primary)]">{section.title}</h4>
+              <p className="text-sm text-[var(--text-secondary)]">{section.description}</p>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{section.description}</p>
           </Card>
         </motion.button>
       ))}

@@ -21,7 +21,7 @@ export function Expander({ isOpen, ariaId, children }: ExpanderProps) {
           transition={{ duration: 0.28, ease: "easeInOut" }}
           aria-live="polite"
         >
-          <div id={contentId} className="pt-3 text-sm text-muted-foreground">
+          <div id={contentId} className="pt-3 text-sm text-[var(--text-secondary)]">
             {children}
           </div>
         </motion.div>

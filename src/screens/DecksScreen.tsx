@@ -39,8 +39,8 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-foreground">Расклады</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Расклады</h1>
+        <p className="text-sm text-[var(--text-secondary)]">
           Выберите колоду и исследуйте расклады под ваш запрос.
         </p>
         <div className="pt-1">
@@ -49,7 +49,7 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Поиск по колодам"
-            className="h-10 w-full rounded-2xl border border-border/50 bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            className="h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
           />
           {/* TODO: sorting dropdown (популярные, последние) */}
         </div>
@@ -80,7 +80,7 @@ interface DeckCardProps {
 function DeckCard({ deck, expanded, onToggle, onSelect }: DeckCardProps) {
   return (
     <Card
-      className="group flex cursor-pointer flex-col rounded-2xl border border-border/50 bg-card/70 p-4 shadow-lg shadow-black/5 transition active:opacity-90"
+      className="group flex cursor-pointer flex-col rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)] transition active:opacity-90"
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -94,16 +94,16 @@ function DeckCard({ deck, expanded, onToggle, onSelect }: DeckCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground">{deck.title}</h2>
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">{deck.title}</h2>
             {/* TODO: cover image (CDN) */}
           </div>
-          {deck.subtitle ? <p className="text-xs text-muted-foreground">{deck.subtitle}</p> : null}
+          {deck.subtitle ? <p className="text-xs text-[var(--text-secondary)]">{deck.subtitle}</p> : null}
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="shrink-0 gap-1 bg-secondary text-secondary-foreground hover:bg-secondary/90 border-transparent"
+          className="shrink-0 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
           onClick={(event) => {
             event.stopPropagation();
             onToggle();

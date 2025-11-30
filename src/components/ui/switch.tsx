@@ -17,16 +17,18 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         aria-checked={checked}
         onClick={() => onCheckedChange?.(!checked)}
         className={cn(
-          "relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition",
-          checked ? "bg-secondary" : "bg-muted",
+          "relative inline-flex h-7 w-12 items-center rounded-full border border-white/10 bg-[var(--bg-card)] transition",
+          checked ? "bg-[var(--bg-card-strong)]" : "bg-[var(--bg-card)]",
           className
         )}
         {...props}
       >
         <span
           className={cn(
-            "inline-block h-5 w-5 rounded-full bg-background shadow transition",
-            checked ? "translate-x-[22px]" : "translate-x-1"
+            "inline-block h-5 w-5 rounded-full bg-[var(--bg-blur)] shadow-[0_6px_20px_rgba(0,0,0,0.4)] transition",
+            checked
+              ? "translate-x-[22px] bg-[var(--accent-pink)]"
+              : "translate-x-1 bg-[var(--bg-blur)]"
           )}
         />
       </button>

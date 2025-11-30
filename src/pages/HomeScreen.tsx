@@ -25,43 +25,43 @@ const sections = [
     id: "tarot",
     title: "Расклады",
     description: "Глубокие расклады для любого запроса",
-    icon: <LayoutDashboard className="h-5 w-5" />
+    icon: <LayoutDashboard className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   },
   {
     id: "compatibility",
     title: "Совместимость",
     description: "Синергия и отношения с партнёром",
-    icon: <HeartHandshake className="h-5 w-5" />
+    icon: <HeartHandshake className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "horoscope",
     title: "Гороскоп",
     description: "Ежедневные подсказки от звезд",
-    icon: <Sun className="h-5 w-5" />
+    icon: <Sun className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   },
   {
     id: "matrix",
     title: "Матрица судьбы",
     description: "Раскрой предназначение и таланты",
-    icon: <Orbit className="h-5 w-5" />
+    icon: <Orbit className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "natal",
     title: "Натальная карта",
     description: "Твой личный космический паспорт",
-    icon: <Star className="h-5 w-5" />
+    icon: <Star className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   },
   {
     id: "numerology",
     title: "Нумерология",
     description: "Числа дня и жизненные циклы",
-    icon: <Calculator className="h-5 w-5" />
+    icon: <Calculator className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "astroforecast",
     title: "Астропрогноз",
     description: "Сильные периоды и транзиты",
-    icon: <MoonStar className="h-5 w-5" />
+    icon: <MoonStar className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   }
 ];
 
@@ -94,27 +94,27 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     card_of_day: {
       title: "Карта дня",
       description: "Заглушка — персональная карта дня появится здесь позже.",
-      icon: <Star className="h-5 w-5 text-secondary" />
+      icon: <Star className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
     },
     daily_spread: {
       title: "Ежедневный расклад",
       description: "Заглушка — практики и расклады появятся после релиза.",
-      icon: <LayoutDashboard className="h-5 w-5 text-secondary" />
+      icon: <LayoutDashboard className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
     },
     individual_horoscope: {
       title: "Индивидуальный гороскоп",
       description: "Заглушка — персональный гороскоп готовится к запуску.",
-      icon: <Sun className="h-5 w-5 text-secondary" />
+      icon: <Sun className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
     },
     astro_forecast: {
       title: "Астропрогноз",
       description: "Заглушка — энергетика дня, тренды и подсказки появятся здесь.",
-      icon: <MoonStar className="h-5 w-5 text-secondary" />
+      icon: <MoonStar className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
     },
     numerology_forecast: {
       title: "Нумерологический прогноз",
       description: "Заглушка — числовые подсказки и расчёты скоро станут доступны.",
-      icon: <Calculator className="h-5 w-5 text-secondary" />
+      icon: <Calculator className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
     }
   };
 
@@ -125,13 +125,13 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     }
 
     return (
-      <div className="glass-panel flex flex-col gap-3 rounded-3xl p-6">
+      <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5 shadow-[0_25px_45px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
         <div className="flex items-center gap-3">
-          {meta.icon}
-          <h3 className="text-lg font-semibold text-foreground">{meta.title}</h3>
+          <span className="rounded-2xl border border-white/15 bg-white/5 p-2">{meta.icon}</span>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{meta.title}</h3>
         </div>
-        <p className="text-sm text-muted-foreground">{meta.description}</p>
-        <span className="text-xs uppercase tracking-wide text-secondary/70">заглушка</span>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">{meta.description}</p>
+        <span className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-tertiary)]">заглушка</span>
       </div>
     );
   };
@@ -139,7 +139,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const skeletons = Array.from({ length: 3 }, (_, index) => (
     <div
       key={`skeleton-${index}`}
-      className="glass-panel h-20 animate-pulse rounded-3xl bg-muted/20"
+      className="rounded-[24px] border border-white/5 bg-white/5 p-6 opacity-70 animate-pulse"
     />
   ));
 
@@ -166,8 +166,8 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         widgetKeys.map((widget) => (
           <Fragment key={widget}>{renderWidget(widget)}</Fragment>
         ))}
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Sparkles className="h-4 w-4 text-secondary" />
+      <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-tertiary)]">
+        <Sparkles className="h-4 w-4 text-[var(--accent-pink)]" strokeWidth={1.4} />
         <span>Настройка интеграции с ботом скоро будет доступна</span>
       </div>
     </div>

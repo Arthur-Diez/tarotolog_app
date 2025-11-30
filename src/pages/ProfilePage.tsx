@@ -269,19 +269,19 @@ export default function ProfilePage() {
   if (loading && !profile) {
     return (
       <div className="space-y-6">
-        <Card className="glass-panel border-none">
+        <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
           <CardContent className="space-y-4">
-            <div className="h-6 w-48 animate-pulse rounded bg-muted/30" />
-            <div className="h-10 w-full animate-pulse rounded bg-muted/20" />
-            <div className="h-10 w-full animate-pulse rounded bg-muted/20" />
-            <div className="h-24 w-full animate-pulse rounded bg-muted/20" />
+            <div className="h-6 w-48 animate-pulse rounded bg-white/10" />
+            <div className="h-10 w-full animate-pulse rounded bg-white/5" />
+            <div className="h-10 w-full animate-pulse rounded bg-white/5" />
+            <div className="h-24 w-full animate-pulse rounded bg-white/5" />
           </CardContent>
         </Card>
-        <Card className="glass-panel border-none">
+        <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
           <CardContent className="space-y-4">
-            <div className="h-6 w-32 animate-pulse rounded bg-muted/30" />
-            <div className="h-10 w-full animate-pulse rounded bg-muted/20" />
-            <div className="h-10 w-full animate-pulse rounded bg-muted/20" />
+            <div className="h-6 w-32 animate-pulse rounded bg-white/10" />
+            <div className="h-10 w-full animate-pulse rounded bg-white/5" />
+            <div className="h-10 w-full animate-pulse rounded bg-white/5" />
           </CardContent>
         </Card>
       </div>
@@ -290,8 +290,8 @@ export default function ProfilePage() {
 
   if (error && !profile) {
     return (
-      <Card className="glass-panel border-none p-6 text-center">
-        <p className="text-sm text-muted-foreground">{error}</p>
+      <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)] p-6 text-center">
+        <p className="text-sm text-[var(--text-secondary)]">{error}</p>
         <Button className="mt-4" onClick={() => refresh()}>
           Повторить
         </Button>
@@ -301,12 +301,12 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6 pb-4">
-      <Card className="glass-panel border-none">
+      <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3 text-lg font-semibold">
+          <CardTitle className="flex items-center justify-between gap-3 text-lg font-semibold text-[var(--text-primary)]">
             Личные данные
             {saving && activeSave === "personal" ? (
-              <Loader2 className="h-4 w-4 animate-spin text-secondary" />
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--accent-pink)]" />
             ) : null}
           </CardTitle>
         </CardHeader>
@@ -314,7 +314,7 @@ export default function ProfilePage() {
           <form className="space-y-6" onSubmit={handlePersonalSubmit}>
             <div className="space-y-4">
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground" htmlFor="displayName">
+                <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="displayName">
                   Отображаемое имя
                 </label>
                 <Input
@@ -330,14 +330,14 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-foreground" htmlFor="lang">
+                <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="lang">
                   Язык приложения
                 </label>
                 <select
                   id="lang"
                   value={personal.lang}
                   onChange={(event) => onPersonalFieldChange("lang", event.target.value)}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                  className="h-11 rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
                 >
                   {LANG_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -348,11 +348,11 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--text-tertiary)]">
                   Данные рождения
                 </h3>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="fullName">
+                  <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="fullName">
                     Полное имя
                   </label>
                   <Input
@@ -369,7 +369,7 @@ export default function ProfilePage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground" htmlFor="birthDate">
+                    <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="birthDate">
                       Дата рождения
                     </label>
                     <Input
@@ -384,7 +384,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground" htmlFor="birthTime">
+                    <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="birthTime">
                       Время рождения
                     </label>
                     <Input
@@ -397,7 +397,7 @@ export default function ProfilePage() {
                     {!timeValid ? (
                       <p className="text-xs text-destructive">Укажите время в формате HH:MM или отметьте «Неизвестно»</p>
                     ) : null}
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                       <Checkbox
                         checked={personal.timeUnknown}
                         onChange={() =>
@@ -414,7 +414,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="birthPlace">
+                  <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="birthPlace">
                     Место рождения
                   </label>
                   <Input
@@ -427,11 +427,11 @@ export default function ProfilePage() {
                   {!birthPlaceValid ? (
                     <p className="text-xs text-destructive">Место рождения не должно превышать 80 символов</p>
                   ) : null}
-                  <p className="text-xs text-muted-foreground">TODO: подключить автокомплит по геоданным</p>
+                  <p className="text-xs text-[var(--text-secondary)]">TODO: подключить автокомплит по геоданным</p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="gender">
+                  <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="gender">
                     Пол
                   </label>
                   <select
@@ -440,7 +440,7 @@ export default function ProfilePage() {
                     onChange={(event) =>
                       onPersonalFieldChange("gender", event.target.value as GenderOption)
                     }
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    className="h-11 rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
                   >
                     {GENDER_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -456,7 +456,7 @@ export default function ProfilePage() {
               <div
                 className={`rounded-xl px-4 py-2 text-sm ${
                   personalStatus.type === "success"
-                    ? "bg-secondary/10 text-secondary"
+                    ? "bg-[var(--accent-pink)]/10 text-[var(--accent-pink)]"
                     : "bg-destructive/10 text-destructive"
                 }`}
               >
@@ -475,12 +475,12 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="glass-panel border-none">
+      <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3 text-lg font-semibold">
+          <CardTitle className="flex items-center justify-between gap-3 text-lg font-semibold text-[var(--text-primary)]">
             Что показывать на главной
             {saving && activeSave === "widgets" ? (
-              <Loader2 className="h-4 w-4 animate-spin text-secondary" />
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--accent-pink)]" />
             ) : null}
           </CardTitle>
         </CardHeader>
@@ -490,9 +490,9 @@ export default function ProfilePage() {
               {WIDGET_KEYS.map((key) => (
                 <label
                   key={key}
-                  className="flex items-center justify-between gap-4 rounded-2xl bg-background/50 px-4 py-3"
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/70 px-4 py-3"
                 >
-                  <span className="text-sm font-medium text-foreground">{WIDGET_LABELS[key]}</span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{WIDGET_LABELS[key]}</span>
                   <Checkbox
                     checked={selectedWidgets.includes(key)}
                     onChange={() => toggleWidget(key)}
@@ -505,7 +505,7 @@ export default function ProfilePage() {
               <div
                 className={`rounded-xl px-4 py-2 text-sm ${
                   widgetsStatus.type === "success"
-                    ? "bg-secondary/10 text-secondary"
+                    ? "bg-[var(--accent-pink)]/10 text-[var(--accent-pink)]"
                     : "bg-destructive/10 text-destructive"
                 }`}
               >
