@@ -15,6 +15,7 @@ import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { routes } from "./routes";
 import { useAppInit } from "@/hooks/useAppInit";
 import { useProfile } from "@/hooks/useProfile";
+import { useAutoTimezone } from "@/hooks/useAutoTimezone";
 import { DecksScreen } from "@/screens/DecksScreen";
 import { SpreadsScreen } from "@/screens/SpreadsScreen";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
@@ -27,6 +28,8 @@ export default function App() {
   const [spreadsView, setSpreadsView] = useState<{ screen: "decks" | "spreads"; deckId?: DeckId }>(
     { screen: "decks" }
   );
+
+  useAutoTimezone(profile);
 
   useEffect(() => {
     if (settingsTheme === "light" || settingsTheme === "dark") {

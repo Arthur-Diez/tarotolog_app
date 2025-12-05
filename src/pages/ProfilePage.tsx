@@ -9,6 +9,7 @@ import { DEFAULT_WIDGET_KEYS, WIDGET_KEYS, type UpdateProfilePayload, type Widge
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
+import { TimezoneSelector, type TimezoneOption } from "@/components/profile/TimezoneSelector";
 
 type GenderOption = "male" | "female" | "other" | "";
 
@@ -58,6 +59,25 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
   const leftSorted = [...left].sort();
   const rightSorted = [...right].sort();
   return leftSorted.every((item, index) => item === rightSorted[index]);
+}
+
+function formatTimezoneOffset(offsetMin: number | null | undefined): string {
+  if (typeof offsetMin !== "number" || Number.isNaN(offsetMin)) {
+    return "";
+  }
+  const hours = Math.trunc(offsetMin / 60);
+  const minutes = Math.abs(offsetMin % 60);
+  const sign = hours >= 0 ? "+" : "-";
+  const absHours = Math.abs(hours).toString().padStart(2, "0");
+  const mins = minutes === 0 ? "" : `:${minutes.toString().padStart(2, "0")}`;
+  return `UTC${sign}${absHours}${mins}`;
+}
+
+function formatTimezoneLabel(name: string | null | undefined, offsetMin: number | null | undefined): string {
+  if (!name) return "Не указан";
+  const pretty = name.split("/").pop()?.replace(/_/g, " ") ?? name;
+  const offset = formatTimezoneOffset(offsetMin);
+  return offset ? `${pretty} (${offset})` : pretty;
 }
 
 export default function ProfilePage() {
@@ -110,7 +130,15 @@ export default function ProfilePage() {
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [widgetsStatus, setWidgetsStatus] =
     useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | null>(null);
+  const [timezoneStatus, setTimezoneStatus] =
+    useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
+  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | null>(null);
+  const timezoneName = user?.current_tz_name ?? null;
+  const timezoneOffset = user?.current_tz_offset_min ?? null;
+  const timezoneConfirmed = Boolean(user?.current_tz_confirmed);
+  const timezoneLabel = formatTimezoneLabel(timezoneName, timezoneOffset);
+  const timezonePending = !timezoneConfirmed;
 
   useEffect(() => {
     setPersonal(initialPersonal);
@@ -137,12 +165,22 @@ export default function ProfilePage() {
   }, [widgetsStatus]);
 
   useEffect(() => {
+    if (timezoneStatus) {
+      const timeout = window.setTimeout(() => setTimezoneStatus(null), 3000);
+      return () => window.clearTimeout(timeout);
+    }
+    return undefined;
+  }, [timezoneStatus]);
+
+  useEffect(() => {
     if (saveError && activeSave) {
       const message = saveError || "Не удалось сохранить данные";
       if (activeSave === "personal") {
         setPersonalStatus({ type: "error", message });
-      } else {
+      } else if (activeSave === "widgets") {
         setWidgetsStatus({ type: "error", message });
+      } else {
+        setTimezoneStatus({ type: "error", message });
       }
       clearError();
       setActiveSave(null);
@@ -266,6 +304,33 @@ export default function ProfilePage() {
     }
   };
 
+  const handleConfirmTimezone = async () => {
+    if (!timezoneName) {
+      setTimezoneModalOpen(true);
+      return;
+    }
+    setActiveSave("timezone");
+    const result = await saveProfile({ current_tz_confirmed: true });
+    if (result) {
+      setTimezoneStatus({ type: "success", message: "Часовой пояс подтверждён" });
+      setActiveSave(null);
+    }
+  };
+
+  const handleTimezoneSelect = async (option: TimezoneOption) => {
+    setActiveSave("timezone");
+    const result = await saveProfile({
+      current_tz_name: option.value,
+      current_tz_offset_min: option.offset,
+      current_tz_confirmed: true
+    });
+    if (result) {
+      setTimezoneStatus({ type: "success", message: "Часовой пояс обновлён" });
+      setTimezoneModalOpen(false);
+      setActiveSave(null);
+    }
+  };
+
   if (loading && !profile) {
     return (
       <div className="space-y-6">
@@ -345,6 +410,65 @@ export default function ProfilePage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Ваш часовой пояс</p>
+                {timezonePending ? (
+                  <>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {timezoneName
+                        ? `Надеюсь, ваш часовой пояс — ${timezoneLabel}?`
+                        : "Мы не смогли определить ваш часовой пояс автоматически. Выберите подходящий вариант."}
+                    </p>
+                    <Input disabled value={timezoneLabel} />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={handleConfirmTimezone}
+                        disabled={saving && activeSave === "timezone"}
+                      >
+                        Подтвердить
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setTimezoneModalOpen(true)}
+                        disabled={saving && activeSave === "timezone"}
+                      >
+                        Изменить
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-[var(--text-secondary)]">Часовой пояс</p>
+                      <p className="text-base font-semibold text-[var(--text-primary)]">{timezoneLabel}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTimezoneModalOpen(true)}
+                    >
+                      Изменить
+                    </Button>
+                  </div>
+                )}
+                {timezoneStatus ? (
+                  <div
+                    className={`rounded-xl px-4 py-2 text-sm ${
+                      timezoneStatus.type === "success"
+                        ? "bg-[var(--accent-pink)]/10 text-[var(--accent-pink)]"
+                        : "bg-destructive/10 text-destructive"
+                    }`}
+                  >
+                    {timezoneStatus.message}
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-4">
@@ -519,6 +643,12 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+      <TimezoneSelector
+        open={timezoneModalOpen}
+        onClose={() => setTimezoneModalOpen(false)}
+        onSelect={handleTimezoneSelect}
+        currentTimezone={{ name: timezoneName, offset: timezoneOffset }}
+      />
     </div>
   );
 }

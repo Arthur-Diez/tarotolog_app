@@ -133,6 +133,9 @@ export interface ProfileResponse {
     display_name: string | null;
     energy_balance: number;
     lang: string | null;
+    current_tz_name: string | null;
+    current_tz_offset_min: number | null;
+    current_tz_confirmed?: boolean | null;
     telegram: {
       username: string | null;
       first_name: string | null;
@@ -151,6 +154,9 @@ export interface UpdateProfilePayload {
   display_name?: string | null;
   lang?: string | null;
   widgets?: WidgetKey[]; // массив строк!
+  current_tz_name?: string | null;
+  current_tz_offset_min?: number | null;
+  current_tz_confirmed?: boolean;
   birth_profile?: {
     full_name?: string | null;
     birth_date?: string | null;
@@ -264,6 +270,18 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
     bodyPayload.lang = payload.lang;
   }
 
+  if (payload.current_tz_name !== undefined) {
+    bodyPayload.current_tz_name = payload.current_tz_name;
+  }
+
+  if (payload.current_tz_offset_min !== undefined) {
+    bodyPayload.current_tz_offset_min = payload.current_tz_offset_min;
+  }
+
+  if (payload.current_tz_confirmed !== undefined) {
+    bodyPayload.current_tz_confirmed = payload.current_tz_confirmed;
+  }
+
   if (payload.widgets !== undefined) {
     bodyPayload.widgets = payload.widgets;
   }
@@ -290,10 +308,10 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
       }
     });
 
-  if (Object.keys(birthProfilePayload).length > 0) {
-    (bodyPayload as Record<string, unknown>).birth_profile = birthProfilePayload;
+    if (Object.keys(birthProfilePayload).length > 0) {
+      (bodyPayload as Record<string, unknown>).birth_profile = birthProfilePayload;
+    }
   }
-}
 
   const res = await fetch(`${API_BASE}/profile/update`, {
     method: "POST",
