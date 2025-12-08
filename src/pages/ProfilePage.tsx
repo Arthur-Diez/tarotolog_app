@@ -9,7 +9,7 @@ import { DEFAULT_WIDGET_KEYS, WIDGET_KEYS, type UpdateProfilePayload, type Widge
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
-import { TimezoneSelector, type TimezoneOption } from "@/components/profile/TimezoneSelector";
+import { TimezoneSelectorUnified } from "@/components/TimezoneSelectorUnified";
 import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
 
 type GenderOption = "male" | "female" | "other" | "";
@@ -323,11 +323,11 @@ export default function ProfilePage() {
     }
   };
 
-  const handleTimezoneSelect = async (option: TimezoneOption) => {
+  const handleTimezoneSelect = async (name: string, offset: number) => {
     setActiveSave("timezone");
     const result = await saveProfile({
-      current_tz_name: option.value,
-      current_tz_offset_min: option.offset,
+      current_tz_name: name,
+      current_tz_offset_min: offset,
       current_tz_confirmed: true
     });
     if (result) {
@@ -645,17 +645,14 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
-      <TimezoneSelector
+      <TimezoneSelectorUnified
         open={timezoneModalOpen}
         onClose={() => setTimezoneModalOpen(false)}
         onSelect={handleTimezoneSelect}
-        currentTimezone={{
-          name: timezoneName ?? proposedTimezoneName,
-          offset:
-            timezoneName !== null && timezoneOffset !== null
-              ? timezoneOffset
-              : proposedTimezoneOffset
-        }}
+        currentTimezoneName={timezoneName ?? proposedTimezoneName}
+        currentTimezoneOffset={
+          timezoneName !== null && timezoneOffset !== null ? timezoneOffset : proposedTimezoneOffset ?? null
+        }
       />
     </div>
   );
