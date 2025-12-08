@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import type { ProfileResponse } from "@/lib/api";
+import { detectDeviceTimezone } from "@/lib/timezone";
 import { useProfileState } from "@/stores/profileState";
 
 export function useAutoTimezone(profile: ProfileResponse | null | undefined) {
@@ -21,18 +22,25 @@ export function useAutoTimezone(profile: ProfileResponse | null | undefined) {
       return;
     }
 
-    const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
-    const offset = -new Date().getTimezoneOffset();
+    if (typeof window === "undefined") return;
 
-    if (!tzName) {
+    const timer = window.setTimeout(() => {
+      if (attemptedRef.current) return;
+      const detected = detectDeviceTimezone();
+      if (!detected.name || typeof detected.offset !== "number") {
+        attemptedRef.current = true;
+        return;
+      }
+
       attemptedRef.current = true;
-      return;
-    }
+      void saveProfile({
+        current_tz_name: detected.name,
+        current_tz_offset_min: detected.offset
+      });
+    }, 80);
 
-    attemptedRef.current = true;
-    void saveProfile({
-      current_tz_name: tzName,
-      current_tz_offset_min: offset
-    });
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [profile, saveProfile]);
 }

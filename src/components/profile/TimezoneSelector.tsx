@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { formatTimezoneLabel, formatTimezoneOffset } from "@/lib/timezone";
 
 export interface TimezoneOption {
   label: string;
@@ -32,29 +33,34 @@ function getAllTimezones(): string[] {
 
 function calculateOffsetMinutes(zone: string): number {
   try {
-    const now = new Date();
-    const zonedString = now.toLocaleString("en-US", { timeZone: zone });
-    const zonedDate = new Date(zonedString);
-    return Math.round((zonedDate.getTime() - now.getTime()) / 60000);
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: zone,
+      timeZoneName: "short"
+    });
+    const parts = formatter.formatToParts(new Date());
+    const tzNamePart = parts.find((part) => part.type === "timeZoneName");
+    if (tzNamePart?.value?.startsWith("GMT")) {
+      const match = tzNamePart.value.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+      if (match) {
+        const sign = match[1] === "-" ? -1 : 1;
+        const hours = parseInt(match[2] ?? "0", 10);
+        const minutes = parseInt(match[3] ?? "0", 10);
+        return sign * (hours * 60 + minutes);
+      }
+    }
   } catch {
-    return -new Date().getTimezoneOffset();
+    // ignore
   }
-}
-
-function formatOffset(offset: number) {
-  const hours = Math.trunc(offset / 60);
-  const minutes = Math.abs(offset % 60);
-  const sign = hours >= 0 ? "+" : "-";
-  const absHours = Math.abs(hours).toString().padStart(2, "0");
-  const mins = minutes === 0 ? "" : `:${minutes.toString().padStart(2, "0")}`;
-  return `UTC${sign}${absHours}${mins}`;
+  return -new Date().getTimezoneOffset();
 }
 
 function buildOptionFromZone(zone: string): TimezoneOption {
   const offset = calculateOffsetMinutes(zone);
   const prettyName = zone.split("/").pop()?.replace(/_/g, " ") ?? zone;
   return {
-    label: `${prettyName} (${formatOffset(offset)})`,
+    label: `${prettyName} (${formatTimezoneOffset(offset)})`,
     value: zone,
     offset
   };
@@ -88,7 +94,7 @@ export function TimezoneSelector({ open, onClose, onSelect, currentTimezone }: T
           <h3 className="text-2xl font-semibold text-[var(--text-primary)]">Выберите ваш часовой пояс</h3>
           {currentTimezone?.name ? (
             <p className="text-sm text-[var(--text-secondary)]">
-              Сейчас: {buildOptionFromZone(currentTimezone.name).label}
+              Сейчас: {formatTimezoneLabel(currentTimezone.name, currentTimezone.offset)}
             </p>
           ) : null}
         </div>
