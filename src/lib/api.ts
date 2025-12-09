@@ -8,7 +8,7 @@ export const WIDGET_KEYS = [
   "daily_spread",
   "individual_horoscope",
   "astro_forecast",
-  "numerology_forecast",
+  "numerology_forecast"
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];
@@ -29,9 +29,12 @@ export class ApiError extends Error {
 }
 
 // ====== ВСПОМОГАТЕЛЬНОЕ ======
-function getSessionFromUrl(): string | null {
-  const u = new URL(window.location.href);
-  return u.searchParams.get("session");
+function getInitData(): string {
+  const initData = window.Telegram?.WebApp?.initData;
+  if (!initData) {
+    throw new Error("Не удалось получить данные Telegram WebApp. Откройте приложение через Telegram.");
+  }
+  return initData;
 }
 
 function getTelegramId(): number | null {
@@ -40,17 +43,17 @@ function getTelegramId(): number | null {
   return user?.id ?? null;
 }
 
-function buildAuthedUrl(path: string): string {
-  const session = getSessionFromUrl();
-  const telegramId = getTelegramId();
-  if (!session || !telegramId) {
-    throw new Error("Не найдены session или telegram_id");
+function withAuthHeaders(headers?: HeadersInit, includeJson = false): HeadersInit {
+  const base: Record<string, string> = {
+    "X-Telegram-Init-Data": getInitData()
+  };
+  if (includeJson) {
+    base["Content-Type"] = "application/json";
   }
-
-  const url = new URL(`${API_BASE}${path}`);
-  url.searchParams.set("telegram_id", String(telegramId));
-  url.searchParams.set("session", session);
-  return url.toString();
+  return {
+    ...base,
+    ...headers
+  };
 }
 
 async function parseResponse(res: Response): Promise<unknown> {
@@ -94,15 +97,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
 // ====== ТИПЫ ПОД РЕАЛЬНЫЙ БЭКЕНД ======
 
 // /api/init_webapp (оставляем как было у тебя)
-export interface InitWebAppPayload {
+export interface AuthWebAppPayload {
   telegram_id: number;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
   language_code: string | null;
-  session: string; // UUID
 }
-export interface InitWebAppResponse {
+export interface AuthWebAppResponse {
   user: {
     display_name: string;
     energy_balance: number;
@@ -233,33 +235,29 @@ export interface EnergyBalanceResponse {
 
 // ====== ВЫЗОВЫ API ======
 
-export async function initWebApp(payload: InitWebAppPayload): Promise<InitWebAppResponse> {
-  const res = await fetch(`${API_BASE}/init_webapp`, {
+export async function authWebApp(payload: AuthWebAppPayload): Promise<AuthWebAppResponse> {
+  const res = await fetch(`${API_BASE}/webapp/auth`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
   });
-  return handleResponse<InitWebAppResponse>(res);
+  return handleResponse<AuthWebAppResponse>(res);
 }
 
 export async function getProfile(): Promise<ProfileResponse> {
-  const url = buildAuthedUrl("/profile");
-
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/profile`, {
     method: "GET",
-    // Origin браузер подставит сам; Content-Type на GET не нужен
+    headers: withAuthHeaders()
   });
   return handleResponse<ProfileResponse>(res);
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<ProfileResponse> {
-  const session = getSessionFromUrl();
   const telegram_id = getTelegramId();
-  if (!session || !telegram_id) throw new Error("Не найдены session или telegram_id");
+  if (!telegram_id) throw new Error("Не найдены данные Telegram пользователя");
 
   const bodyPayload: Record<string, unknown> = {
-    telegram_id,
-    session,
+    telegram_id
   };
 
   if (payload.display_name !== undefined) {
@@ -315,43 +313,41 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
 
   const res = await fetch(`${API_BASE}/profile/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(bodyPayload),
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(bodyPayload)
   });
   return handleResponse<ProfileResponse>(res);
 }
 
 export async function createReading(payload: CreateReadingPayload): Promise<CreateReadingResponse> {
-  const url = buildAuthedUrl("/readings");
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/readings`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
   });
   return handleResponse<CreateReadingResponse>(res);
 }
 
 export async function getReading(readingId: string): Promise<ReadingResponse> {
-  const url = buildAuthedUrl(`/readings/${readingId}`);
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/readings/${readingId}`, {
     method: "GET",
+    headers: withAuthHeaders()
   });
   return handleResponse<ReadingResponse>(res);
 }
 
 export async function viewReading(readingId: string): Promise<ViewReadingResponse> {
-  const url = buildAuthedUrl(`/readings/${readingId}/view`);
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/readings/${readingId}/view`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withAuthHeaders()
   });
   return handleResponse<ViewReadingResponse>(res);
 }
 
 export async function getEnergy(): Promise<EnergyBalanceResponse> {
-  const url = buildAuthedUrl("/profile/energy");
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}/profile/energy`, {
     method: "GET",
+    headers: withAuthHeaders()
   });
   return handleResponse<EnergyBalanceResponse>(res);
 }

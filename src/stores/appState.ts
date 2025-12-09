@@ -1,7 +1,7 @@
 import WebApp from "@twa-dev/sdk";
 import { create } from "zustand";
 
-import { initWebApp, type InitWebAppResponse } from "@/lib/api";
+import { authWebApp, type AuthWebAppResponse } from "@/lib/api";
 import type { TelegramUser } from "@/lib/telegram";
 
 type InitStatus = "idle" | "loading" | "ready" | "error";
@@ -9,8 +9,8 @@ type InitStatus = "idle" | "loading" | "ready" | "error";
 interface AppState {
   status: InitStatus;
   error: string | null;
-  user: InitWebAppResponse["user"] | null;
-  settings: InitWebAppResponse["settings"] | null;
+  user: AuthWebAppResponse["user"] | null;
+  settings: AuthWebAppResponse["settings"] | null;
   telegramUser: TelegramUser | null;
   initialize: () => Promise<void>;
 }
@@ -31,38 +31,18 @@ export const useAppState = create<AppState>((set, get) => ({
 
     try {
       const tgUser = WebApp?.initDataUnsafe?.user ?? null;
-      const session =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("session")
-          : null;
-
-      const missing: string[] = [];
-      if (!session) {
-        missing.push("session");
-      }
-
-      if (!tgUser) {
-        missing.push("telegram user");
-      } else if (!tgUser.id) {
-        missing.push("telegram_id");
-      }
-
-      if (missing.length > 0) {
-        throw new Error(
-          `Недостаточно данных для инициализации: ${missing.join(", ")}`
-        );
+      if (!tgUser?.id) {
+        throw new Error("Пожалуйста, откройте приложение через Telegram");
       }
 
       const safeUser = tgUser as TelegramUser & { id: number };
-      const sessionId = session as string;
 
-      const response = await initWebApp({
+      const response = await authWebApp({
         telegram_id: safeUser.id,
         username: safeUser.username ?? null,
         first_name: safeUser.first_name ?? null,
         last_name: safeUser.last_name ?? null,
-        language_code: safeUser.language_code ?? "ru",
-        session: sessionId,
+        language_code: safeUser.language_code ?? "ru"
       });
 
       set({
@@ -74,7 +54,7 @@ export const useAppState = create<AppState>((set, get) => ({
           username: safeUser.username ?? undefined,
           first_name: safeUser.first_name ?? undefined,
           last_name: safeUser.last_name ?? undefined,
-          language_code: safeUser.language_code ?? undefined,
+          language_code: safeUser.language_code ?? undefined
         },
         error: null,
       });
