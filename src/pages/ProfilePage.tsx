@@ -62,25 +62,15 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
   return leftSorted.every((item, index) => item === rightSorted[index]);
 }
 
-function getTelegramMeta() {
-  if (typeof window === "undefined") return { country: null as string | null, language: null as string | null };
-  const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const country = typeof telegramUser?.country === "string" ? telegramUser.country : null;
-  const language = typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
-  return { country, language };
-}
-
-function extractCountryFromLang(lang?: string | null): string | null {
-  if (!lang) return null;
-  const match = lang.match(/-([A-Za-z]{2})$/i);
-  return match ? match[1].toUpperCase() : null;
-}
-
 export default function ProfilePage() {
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
-  const telegramMeta = useMemo(() => getTelegramMeta(), []);
-  const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
+
+  function extractCountryFromLang(lang?: string | null): string | null {
+    if (!lang) return null;
+    const match = lang.match(/-([A-Za-z]{2})$/);
+    return match ? match[1].toUpperCase() : null;
+  }
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
@@ -132,6 +122,7 @@ export default function ProfilePage() {
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | null>(null);
+  const [ipCountry, setIpCountry] = useState<string | null>(null);
   const timezoneName = user?.current_tz_name ?? null;
   const timezoneOffset = user?.current_tz_offset_min ?? null;
   const timezoneConfirmed = Boolean(user?.current_tz_confirmed);
@@ -150,6 +141,26 @@ export default function ProfilePage() {
   const pendingMessage = hasDetectedProposal
     ? `Надеюсь, ваш часовой пояс — ${pendingLabel}?`
     : "Мы не смогли определить ваш часовой пояс автоматически. Выберите подходящий вариант.";
+  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
+  const telegramUser = tg?.initDataUnsafe?.user;
+  const telegramCountry = (telegramUser as any)?.country ?? null;
+  const telegramLang =
+    typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
+  const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
+
+  const extractCountryFromLang = (lang?: string | null): string | null => {
+    if (!lang) return null;
+    const match = lang.match(/-([A-Za-z]{2})$/);
+    return match ? match[1].toUpperCase() : null;
+  };
+
+  const countryFromTelegramLang = extractCountryFromLang(telegramLang);
+  const countryFromDeviceLang = extractCountryFromLang(deviceLanguage);
+  const initialDetectedCountry =
+    telegramCountry ??
+    countryFromTelegramLang ??
+    countryFromDeviceLang ??
+    null;
 
   useEffect(() => {
     setPersonal(initialPersonal);
@@ -182,6 +193,42 @@ export default function ProfilePage() {
     }
     return undefined;
   }, [timezoneStatus]);
+
+  useEffect(() => {
+    if (initialDetectedCountry || typeof window === "undefined") return;
+    let cancelled = false;
+
+    fetch("https://ipapi.co/json/")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setIpCountry(
+            typeof data?.country === "string"
+              ? data.country.toUpperCase()
+              : null
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIpCountry(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDetectedCountry]);
+
+  const detectedCountry =
+    initialDetectedCountry ??
+    ipCountry ??
+    "Unknown";
+
+  const detectedLanguage =
+    telegramLang ??
+    deviceLanguage ??
+    "Unknown";
 
   useEffect(() => {
     if (saveError && activeSave) {
@@ -664,11 +711,11 @@ export default function ProfilePage() {
       <Card className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-secondary)] shadow-[0_20px_40px_rgba(0,0,0,0.45)]">
         <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Диагностика</p>
         <div className="mt-3 space-y-2">
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between">
             <span>Фактическое местонахождение</span>
             <span className="font-semibold text-[var(--text-primary)]">{detectedCountry}</span>
           </div>
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between">
             <span>Предполагаемый язык</span>
             <span className="font-semibold text-[var(--text-primary)]">{detectedLanguage}</span>
           </div>
@@ -686,36 +733,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-  const [ipCountry, setIpCountry] = useState<string | null>(null);
-  const countryFromTelegramLang = useMemo(() => extractCountryFromLang(telegramMeta.language), [telegramMeta.language]);
-  const countryFromDeviceLang = useMemo(() => extractCountryFromLang(deviceLanguage), [deviceLanguage]);
-  const initialDetectedCountry = telegramMeta.country ?? countryFromTelegramLang ?? countryFromDeviceLang ?? null;
-
-  useEffect(() => {
-    if (initialDetectedCountry || typeof window === "undefined") {
-      return;
-    }
-    let cancelled = false;
-    fetch("https://ipapi.co/json/")
-      .then(async (response) => {
-        if (!response.ok) return null;
-        const data = await response.json();
-        return typeof data?.country === "string" ? data.country.toUpperCase() : null;
-      })
-      .then((country) => {
-        if (!cancelled) {
-          setIpCountry(country);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setIpCountry(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [initialDetectedCountry]);
-
-  const detectedCountry = initialDetectedCountry ?? ipCountry ?? "Unknown";
-  const detectedLanguage = telegramMeta.language ?? deviceLanguage ?? "Unknown";
