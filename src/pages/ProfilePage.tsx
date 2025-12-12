@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -74,23 +74,23 @@ function normalizeLang(code: string | null): string | null {
 }
 
 function detectPreferredLanguage({
-  appLang,
+  userLang,
   telegramLang,
   deviceLang
 }: {
-  appLang?: string | null;
+  userLang?: string | null;
   telegramLang?: string | null;
   deviceLang?: string | null;
 }): string {
-  if (appLang && appLang !== "system") {
-    return normalizeLang(appLang) || "en";
+  if (userLang && userLang !== "system") {
+    return userLang;
   }
 
-  const t = normalizeLang(telegramLang ?? null);
-  if (t) return t;
+  const device = normalizeLang(deviceLang ?? null);
+  if (device) return device;
 
-  const d = normalizeLang(deviceLang ?? null);
-  if (d) return d;
+  const tg = normalizeLang(telegramLang ?? null);
+  if (tg) return tg;
 
   return "en";
 }
@@ -137,7 +137,7 @@ export default function ProfilePage() {
 
     return {
       displayName: user?.display_name ?? "",
-      lang: user?.lang ?? "system",
+      lang: user?.lang || "system",
       fullName: birthProfile?.full_name ?? telegramFullName ?? "",
       birthDate: birthProfile?.birth_date ?? "",
       birthTime: timeKnown ? birthProfile?.birth_time_local ?? "" : "",
@@ -176,6 +176,7 @@ export default function ProfilePage() {
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | null>(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
+  const languageSyncRef = useRef(false);
   const timezoneName = user?.current_tz_name ?? null;
   const timezoneOffset = user?.current_tz_offset_min ?? null;
   const timezoneConfirmed = Boolean(user?.current_tz_confirmed);
@@ -235,6 +236,27 @@ export default function ProfilePage() {
   }, [timezoneStatus]);
 
   useEffect(() => {
+    if (!profile || languageSyncRef.current) {
+      return;
+    }
+    languageSyncRef.current = true;
+    const payload: UpdateProfilePayload = {};
+    const deviceLangValue = typeof navigator !== "undefined" ? navigator.language ?? null : null;
+    if (deviceLangValue !== null) {
+      payload.detected_lang_device = deviceLangValue;
+    }
+    if (telegramLang) {
+      payload.detected_lang_telegram = telegramLang;
+    }
+    if (Object.keys(payload).length === 0) {
+      return;
+    }
+    void saveProfile(payload).catch(() => {
+      // silent fail
+    });
+  }, [profile, saveProfile, telegramLang]);
+
+  useEffect(() => {
     if (!shouldFetchIpCountry || typeof window === "undefined") return;
     let cancelled = false;
 
@@ -268,10 +290,13 @@ export default function ProfilePage() {
   });
 
   const detectedLanguage = detectPreferredLanguage({
-    appLang: personal.lang,
+    userLang: personal.lang,
     telegramLang,
     deviceLang: deviceLanguage
   });
+  const deviceLanguageDisplay = deviceLanguage ?? "Unknown";
+  const telegramLanguageDisplay = telegramLang ?? "Unknown";
+  const userLanguageDisplay = personal.lang ?? "system";
 
   useEffect(() => {
     if (saveError && activeSave) {
@@ -761,6 +786,18 @@ export default function ProfilePage() {
           <div className="flex justify-between">
             <span>Предполагаемый язык</span>
             <span className="font-semibold text-[var(--text-primary)]">{detectedLanguage}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Язык устройства</span>
+            <span className="font-semibold text-[var(--text-primary)]">{deviceLanguageDisplay}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Язык Telegram</span>
+            <span className="font-semibold text-[var(--text-primary)]">{telegramLanguageDisplay}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Выбор пользователя</span>
+            <span className="font-semibold text-[var(--text-primary)]">{userLanguageDisplay}</span>
           </div>
         </div>
       </Card>

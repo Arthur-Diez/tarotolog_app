@@ -159,6 +159,8 @@ export interface UpdateProfilePayload {
   current_tz_name?: string | null;
   current_tz_offset_min?: number | null;
   current_tz_confirmed?: boolean;
+  detected_lang_device?: string | null;
+  detected_lang_telegram?: string | null;
   birth_profile?: {
     full_name?: string | null;
     birth_date?: string | null;
@@ -278,6 +280,14 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
 
   if (payload.current_tz_confirmed !== undefined) {
     bodyPayload.current_tz_confirmed = payload.current_tz_confirmed;
+  }
+
+  if (payload.detected_lang_device !== undefined) {
+    bodyPayload.detected_lang_device = payload.detected_lang_device;
+  }
+
+  if (payload.detected_lang_telegram !== undefined) {
+    bodyPayload.detected_lang_telegram = payload.detected_lang_telegram;
   }
 
   if (payload.widgets !== undefined) {
