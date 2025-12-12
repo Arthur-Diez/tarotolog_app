@@ -73,11 +73,6 @@ function normalizeLang(code: string | null): string | null {
   return code.split("-")[0]?.toLowerCase() ?? null;
 }
 
-function normalizeDeviceLang(code: string | null): string | null {
-  if (!code) return null;
-  return code.split("-")[0]?.toLowerCase() ?? null;
-}
-
 function detectPreferredLanguage({
   appLang,
   telegramLang,
@@ -87,14 +82,15 @@ function detectPreferredLanguage({
   telegramLang?: string | null;
   deviceLang?: string | null;
 }): string {
-  const byApp = normalizeLang(appLang ?? null);
-  if (byApp) return byApp;
+  if (appLang && appLang !== "system") {
+    return normalizeLang(appLang) || "en";
+  }
 
-  const byTelegram = normalizeLang(telegramLang ?? null);
-  if (byTelegram) return byTelegram;
+  const t = normalizeLang(telegramLang ?? null);
+  if (t) return t;
 
-  const byDevice = normalizeDeviceLang(deviceLang ?? null);
-  if (byDevice) return byDevice;
+  const d = normalizeLang(deviceLang ?? null);
+  if (d) return d;
 
   return "en";
 }
@@ -118,7 +114,7 @@ function detectCountry({
   }
 
   const normalizedTelegramLang = normalizeLang(telegramLang ?? null);
-  const normalizedDeviceLang = normalizeDeviceLang(deviceLang ?? null);
+    const normalizedDeviceLang = normalizeLang(deviceLang ?? null);
   if (normalizedTelegramLang === "ru" || normalizedDeviceLang === "ru") {
     return "RU";
   }
@@ -141,7 +137,7 @@ export default function ProfilePage() {
 
     return {
       displayName: user?.display_name ?? "",
-      lang: user?.lang ?? "ru",
+      lang: user?.lang ?? "system",
       fullName: birthProfile?.full_name ?? telegramFullName ?? "",
       birthDate: birthProfile?.birth_date ?? "",
       birthTime: timeKnown ? birthProfile?.birth_time_local ?? "" : "",
@@ -272,7 +268,7 @@ export default function ProfilePage() {
   });
 
   const detectedLanguage = detectPreferredLanguage({
-    appLang: personal.lang === "system" ? null : personal.lang,
+    appLang: personal.lang,
     telegramLang,
     deviceLang: deviceLanguage
   });
