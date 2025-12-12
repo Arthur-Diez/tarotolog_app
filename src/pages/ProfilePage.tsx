@@ -68,6 +68,63 @@ function extractCountryFromLang(lang?: string | null): string | null {
   return match ? match[1].toUpperCase() : null;
 }
 
+function normalizeLang(code: string | null): string | null {
+  if (!code) return null;
+  return code.split("-")[0]?.toLowerCase() ?? null;
+}
+
+function normalizeDeviceLang(code: string | null): string | null {
+  if (!code) return null;
+  return code.split("-")[0]?.toLowerCase() ?? null;
+}
+
+function detectPreferredLanguage({
+  appLang,
+  telegramLang,
+  deviceLang
+}: {
+  appLang?: string | null;
+  telegramLang?: string | null;
+  deviceLang?: string | null;
+}): string {
+  const byApp = normalizeLang(appLang ?? null);
+  if (byApp) return byApp;
+
+  const byTelegram = normalizeLang(telegramLang ?? null);
+  if (byTelegram) return byTelegram;
+
+  const byDevice = normalizeDeviceLang(deviceLang ?? null);
+  if (byDevice) return byDevice;
+
+  return "en";
+}
+
+function detectCountry({
+  telegramCountry,
+  ipCountry,
+  telegramLang,
+  deviceLang
+}: {
+  telegramCountry?: string | null;
+  ipCountry?: string | null;
+  telegramLang?: string | null;
+  deviceLang?: string | null;
+}): string {
+  if (telegramCountry) {
+    return telegramCountry.toUpperCase();
+  }
+  if (ipCountry) {
+    return ipCountry.toUpperCase();
+  }
+
+  const normalizedTelegramLang = normalizeLang(telegramLang ?? null);
+  const normalizedDeviceLang = normalizeDeviceLang(deviceLang ?? null);
+  if (normalizedTelegramLang === "ru" || normalizedDeviceLang === "ru") {
+    return "RU";
+  }
+  return "Unknown";
+}
+
 export default function ProfilePage() {
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
@@ -147,20 +204,7 @@ export default function ProfilePage() {
   const telegramLang =
     typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
   const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
-
-  const extractCountryFromLang = (lang?: string | null): string | null => {
-    if (!lang) return null;
-    const match = lang.match(/-([A-Za-z]{2})$/);
-    return match ? match[1].toUpperCase() : null;
-  };
-
-  const countryFromTelegramLang = extractCountryFromLang(telegramLang);
-  const countryFromDeviceLang = extractCountryFromLang(deviceLanguage);
-  const initialDetectedCountry =
-    telegramCountry ??
-    countryFromTelegramLang ??
-    countryFromDeviceLang ??
-    null;
+  const shouldFetchIpCountry = !telegramCountry;
 
   useEffect(() => {
     setPersonal(initialPersonal);
@@ -195,7 +239,7 @@ export default function ProfilePage() {
   }, [timezoneStatus]);
 
   useEffect(() => {
-    if (initialDetectedCountry || typeof window === "undefined") return;
+    if (!shouldFetchIpCountry || typeof window === "undefined") return;
     let cancelled = false;
 
     fetch("https://ipapi.co/json/")
@@ -218,17 +262,20 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [initialDetectedCountry]);
+  }, [shouldFetchIpCountry]);
 
-  const detectedCountry =
-    initialDetectedCountry ??
-    ipCountry ??
-    "Unknown";
+  const detectedCountry = detectCountry({
+    telegramCountry,
+    ipCountry,
+    telegramLang,
+    deviceLang: deviceLanguage
+  });
 
-  const detectedLanguage =
-    telegramLang ??
-    deviceLanguage ??
-    "Unknown";
+  const detectedLanguage = detectPreferredLanguage({
+    appLang: personal.lang === "system" ? null : personal.lang,
+    telegramLang,
+    deviceLang: deviceLanguage
+  });
 
   useEffect(() => {
     if (saveError && activeSave) {
