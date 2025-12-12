@@ -62,9 +62,25 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
   return leftSorted.every((item, index) => item === rightSorted[index]);
 }
 
+function getTelegramMeta() {
+  if (typeof window === "undefined") return { country: null as string | null, language: null as string | null };
+  const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const country = typeof telegramUser?.country === "string" ? telegramUser.country : null;
+  const language = typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
+  return { country, language };
+}
+
+function extractCountryFromLang(lang?: string | null): string | null {
+  if (!lang) return null;
+  const match = lang.match(/-([A-Za-z]{2})$/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
 export default function ProfilePage() {
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
+  const telegramMeta = useMemo(() => getTelegramMeta(), []);
+  const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
@@ -645,6 +661,19 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+      <Card className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-secondary)] shadow-[0_20px_40px_rgba(0,0,0,0.45)]">
+        <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Диагностика</p>
+        <div className="mt-3 space-y-2">
+          <div className="flex justify-between gap-4">
+            <span>Фактическое местонахождение</span>
+            <span className="font-semibold text-[var(--text-primary)]">{detectedCountry}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span>Предполагаемый язык</span>
+            <span className="font-semibold text-[var(--text-primary)]">{detectedLanguage}</span>
+          </div>
+        </div>
+      </Card>
       <TimezoneSelectorUnified
         open={timezoneModalOpen}
         onClose={() => setTimezoneModalOpen(false)}
@@ -657,3 +686,36 @@ export default function ProfilePage() {
     </div>
   );
 }
+  const [ipCountry, setIpCountry] = useState<string | null>(null);
+  const countryFromTelegramLang = useMemo(() => extractCountryFromLang(telegramMeta.language), [telegramMeta.language]);
+  const countryFromDeviceLang = useMemo(() => extractCountryFromLang(deviceLanguage), [deviceLanguage]);
+  const initialDetectedCountry = telegramMeta.country ?? countryFromTelegramLang ?? countryFromDeviceLang ?? null;
+
+  useEffect(() => {
+    if (initialDetectedCountry || typeof window === "undefined") {
+      return;
+    }
+    let cancelled = false;
+    fetch("https://ipapi.co/json/")
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const data = await response.json();
+        return typeof data?.country === "string" ? data.country.toUpperCase() : null;
+      })
+      .then((country) => {
+        if (!cancelled) {
+          setIpCountry(country);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIpCountry(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDetectedCountry]);
+
+  const detectedCountry = initialDetectedCountry ?? ipCountry ?? "Unknown";
+  const detectedLanguage = telegramMeta.language ?? deviceLanguage ?? "Unknown";
