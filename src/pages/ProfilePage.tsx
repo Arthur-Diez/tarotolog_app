@@ -62,15 +62,15 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
   return leftSorted.every((item, index) => item === rightSorted[index]);
 }
 
+function extractCountryFromLang(lang?: string | null): string | null {
+  if (!lang) return null;
+  const match = lang.match(/-([A-Za-z]{2})$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
 export default function ProfilePage() {
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
-
-  function extractCountryFromLang(lang?: string | null): string | null {
-    if (!lang) return null;
-    const match = lang.match(/-([A-Za-z]{2})$/);
-    return match ? match[1].toUpperCase() : null;
-  }
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
