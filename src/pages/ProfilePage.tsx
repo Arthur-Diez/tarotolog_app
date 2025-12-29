@@ -341,7 +341,7 @@ export default function ProfilePage() {
   const normalizedTelegramLanguage = normalizeLang(telegramLang ?? null);
   const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
   const suggestedLanguage = normalizedTelegramLanguage ?? effectiveLanguage ?? "en";
-  const telegramLanguageDisplay = getLanguageLabel(normalizedTelegramLanguage);
+  const telegramLanguageDisplay = telegramLang ?? "Unknown";
 
   useEffect(() => {
     if (saveError && activeSave) {
