@@ -15,7 +15,6 @@ import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
 type GenderOption = "male" | "female" | "other" | "";
 
 interface PersonalFormState {
-  displayName: string;
   lang: string;
   fullName: string;
   birthDate: string;
@@ -24,12 +23,6 @@ interface PersonalFormState {
   birthPlace: string;
   gender: GenderOption;
 }
-
-const LANG_OPTIONS = [
-  { value: "ru", label: "Русский" },
-  { value: "en", label: "English" },
-  { value: "system", label: "Системный" }
-];
 
 const GENDER_OPTIONS: Array<{ value: GenderOption; label: string }> = [
   { value: "", label: "Не указано" },
@@ -45,6 +38,27 @@ const WIDGET_LABELS: Record<WidgetKey, string> = {
   astro_forecast: "Астропрогноз",
   numerology_forecast: "Нумерологический прогноз"
 };
+
+const COUNTRY_OPTIONS = [
+  { code: "RU", label: "Россия" },
+  { code: "AM", label: "Армения" },
+  { code: "KZ", label: "Казахстан" },
+  { code: "BY", label: "Беларусь" },
+  { code: "UA", label: "Украина" },
+  { code: "GE", label: "Грузия" },
+  { code: "DE", label: "Германия" },
+  { code: "US", label: "США" },
+  { code: "GB", label: "Великобритания" },
+  { code: "FR", label: "Франция" },
+  { code: "ES", label: "Испания" },
+  { code: "IT", label: "Италия" },
+  { code: "TR", label: "Турция" }
+];
+
+const LANGUAGE_OPTIONS = [
+  { code: "ru", label: "Русский" },
+  { code: "en", label: "English" }
+];
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -114,11 +128,23 @@ function detectCountry({
   }
 
   const normalizedTelegramLang = normalizeLang(telegramLang ?? null);
-    const normalizedDeviceLang = normalizeLang(deviceLang ?? null);
+  const normalizedDeviceLang = normalizeLang(deviceLang ?? null);
   if (normalizedTelegramLang === "ru" || normalizedDeviceLang === "ru") {
     return "RU";
   }
   return "Unknown";
+}
+
+function getCountryLabel(code: string | null): string {
+  if (!code) return "Не выбрано";
+  const option = COUNTRY_OPTIONS.find((item) => item.code === code.toUpperCase());
+  return option ? option.label : code;
+}
+
+function getLanguageLabel(code: string | null): string {
+  if (!code) return "Не выбрано";
+  const option = LANGUAGE_OPTIONS.find((item) => item.code === code.toLowerCase());
+  return option ? option.label : code;
 }
 
 export default function ProfilePage() {
@@ -127,6 +153,8 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
+  const initialInterfaceLanguage =
+    birthProfile?.interface_language ?? (user?.lang && user.lang !== "system" ? user.lang : null);
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
@@ -136,8 +164,7 @@ export default function ProfilePage() {
       (birthProfile?.birth_time_local ? true : false);
 
     return {
-      displayName: user?.display_name ?? "",
-      lang: user?.lang || "system",
+      lang: initialInterfaceLanguage ?? "system",
       fullName: birthProfile?.full_name ?? telegramFullName ?? "",
       birthDate: birthProfile?.birth_date ?? "",
       birthTime: timeKnown ? birthProfile?.birth_time_local ?? "" : "",
@@ -155,7 +182,8 @@ export default function ProfilePage() {
     user?.display_name,
     user?.lang,
     user?.telegram.first_name,
-    user?.telegram.last_name
+    user?.telegram.last_name,
+    initialInterfaceLanguage
   ]);
 
   const initialWidgets = useMemo<WidgetKey[]>(() => {
@@ -174,8 +202,15 @@ export default function ProfilePage() {
   const [timezoneStatus, setTimezoneStatus] =
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
-  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | null>(null);
+  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "country" | "language" | null>(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
+  const initialConfirmedCountry = birthProfile?.detected_country ?? null;
+  const [confirmedCountry, setConfirmedCountry] = useState<string | null>(initialConfirmedCountry);
+  const [countryConfirmed, setCountryConfirmed] = useState<boolean>(Boolean(initialConfirmedCountry));
+  const [countrySelectOpen, setCountrySelectOpen] = useState(false);
+  const [confirmedLanguage, setConfirmedLanguage] = useState<string | null>(initialInterfaceLanguage);
+  const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
+  const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
   const languageSyncRef = useRef(false);
   const timezoneName = user?.current_tz_name ?? null;
   const timezoneOffset = user?.current_tz_offset_min ?? null;
@@ -201,7 +236,6 @@ export default function ProfilePage() {
   const telegramLang =
     typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
   const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
-  const shouldFetchIpCountry = !telegramCountry;
 
   useEffect(() => {
     setPersonal(initialPersonal);
@@ -210,6 +244,16 @@ export default function ProfilePage() {
   useEffect(() => {
     setSelectedWidgets(initialWidgets);
   }, [initialWidgets]);
+
+  useEffect(() => {
+    setConfirmedCountry(initialConfirmedCountry);
+    setCountryConfirmed(Boolean(initialConfirmedCountry));
+  }, [initialConfirmedCountry]);
+
+  useEffect(() => {
+    setConfirmedLanguage(initialInterfaceLanguage);
+    setLanguageConfirmed(Boolean(initialInterfaceLanguage));
+  }, [initialInterfaceLanguage]);
 
   useEffect(() => {
     if (personalStatus) {
@@ -257,7 +301,7 @@ export default function ProfilePage() {
   }, [profile, saveProfile, telegramLang]);
 
   useEffect(() => {
-    if (!shouldFetchIpCountry || typeof window === "undefined") return;
+    if (ipCountry !== null || typeof window === "undefined") return;
     let cancelled = false;
 
     fetch("https://ipapi.co/json/")
@@ -280,23 +324,24 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [shouldFetchIpCountry]);
+  }, [ipCountry]);
 
   const detectedCountry = detectCountry({
-    telegramCountry,
+    telegramCountry: null,
     ipCountry,
     telegramLang,
     deviceLang: deviceLanguage
   });
 
-  const detectedLanguage = detectPreferredLanguage({
-    userLang: personal.lang,
+  const effectiveLanguage = detectPreferredLanguage({
+    userLang: confirmedLanguage ?? personal.lang,
     telegramLang,
     deviceLang: deviceLanguage
   });
-  const deviceLanguageDisplay = deviceLanguage ?? "Unknown";
-  const telegramLanguageDisplay = telegramLang ?? "Unknown";
-  const userLanguageDisplay = personal.lang ?? "system";
+  const normalizedTelegramLanguage = normalizeLang(telegramLang ?? null);
+  const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
+  const suggestedLanguage = normalizedTelegramLanguage ?? effectiveLanguage ?? "en";
+  const telegramLanguageDisplay = getLanguageLabel(normalizedTelegramLanguage);
 
   useEffect(() => {
     if (saveError && activeSave) {
@@ -326,7 +371,84 @@ export default function ProfilePage() {
     );
   };
 
-  const nameValid = personal.displayName.trim().length <= 80;
+  const handleConfirmCountry = async () => {
+    const value = (confirmedCountry ?? suggestedCountry).toUpperCase();
+    setActiveSave("country");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        detected_country: value
+      }
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedCountry(value);
+      setCountryConfirmed(true);
+      setCountrySelectOpen(false);
+    }
+    setActiveSave(null);
+  };
+
+  const handleCountrySelect = async (countryCode: string) => {
+    const value = countryCode.toUpperCase();
+    setActiveSave("country");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        detected_country: value
+      }
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedCountry(value);
+      setCountryConfirmed(true);
+      setCountrySelectOpen(false);
+    }
+    setActiveSave(null);
+  };
+
+  const handleConfirmLanguage = async () => {
+    const value = confirmedLanguage ?? suggestedLanguage;
+    setActiveSave("language");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        interface_language: value
+      },
+      lang: value
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedLanguage(value);
+      setLanguageConfirmed(true);
+      setLanguageSelectOpen(false);
+      setPersonal((prev) => ({
+        ...prev,
+        lang: value
+      }));
+    }
+    setActiveSave(null);
+  };
+
+  const handleLanguageSelect = async (langCode: string) => {
+    const value = normalizeLang(langCode) ?? "en";
+    setActiveSave("language");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        interface_language: value
+      },
+      lang: value
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedLanguage(value);
+      setLanguageConfirmed(true);
+      setLanguageSelectOpen(false);
+      setPersonal((prev) => ({
+        ...prev,
+        lang: value
+      }));
+    }
+    setActiveSave(null);
+  };
+
   const fullNameValid = personal.fullName.trim().length <= 80;
   const birthPlaceValid = personal.birthPlace.trim().length <= 80;
   const dateValid = !personal.birthDate || /^\d{4}-\d{2}-\d{2}$/.test(personal.birthDate);
@@ -335,8 +457,6 @@ export default function ProfilePage() {
     (personal.birthTime.length > 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(personal.birthTime));
 
   const personalDirty =
-    personal.displayName !== initialPersonal.displayName ||
-    personal.lang !== initialPersonal.lang ||
     personal.fullName !== initialPersonal.fullName ||
     personal.birthDate !== initialPersonal.birthDate ||
     personal.birthTime !== initialPersonal.birthTime ||
@@ -347,7 +467,7 @@ export default function ProfilePage() {
   const widgetsDirty = !arraysEqual(selectedWidgets, initialWidgets);
 
   const personalValid =
-    nameValid && fullNameValid && birthPlaceValid && dateValid && timeValid;
+    fullNameValid && birthPlaceValid && dateValid && timeValid;
 
   const handlePersonalSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -359,14 +479,6 @@ export default function ProfilePage() {
     setPersonalStatus(null);
 
     const payload: UpdateProfilePayload = {};
-
-    if (personal.displayName !== initialPersonal.displayName) {
-      payload.display_name = trimToNull(personal.displayName);
-    }
-
-    if (personal.lang !== initialPersonal.lang) {
-      payload.lang = personal.lang;
-    }
 
     const birthPayload: NonNullable<UpdateProfilePayload["birth_profile"]> = {};
 
@@ -515,40 +627,6 @@ export default function ProfilePage() {
         <CardContent>
           <form className="space-y-6" onSubmit={handlePersonalSubmit}>
             <div className="space-y-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="displayName">
-                  Отображаемое имя
-                </label>
-                <Input
-                  id="displayName"
-                  value={personal.displayName}
-                  onChange={(event) => onPersonalFieldChange("displayName", event.target.value)}
-                  placeholder="Например, Tarotolog"
-                  maxLength={80}
-                />
-                {!nameValid ? (
-                  <p className="text-xs text-destructive">Имя не должно превышать 80 символов</p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="lang">
-                  Язык приложения
-                </label>
-                <select
-                  id="lang"
-                  value={personal.lang}
-                  onChange={(event) => onPersonalFieldChange("lang", event.target.value)}
-                  className="h-11 rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
-                >
-                  {LANG_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
                 <p className="text-sm font-medium text-[var(--text-primary)]">Ваш часовой пояс</p>
                 {timezonePending ? (
@@ -604,10 +682,153 @@ export default function ProfilePage() {
                 ) : null}
               </div>
 
+              <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Ваша страна</p>
+                {countryConfirmed ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-[var(--text-secondary)]">Подтверждённая страна</p>
+                      <p className="text-base font-semibold text-[var(--text-primary)]">{getCountryLabel(confirmedCountry)}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCountrySelectOpen((prev) => !prev)}
+                      disabled={saving && activeSave === "country"}
+                    >
+                      Изменить
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {`Надеюсь, ваша страна — ${getCountryLabel(suggestedCountry)}?`}
+                    </p>
+                    <Input disabled value={getCountryLabel(suggestedCountry)} />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={handleConfirmCountry}
+                        disabled={saving && activeSave === "country"}
+                      >
+                        Подтвердить
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setCountrySelectOpen((prev) => !prev)}
+                        disabled={saving && activeSave === "country"}
+                      >
+                        Изменить
+                      </Button>
+                    </div>
+                  </>
+                )}
+                {countrySelectOpen ? (
+                  <select
+                    className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
+                    value={confirmedCountry ?? suggestedCountry}
+                    onChange={(event) => {
+                      void handleCountrySelect(event.target.value);
+                    }}
+                  >
+                    {COUNTRY_OPTIONS.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+
+              <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Язык интерфейса</p>
+                {languageConfirmed ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-[var(--text-secondary)]">Подтверждённый язык</p>
+                      <p className="text-base font-semibold text-[var(--text-primary)]">{getLanguageLabel(confirmedLanguage)}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLanguageSelectOpen((prev) => !prev)}
+                      disabled={saving && activeSave === "language"}
+                    >
+                      Изменить
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {`Надеюсь, ваш язык — ${getLanguageLabel(suggestedLanguage)}?`}
+                    </p>
+                    <Input disabled value={getLanguageLabel(suggestedLanguage)} />
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={handleConfirmLanguage}
+                        disabled={saving && activeSave === "language"}
+                      >
+                        Подтвердить
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setLanguageSelectOpen((prev) => !prev)}
+                        disabled={saving && activeSave === "language"}
+                      >
+                        Изменить
+                      </Button>
+                    </div>
+                  </>
+                )}
+                {languageSelectOpen ? (
+                  <select
+                    className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
+                    value={confirmedLanguage ?? suggestedLanguage}
+                    onChange={(event) => {
+                      void handleLanguageSelect(event.target.value);
+                    }}
+                  >
+                    {LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+
               <div className="space-y-4">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--text-tertiary)]">
                   Данные рождения
                 </h3>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="gender">
+                    Пол
+                  </label>
+                  <select
+                    id="gender"
+                    value={personal.gender}
+                    onChange={(event) =>
+                      onPersonalFieldChange("gender", event.target.value as GenderOption)
+                    }
+                    className="h-11 rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
+                  >
+                    {GENDER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="grid gap-2">
                   <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="fullName">
                     Полное имя
@@ -685,26 +906,6 @@ export default function ProfilePage() {
                     <p className="text-xs text-destructive">Место рождения не должно превышать 80 символов</p>
                   ) : null}
                   <p className="text-xs text-[var(--text-secondary)]">TODO: подключить автокомплит по геоданным</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="gender">
-                    Пол
-                  </label>
-                  <select
-                    id="gender"
-                    value={personal.gender}
-                    onChange={(event) =>
-                      onPersonalFieldChange("gender", event.target.value as GenderOption)
-                    }
-                    className="h-11 rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
-                  >
-                    {GENDER_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </div>
@@ -784,20 +985,8 @@ export default function ProfilePage() {
             <span className="font-semibold text-[var(--text-primary)]">{detectedCountry}</span>
           </div>
           <div className="flex justify-between">
-            <span>Предполагаемый язык</span>
-            <span className="font-semibold text-[var(--text-primary)]">{detectedLanguage}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Язык устройства</span>
-            <span className="font-semibold text-[var(--text-primary)]">{deviceLanguageDisplay}</span>
-          </div>
-          <div className="flex justify-between">
             <span>Язык Telegram</span>
             <span className="font-semibold text-[var(--text-primary)]">{telegramLanguageDisplay}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Выбор пользователя</span>
-            <span className="font-semibold text-[var(--text-primary)]">{userLanguageDisplay}</span>
           </div>
         </div>
       </Card>

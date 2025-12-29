@@ -128,6 +128,8 @@ export interface BirthProfile {
   birth_tz_name: string | null;
   birth_tz_offset_min: number | null;
   gender: "male" | "female" | "other" | null;
+  detected_country?: string | null;
+  interface_language?: string | null;
 }
 
 export interface ProfileResponse {
@@ -172,6 +174,8 @@ export interface UpdateProfilePayload {
     birth_tz_name?: string | null;
     birth_tz_offset_min?: number | null;
     gender?: "male" | "female" | "other" | null;
+    detected_country?: string | null;
+    interface_language?: string | null;
   };
 }
 
@@ -309,6 +313,8 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
       "birth_tz_name",
       "birth_tz_offset_min",
       "gender",
+      "detected_country",
+      "interface_language"
     ] as const).forEach((key) => {
       const v = (birthProfile as Record<string, unknown>)[key];
       if (v !== undefined) {
