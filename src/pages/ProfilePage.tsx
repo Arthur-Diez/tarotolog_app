@@ -60,7 +60,6 @@ const LANGUAGE_OPTIONS = [
   { code: "en", label: "English" }
 ];
 
-const LS_COUNTRY_KEY = "tarotolog_confirmed_country";
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 
 function trimToNull(value: string): string | null {
@@ -198,7 +197,8 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const initialInterfaceLanguage = user?.lang && user.lang !== "system" ? user.lang : null;
+  const initialInterfaceLanguage =
+    birthProfile?.interface_language ?? (user?.lang && user.lang !== "system" ? user.lang : null);
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
@@ -249,18 +249,9 @@ export default function ProfilePage() {
   const [timezoneStatus, setTimezoneStatus] =
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
-  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "language" | null>(null);
+  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "country" | "language" | null>(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
-  const initialConfirmedCountry =
-    typeof window !== "undefined"
-      ? (() => {
-          try {
-            return window.localStorage.getItem(LS_COUNTRY_KEY);
-          } catch {
-            return null;
-          }
-        })()
-      : null;
+  const initialConfirmedCountry = birthProfile?.detected_country ?? null;
   const [confirmedCountry, setConfirmedCountry] = useState<string | null>(initialConfirmedCountry);
   const [countryConfirmed, setCountryConfirmed] = useState<boolean>(Boolean(initialConfirmedCountry));
   const [countrySelectOpen, setCountrySelectOpen] = useState(false);
@@ -472,7 +463,7 @@ export default function ProfilePage() {
         setPersonalStatus({ type: "error", message });
       } else if (activeSave === "widgets") {
         setWidgetsStatus({ type: "error", message });
-      } else {
+      } else if (activeSave === "timezone") {
         setTimezoneStatus({ type: "error", message });
       }
       clearError();
@@ -493,34 +484,48 @@ export default function ProfilePage() {
     );
   };
 
-  const persistCountry = (value: string) => {
-    setConfirmedCountry(value);
-    setCountryConfirmed(true);
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(LS_COUNTRY_KEY, value);
-      }
-    } catch {
-      // ignore write errors
-    }
-    setCountrySelectOpen(false);
-  };
-
-  const handleConfirmCountry = () => {
+  const handleConfirmCountry = async () => {
     const value = (confirmedCountry ?? suggestedCountry).toUpperCase();
-    persistCountry(value);
+    setActiveSave("country");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        detected_country: value
+      }
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedCountry(value);
+      setCountryConfirmed(true);
+      setCountrySelectOpen(false);
+    }
+    setActiveSave(null);
   };
 
-  const handleCountrySelect = (countryCode: string) => {
+  const handleCountrySelect = async (countryCode: string) => {
     const value = countryCode.toUpperCase();
-    persistCountry(value);
+    setActiveSave("country");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        detected_country: value
+      }
+    };
+    const result = await saveProfile(payload);
+    if (result) {
+      setConfirmedCountry(value);
+      setCountryConfirmed(true);
+      setCountrySelectOpen(false);
+    }
+    setActiveSave(null);
   };
 
   const handleConfirmLanguage = async () => {
     const value = confirmedLanguage ?? suggestedLanguage;
     setActiveSave("language");
     const payload: UpdateProfilePayload = {
-      lang: value
+      lang: value,
+      birth_profile: {
+        interface_language: value
+      }
     };
     const result = await saveProfile(payload);
     if (result) {
@@ -536,10 +541,14 @@ export default function ProfilePage() {
   };
 
   const handleLanguageSelect = async (langCode: string) => {
-    const value = normalizeLang(langCode) ?? "en";
+    const normalized = normalizeLang(langCode) ?? "en";
+    const value = mapSupportedLang(normalized);
     setActiveSave("language");
     const payload: UpdateProfilePayload = {
-      lang: value
+      lang: value,
+      birth_profile: {
+        interface_language: value
+      }
     };
     const result = await saveProfile(payload);
     if (result) {
@@ -800,6 +809,7 @@ export default function ProfilePage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setCountrySelectOpen((prev) => !prev)}
+                      disabled={saving && activeSave === "country"}
                     >
                       Изменить
                     </Button>
@@ -815,6 +825,7 @@ export default function ProfilePage() {
                         type="button"
                         className="flex-1"
                         onClick={handleConfirmCountry}
+                        disabled={saving && activeSave === "country"}
                       >
                         Подтвердить
                       </Button>
@@ -823,6 +834,7 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-1"
                         onClick={() => setCountrySelectOpen((prev) => !prev)}
+                        disabled={saving && activeSave === "country"}
                       >
                         Изменить
                       </Button>
@@ -834,7 +846,7 @@ export default function ProfilePage() {
                     className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
                     value={confirmedCountry ?? suggestedCountry}
                     onChange={(event) => {
-                      handleCountrySelect(event.target.value);
+                      void handleCountrySelect(event.target.value);
                     }}
                   >
                     {COUNTRY_OPTIONS.map((option) => (
