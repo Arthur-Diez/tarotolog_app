@@ -340,8 +340,10 @@ export default function ProfilePage() {
   });
   const normalizedTelegramLanguage = normalizeLang(telegramLang ?? null);
   const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
-  const suggestedLanguage = normalizedTelegramLanguage ?? effectiveLanguage ?? "en";
-  const telegramLanguageDisplay = telegramLang ?? "Unknown";
+  const suggestedLanguage = effectiveLanguage ?? "en";
+  const telegramLanguageDisplay = normalizedTelegramLanguage
+    ? getLanguageLabel(normalizedTelegramLanguage)
+    : "Unknown";
 
   useEffect(() => {
     if (saveError && activeSave) {
