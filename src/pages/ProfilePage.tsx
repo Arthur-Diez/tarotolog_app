@@ -197,8 +197,7 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const initialInterfaceLanguage =
-    birthProfile?.interface_language ?? (user?.lang && user.lang !== "system" ? user.lang : null);
+  const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
@@ -354,7 +353,7 @@ export default function ProfilePage() {
       const navRaw = navSnap.languages0 ?? navSnap.language;
       const navNorm = normalizeLang(navRaw);
       const urlNorm = normalizeLang(urlLang);
-      const userChoice = confirmedLanguage ?? (user?.lang && user.lang !== "system" ? user.lang : null);
+      const userChoice = confirmedLanguage;
       const userNorm = normalizeLang(userChoice);
       const effectiveBase = userNorm ?? tgNorm ?? urlNorm ?? navNorm ?? null;
       const effective = mapSupportedLang(effectiveBase);
@@ -396,7 +395,7 @@ export default function ProfilePage() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [user?.lang, confirmedLanguage]);
+  }, [confirmedLanguage]);
 
   useEffect(() => {
     if (!profile || languageSyncRef.current) {
