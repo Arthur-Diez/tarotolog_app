@@ -461,7 +461,9 @@ export default function ProfilePage() {
   });
 
   const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
-  const suggestedLanguage = diag.effectiveLang;
+  const suggestedLanguage = diag.navLangNorm
+    ? mapSupportedLang(diag.navLangNorm)
+    : diag.effectiveLang;
 
   useEffect(() => {
     if (saveError && activeSave) {
