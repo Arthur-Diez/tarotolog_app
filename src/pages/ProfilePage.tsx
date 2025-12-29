@@ -93,6 +93,12 @@ function mapSupportedLang(base: string | null): "ru" | "en" {
   return "en";
 }
 
+function readOptionalString(target: unknown, key: string): string | null {
+  if (!target || typeof target !== "object") return null;
+  const value = (target as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
+}
+
 function getTelegramLanguageSnapshot(): {
   languageCode: string | null;
   rawUserLang: string | null;
@@ -106,8 +112,8 @@ function getTelegramLanguageSnapshot(): {
   const rawLangCandidate = (userData as { language?: unknown } | undefined)?.language;
   const rawUserLang = typeof rawLangCandidate === "string" ? rawLangCandidate : null;
   const initData = typeof tg?.initData === "string" ? tg.initData : null;
-  const platform = typeof tg?.platform === "string" ? tg.platform : null;
-  const version = typeof tg?.version === "string" ? tg.version : null;
+  const platform = readOptionalString(tg, "platform");
+  const version = readOptionalString(tg, "version");
   return {
     languageCode,
     rawUserLang,
