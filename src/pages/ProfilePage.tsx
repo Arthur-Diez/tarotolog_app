@@ -61,6 +61,7 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const LS_COUNTRY_KEY = "tarotolog_confirmed_country";
+const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -78,35 +79,73 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
   return leftSorted.every((item, index) => item === rightSorted[index]);
 }
 
-function extractCountryFromLang(lang?: string | null): string | null {
-  if (!lang) return null;
-  const match = lang.match(/-([A-Za-z]{2})$/);
-  return match ? match[1].toUpperCase() : null;
-}
-
 function normalizeLang(code: string | null): string | null {
   if (!code) return null;
-  return code.split("-")[0]?.toLowerCase() ?? null;
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  const base = trimmed.toLowerCase().split(/[-_]/)[0];
+  return base || null;
 }
 
-function detectPreferredLanguage({
-  userLang,
-  telegramLang,
-  deviceLang
-}: {
-  userLang?: string | null;
-  telegramLang?: string | null;
-  deviceLang?: string | null;
-}): string {
-  if (userLang && userLang !== "system") return normalizeLang(userLang) ?? "en";
-
-  const tg = normalizeLang(telegramLang ?? null);
-  if (tg) return tg;
-
-  const device = normalizeLang(deviceLang ?? null);
-  if (device) return device;
-
+function mapSupportedLang(base: string | null): "ru" | "en" {
+  if (base === "ru") return "ru";
+  if (base === "en") return "en";
   return "en";
+}
+
+function getTelegramLanguageSnapshot(): {
+  languageCode: string | null;
+  rawUserLang: string | null;
+  initData: string | null;
+  platform: string | null;
+  version: string | null;
+} {
+  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
+  const userData = tg?.initDataUnsafe?.user;
+  const languageCode = typeof userData?.language_code === "string" ? userData.language_code : null;
+  const rawLangCandidate = (userData as { language?: unknown } | undefined)?.language;
+  const rawUserLang = typeof rawLangCandidate === "string" ? rawLangCandidate : null;
+  const initData = typeof tg?.initData === "string" ? tg.initData : null;
+  const platform = typeof tg?.platform === "string" ? tg.platform : null;
+  const version = typeof tg?.version === "string" ? tg.version : null;
+  return {
+    languageCode,
+    rawUserLang,
+    initData,
+    platform,
+    version
+  };
+}
+
+function getNavigatorLanguageSnapshot(): {
+  languages0: string | null;
+  language: string | null;
+} {
+  if (typeof navigator === "undefined") {
+    return { languages0: null, language: null };
+  }
+  const languages0 =
+    Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages[0]
+      : null;
+  const language = typeof navigator.language === "string" ? navigator.language : null;
+  return { languages0, language };
+}
+
+function getUrlLangParam(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("lang")) {
+    return params.get("lang");
+  }
+  const startParam = params.get("tgWebAppStartParam");
+  if (startParam && startParam.includes("lang=")) {
+    const match = startParam.match(/lang=([A-Za-z_-]+)/i);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+  return null;
 }
 
 function detectCountry({
@@ -135,12 +174,6 @@ function detectCountry({
   return "Unknown";
 }
 
-function getTelegramLanguageCode(): string | null {
-  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
-  const code = tg?.initDataUnsafe?.user?.language_code;
-  return typeof code === "string" && code.length ? code : null;
-}
-
 function getCountryLabel(code: string | null): string {
   if (!code) return "Не выбрано";
   const option = COUNTRY_OPTIONS.find((item) => item.code === code.toUpperCase());
@@ -160,6 +193,7 @@ export default function ProfilePage() {
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
   const initialInterfaceLanguage = user?.lang && user.lang !== "system" ? user.lang : null;
+  const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
@@ -228,6 +262,23 @@ export default function ProfilePage() {
   const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
   const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
   const languageSyncRef = useRef(false);
+  const [diag, setDiag] = useState<{
+    tgLangCodeRaw: string | null;
+    tgLangCodeNorm: string | null;
+    navLangRaw: string | null;
+    navLangNorm: string | null;
+    urlLangRaw: string | null;
+    urlLangNorm: string | null;
+    effectiveLang: "ru" | "en";
+  }>({
+    tgLangCodeRaw: null,
+    tgLangCodeNorm: null,
+    navLangRaw: null,
+    navLangNorm: null,
+    urlLangRaw: null,
+    urlLangNorm: null,
+    effectiveLang: initialEffectiveLang
+  });
   const timezoneName = user?.current_tz_name ?? null;
   const timezoneOffset = user?.current_tz_offset_min ?? null;
   const timezoneConfirmed = Boolean(user?.current_tz_confirmed);
@@ -246,8 +297,7 @@ export default function ProfilePage() {
   const pendingMessage = hasDetectedProposal
     ? `Надеюсь, ваш часовой пояс — ${pendingLabel}?`
     : "Мы не смогли определить ваш часовой пояс автоматически. Выберите подходящий вариант.";
-  const telegramLang = getTelegramLanguageCode();
-  const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
+  const deviceLanguageFallback = typeof navigator !== "undefined" ? navigator.language : null;
 
   useEffect(() => {
     setPersonal(initialPersonal);
@@ -292,17 +342,77 @@ export default function ProfilePage() {
   }, [timezoneStatus]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const read = () => {
+      if (cancelled) return;
+      const tgSnap = getTelegramLanguageSnapshot();
+      const navSnap = getNavigatorLanguageSnapshot();
+      const urlLang = getUrlLangParam();
+      const tgNorm = normalizeLang(tgSnap.languageCode);
+      const navRaw = navSnap.languages0 ?? navSnap.language;
+      const navNorm = normalizeLang(navRaw);
+      const urlNorm = normalizeLang(urlLang);
+      const userChoice = confirmedLanguage ?? (user?.lang && user.lang !== "system" ? user.lang : null);
+      const userNorm = normalizeLang(userChoice);
+      const effectiveBase = userNorm ?? tgNorm ?? urlNorm ?? navNorm ?? null;
+      const effective = mapSupportedLang(effectiveBase);
+
+      setDiag({
+        tgLangCodeRaw: tgSnap.languageCode,
+        tgLangCodeNorm: tgNorm,
+        navLangRaw: navRaw,
+        navLangNorm: navNorm,
+        urlLangRaw: urlLang,
+        urlLangNorm: urlNorm,
+        effectiveLang: effective
+      });
+
+      try {
+        window.localStorage.setItem(
+          LS_LANG_SNAPSHOT_KEY,
+          JSON.stringify({
+            tgLangCodeRaw: tgSnap.languageCode,
+            navLangRaw: navRaw,
+            urlLangRaw: urlLang,
+            updatedAt: Date.now()
+          })
+        );
+      } catch {
+        // ignore storage issues
+      }
+    };
+
+    read();
+    const interval = window.setInterval(() => {
+      read();
+      if (Date.now() - startedAt > 10000) {
+        window.clearInterval(interval);
+      }
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user?.lang, confirmedLanguage]);
+
+  useEffect(() => {
     if (!profile || languageSyncRef.current) {
       return;
     }
     languageSyncRef.current = true;
     const payload: UpdateProfilePayload = {};
-    const deviceLangValue = typeof navigator !== "undefined" ? navigator.language ?? null : null;
+    const deviceLangValue = diag.navLangRaw ?? deviceLanguageFallback ?? null;
     if (deviceLangValue !== null) {
       payload.detected_lang_device = deviceLangValue;
     }
-    if (telegramLang) {
-      payload.detected_lang_telegram = telegramLang;
+    if (diag.tgLangCodeRaw) {
+      payload.detected_lang_telegram = diag.tgLangCodeRaw;
     }
     if (Object.keys(payload).length === 0) {
       return;
@@ -310,7 +420,7 @@ export default function ProfilePage() {
     void saveProfile(payload).catch(() => {
       // silent fail
     });
-  }, [profile, saveProfile, telegramLang]);
+  }, [profile, saveProfile, diag.navLangRaw, diag.tgLangCodeRaw, deviceLanguageFallback]);
 
   useEffect(() => {
     if (ipCountry !== null || typeof window === "undefined") return;
@@ -340,21 +450,12 @@ export default function ProfilePage() {
 
   const detectedCountry = detectCountry({
     ipCountry,
-    telegramLang,
-    deviceLang: deviceLanguage
+    telegramLang: diag.tgLangCodeNorm,
+    deviceLang: diag.navLangRaw ?? deviceLanguageFallback
   });
 
-  const effectiveLanguage = detectPreferredLanguage({
-    userLang: confirmedLanguage ?? personal.lang,
-    telegramLang,
-    deviceLang: deviceLanguage
-  });
-  const normalizedTelegramLanguage = normalizeLang(telegramLang ?? null);
   const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
-  const suggestedLanguage = effectiveLanguage ?? "en";
-  const telegramLanguageDisplay = normalizedTelegramLanguage
-    ? getLanguageLabel(normalizedTelegramLanguage)
-    : "Unknown";
+  const suggestedLanguage = diag.effectiveLang;
 
   useEffect(() => {
     if (saveError && activeSave) {
@@ -974,14 +1075,22 @@ export default function ProfilePage() {
         <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Диагностика</p>
         <div className="mt-3 space-y-2">
           <div className="flex justify-between">
-            <span>Фактическое местонахождение</span>
+            <span>Язык Telegram (user.language_code)</span>
             <span className="font-semibold text-[var(--text-primary)]">
-              {ipCountry ? getCountryLabel(ipCountry) : "Unknown"}
+              {diag.tgLangCodeRaw ?? "нет"}
             </span>
           </div>
           <div className="flex justify-between">
-            <span>Язык Telegram</span>
-            <span className="font-semibold text-[var(--text-primary)]">{telegramLanguageDisplay}</span>
+            <span>Язык устройства (navigator)</span>
+            <span className="font-semibold text-[var(--text-primary)]">
+              {diag.navLangRaw ?? "нет"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Итоговый язык интерфейса</span>
+            <span className="font-semibold text-[var(--text-primary)]">
+              {getLanguageLabel(diag.effectiveLang)}
+            </span>
           </div>
         </div>
       </Card>
