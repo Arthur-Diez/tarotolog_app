@@ -60,6 +60,8 @@ const LANGUAGE_OPTIONS = [
   { code: "en", label: "English" }
 ];
 
+const LS_COUNTRY_KEY = "tarotolog_confirmed_country";
+
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
@@ -96,15 +98,13 @@ function detectPreferredLanguage({
   telegramLang?: string | null;
   deviceLang?: string | null;
 }): string {
-  if (userLang && userLang !== "system") {
-    return userLang;
-  }
-
-  const device = normalizeLang(deviceLang ?? null);
-  if (device) return device;
+  if (userLang && userLang !== "system") return normalizeLang(userLang) ?? "en";
 
   const tg = normalizeLang(telegramLang ?? null);
   if (tg) return tg;
+
+  const device = normalizeLang(deviceLang ?? null);
+  if (device) return device;
 
   return "en";
 }
@@ -135,6 +135,12 @@ function detectCountry({
   return "Unknown";
 }
 
+function getTelegramLanguageCode(): string | null {
+  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
+  const code = tg?.initDataUnsafe?.user?.language_code;
+  return typeof code === "string" && code.length ? code : null;
+}
+
 function getCountryLabel(code: string | null): string {
   if (!code) return "Не выбрано";
   const option = COUNTRY_OPTIONS.find((item) => item.code === code.toUpperCase());
@@ -153,8 +159,7 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const initialInterfaceLanguage =
-    birthProfile?.interface_language ?? (user?.lang && user.lang !== "system" ? user.lang : null);
+  const initialInterfaceLanguage = user?.lang && user.lang !== "system" ? user.lang : null;
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
@@ -193,6 +198,8 @@ export default function ProfilePage() {
     return [...DEFAULT_WIDGET_KEYS];
   }, [profile?.preferences?.widgets]);
 
+
+
   const [personal, setPersonal] = useState<PersonalFormState>(initialPersonal);
   const [selectedWidgets, setSelectedWidgets] = useState<WidgetKey[]>(initialWidgets);
   const [personalStatus, setPersonalStatus] =
@@ -202,9 +209,18 @@ export default function ProfilePage() {
   const [timezoneStatus, setTimezoneStatus] =
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
-  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "country" | "language" | null>(null);
+  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "language" | null>(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
-  const initialConfirmedCountry = birthProfile?.detected_country ?? null;
+  const initialConfirmedCountry =
+    typeof window !== "undefined"
+      ? (() => {
+          try {
+            return window.localStorage.getItem(LS_COUNTRY_KEY);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
   const [confirmedCountry, setConfirmedCountry] = useState<string | null>(initialConfirmedCountry);
   const [countryConfirmed, setCountryConfirmed] = useState<boolean>(Boolean(initialConfirmedCountry));
   const [countrySelectOpen, setCountrySelectOpen] = useState(false);
@@ -230,11 +246,7 @@ export default function ProfilePage() {
   const pendingMessage = hasDetectedProposal
     ? `Надеюсь, ваш часовой пояс — ${pendingLabel}?`
     : "Мы не смогли определить ваш часовой пояс автоматически. Выберите подходящий вариант.";
-  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
-  const telegramUser = tg?.initDataUnsafe?.user;
-  const telegramCountry = (telegramUser as any)?.country ?? null;
-  const telegramLang =
-    typeof telegramUser?.language_code === "string" ? telegramUser.language_code : null;
+  const telegramLang = getTelegramLanguageCode();
   const deviceLanguage = typeof navigator !== "undefined" ? navigator.language : null;
 
   useEffect(() => {
@@ -327,7 +339,6 @@ export default function ProfilePage() {
   }, [ipCountry]);
 
   const detectedCountry = detectCountry({
-    telegramCountry: null,
     ipCountry,
     telegramLang,
     deviceLang: deviceLanguage
@@ -373,47 +384,33 @@ export default function ProfilePage() {
     );
   };
 
-  const handleConfirmCountry = async () => {
-    const value = (confirmedCountry ?? suggestedCountry).toUpperCase();
-    setActiveSave("country");
-    const payload: UpdateProfilePayload = {
-      birth_profile: {
-        detected_country: value
+  const persistCountry = (value: string) => {
+    setConfirmedCountry(value);
+    setCountryConfirmed(true);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(LS_COUNTRY_KEY, value);
       }
-    };
-    const result = await saveProfile(payload);
-    if (result) {
-      setConfirmedCountry(value);
-      setCountryConfirmed(true);
-      setCountrySelectOpen(false);
+    } catch {
+      // ignore write errors
     }
-    setActiveSave(null);
+    setCountrySelectOpen(false);
   };
 
-  const handleCountrySelect = async (countryCode: string) => {
+  const handleConfirmCountry = () => {
+    const value = (confirmedCountry ?? suggestedCountry).toUpperCase();
+    persistCountry(value);
+  };
+
+  const handleCountrySelect = (countryCode: string) => {
     const value = countryCode.toUpperCase();
-    setActiveSave("country");
-    const payload: UpdateProfilePayload = {
-      birth_profile: {
-        detected_country: value
-      }
-    };
-    const result = await saveProfile(payload);
-    if (result) {
-      setConfirmedCountry(value);
-      setCountryConfirmed(true);
-      setCountrySelectOpen(false);
-    }
-    setActiveSave(null);
+    persistCountry(value);
   };
 
   const handleConfirmLanguage = async () => {
     const value = confirmedLanguage ?? suggestedLanguage;
     setActiveSave("language");
     const payload: UpdateProfilePayload = {
-      birth_profile: {
-        interface_language: value
-      },
       lang: value
     };
     const result = await saveProfile(payload);
@@ -433,9 +430,6 @@ export default function ProfilePage() {
     const value = normalizeLang(langCode) ?? "en";
     setActiveSave("language");
     const payload: UpdateProfilePayload = {
-      birth_profile: {
-        interface_language: value
-      },
       lang: value
     };
     const result = await saveProfile(payload);
@@ -697,7 +691,6 @@ export default function ProfilePage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setCountrySelectOpen((prev) => !prev)}
-                      disabled={saving && activeSave === "country"}
                     >
                       Изменить
                     </Button>
@@ -713,7 +706,6 @@ export default function ProfilePage() {
                         type="button"
                         className="flex-1"
                         onClick={handleConfirmCountry}
-                        disabled={saving && activeSave === "country"}
                       >
                         Подтвердить
                       </Button>
@@ -722,7 +714,6 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-1"
                         onClick={() => setCountrySelectOpen((prev) => !prev)}
-                        disabled={saving && activeSave === "country"}
                       >
                         Изменить
                       </Button>
@@ -734,7 +725,7 @@ export default function ProfilePage() {
                     className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
                     value={confirmedCountry ?? suggestedCountry}
                     onChange={(event) => {
-                      void handleCountrySelect(event.target.value);
+                      handleCountrySelect(event.target.value);
                     }}
                   >
                     {COUNTRY_OPTIONS.map((option) => (
@@ -984,7 +975,9 @@ export default function ProfilePage() {
         <div className="mt-3 space-y-2">
           <div className="flex justify-between">
             <span>Фактическое местонахождение</span>
-            <span className="font-semibold text-[var(--text-primary)]">{detectedCountry}</span>
+            <span className="font-semibold text-[var(--text-primary)]">
+              {ipCountry ? getCountryLabel(ipCountry) : "Unknown"}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Язык Telegram</span>
