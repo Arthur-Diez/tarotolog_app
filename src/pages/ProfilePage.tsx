@@ -265,7 +265,7 @@ export default function ProfilePage() {
   const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
   const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
   const [timezoneName, setTimezoneName] = useState<string | null>(initialTimezoneName);
-  const [timezoneOffset, setTimezoneOffset] = useState<number | null>(initialTimezoneOffset);
+  const [timezoneOffset, setTimezoneOffset] = useState<number | null>(initialTimezoneOffset ?? null);
   const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
   const languageSyncRef = useRef(false);
   const [diag, setDiag] = useState<{
