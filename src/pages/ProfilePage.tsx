@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_WIDGET_KEYS, WIDGET_KEYS, type UpdateProfilePayload, type WidgetKey } from "@/lib/api";
+import {
+  DEFAULT_WIDGET_KEYS,
+  WIDGET_KEYS,
+  type BirthProfile,
+  type UpdateProfilePayload,
+  type WidgetKey
+} from "@/lib/api";
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
@@ -58,6 +64,26 @@ const COUNTRY_OPTIONS = [
 const LANGUAGE_OPTIONS = [
   { code: "ru", label: "Русский" },
   { code: "en", label: "English" }
+];
+
+type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile"]>;
+
+const BIRTH_PROFILE_PAYLOAD_KEYS: Array<keyof BirthProfileUpdatePayload> = [
+  "full_name",
+  "birth_date",
+  "birth_time_local",
+  "birth_time_known",
+  "birth_place_text",
+  "birth_lat",
+  "birth_lon",
+  "birth_tz_name",
+  "birth_tz_offset_min",
+  "gender",
+  "detected_country",
+  "interface_language",
+  "current_tz_name",
+  "current_tz_offset_min",
+  "current_tz_confirmed"
 ];
 
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
@@ -220,6 +246,21 @@ export default function ProfilePage() {
       ? Boolean(birthProfile?.current_tz_confirmed)
       : Boolean(user?.current_tz_confirmed);
 
+  const birthProfilePayloadBase = useMemo<BirthProfileUpdatePayload>(() => {
+    if (!birthProfile) {
+      return {};
+    }
+
+    const base: BirthProfileUpdatePayload = {};
+    for (const key of BIRTH_PROFILE_PAYLOAD_KEYS) {
+      const value = birthProfile[key as keyof BirthProfile];
+      if (value !== undefined) {
+        base[key] = value as BirthProfileUpdatePayload[typeof key];
+      }
+    }
+    return base;
+  }, [birthProfile]);
+
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
 
@@ -281,6 +322,31 @@ export default function ProfilePage() {
   const [timezoneOffset, setTimezoneOffset] = useState<number | null>(initialTimezoneOffset ?? null);
   const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
   const languageSyncRef = useRef(false);
+
+  const birthProfileSnapshot = useMemo<BirthProfileUpdatePayload>(() => {
+    const snapshot: BirthProfileUpdatePayload = { ...birthProfilePayloadBase };
+    if (timezoneName) {
+      snapshot.current_tz_name = timezoneName;
+    }
+    if (typeof timezoneOffset === "number") {
+      snapshot.current_tz_offset_min = timezoneOffset;
+    }
+    snapshot.current_tz_confirmed = timezoneConfirmed;
+    if (confirmedCountry) {
+      snapshot.detected_country = confirmedCountry;
+    }
+    if (confirmedLanguage) {
+      snapshot.interface_language = confirmedLanguage;
+    }
+    return snapshot;
+  }, [
+    birthProfilePayloadBase,
+    confirmedCountry,
+    confirmedLanguage,
+    timezoneConfirmed,
+    timezoneName,
+    timezoneOffset
+  ]);
   const [diag, setDiag] = useState<{
     tgLangCodeRaw: string | null;
     tgLangCodeNorm: string | null;
@@ -514,6 +580,7 @@ export default function ProfilePage() {
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
+        ...birthProfileSnapshot,
         detected_country: value
       }
     };
@@ -532,6 +599,7 @@ export default function ProfilePage() {
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
+        ...birthProfileSnapshot,
         detected_country: value
       }
     };
@@ -551,6 +619,7 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       lang: value,
       birth_profile: {
+        ...birthProfileSnapshot,
         interface_language: value
       }
     };
@@ -575,6 +644,7 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       lang: value,
       birth_profile: {
+        ...birthProfileSnapshot,
         interface_language: value
       }
     };
@@ -624,7 +694,7 @@ export default function ProfilePage() {
 
     const payload: UpdateProfilePayload = {};
 
-    const birthPayload: NonNullable<UpdateProfilePayload["birth_profile"]> = {};
+    const birthPayload: BirthProfileUpdatePayload = { ...birthProfileSnapshot };
 
     if (personal.fullName !== initialPersonal.fullName) {
       birthPayload.full_name = trimToNull(personal.fullName);
@@ -726,6 +796,7 @@ export default function ProfilePage() {
       current_tz_offset_min: offsetToSave,
       current_tz_confirmed: true,
       birth_profile: {
+        ...birthProfileSnapshot,
         current_tz_name: nameToSave,
         current_tz_offset_min: offsetToSave,
         current_tz_confirmed: true
@@ -749,6 +820,7 @@ export default function ProfilePage() {
       current_tz_offset_min: offset,
       current_tz_confirmed: true,
       birth_profile: {
+        ...birthProfileSnapshot,
         current_tz_name: name,
         current_tz_offset_min: offset,
         current_tz_confirmed: true
