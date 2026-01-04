@@ -199,13 +199,14 @@ export default function ProfilePage() {
   const user = profile?.user;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
-  const initialTimezoneName = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
-  const initialTimezoneOffset =
-    typeof (birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min) === "number"
-      ? (birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min)
-      : null;
-  const initialTimezoneConfirmed =
-    birthProfile?.current_tz_confirmed ?? Boolean(user?.current_tz_confirmed) ?? false;
+  const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
+  const combinedTimezoneOffset = birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min;
+  const initialTimezoneOffset: number | null =
+    typeof combinedTimezoneOffset === "number" ? combinedTimezoneOffset : null;
+  const initialTimezoneConfirmed: boolean =
+    typeof birthProfile?.current_tz_confirmed === "boolean"
+      ? Boolean(birthProfile?.current_tz_confirmed)
+      : Boolean(user?.current_tz_confirmed);
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
@@ -322,7 +323,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setTimezoneName(initialTimezoneName);
-    setTimezoneOffset(initialTimezoneOffset);
+    setTimezoneOffset(initialTimezoneOffset ?? null);
     setTimezoneConfirmed(Boolean(initialTimezoneConfirmed));
   }, [initialTimezoneName, initialTimezoneOffset, initialTimezoneConfirmed]);
 
