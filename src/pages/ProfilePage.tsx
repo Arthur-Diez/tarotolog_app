@@ -92,6 +92,18 @@ function mapSupportedLang(base: string | null): "ru" | "en" {
   return "en";
 }
 
+function normalizeTimeValue(value: string): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (!match) {
+    return null;
+  }
+  const [, hours, minutes, seconds] = match;
+  return seconds ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
+}
+
 function readOptionalString(target: unknown, key: string): string | null {
   if (!target || typeof target !== "object") return null;
   const value = (target as Record<string, unknown>)[key];
@@ -576,12 +588,13 @@ export default function ProfilePage() {
     setActiveSave(null);
   };
 
+  const normalizedBirthTime = normalizeTimeValue(personal.birthTime);
   const fullNameValid = personal.fullName.trim().length <= 80;
   const birthPlaceValid = personal.birthPlace.trim().length <= 80;
   const dateValid = !personal.birthDate || /^\d{4}-\d{2}-\d{2}$/.test(personal.birthDate);
   const timeValid =
     personal.timeUnknown ||
-    (personal.birthTime.length > 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(personal.birthTime));
+    Boolean(normalizedBirthTime);
 
   const personalDirty =
     personal.fullName !== initialPersonal.fullName ||
@@ -622,7 +635,8 @@ export default function ProfilePage() {
       personal.birthTime !== initialPersonal.birthTime
     ) {
       birthPayload.birth_time_known = !personal.timeUnknown;
-      birthPayload.birth_time_local = personal.timeUnknown ? null : personal.birthTime;
+      const timeToPersist = personal.timeUnknown ? null : normalizedBirthTime;
+      birthPayload.birth_time_local = timeToPersist;
     }
 
     if (personal.birthPlace !== initialPersonal.birthPlace) {

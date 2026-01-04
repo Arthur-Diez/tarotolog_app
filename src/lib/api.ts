@@ -308,7 +308,9 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
     const birthProfile = payload.birth_profile;
 
     const birthProfilePayload: Record<string, unknown> = {};
-    ([
+    const allowedBirthProfileKeys: Array<
+      keyof NonNullable<UpdateProfilePayload["birth_profile"]>
+    > = [
       "full_name",
       "birth_date",
       "birth_time_local",
@@ -319,10 +321,17 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
       "birth_tz_name",
       "birth_tz_offset_min",
       "gender",
-    ] as const).forEach((key) => {
-      const v = (birthProfile as Record<string, unknown>)[key];
-      if (v !== undefined) {
-        birthProfilePayload[key] = v;
+      "current_tz_name",
+      "current_tz_offset_min",
+      "current_tz_confirmed",
+      "detected_country",
+      "interface_language"
+    ];
+
+    allowedBirthProfileKeys.forEach((key) => {
+      const value = birthProfile[key];
+      if (value !== undefined) {
+        birthProfilePayload[key as string] = value;
       }
     });
 
