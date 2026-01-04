@@ -199,6 +199,13 @@ export default function ProfilePage() {
   const user = profile?.user;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
+  const initialTimezoneName = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
+  const initialTimezoneOffset =
+    typeof (birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min) === "number"
+      ? (birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min)
+      : null;
+  const initialTimezoneConfirmed =
+    birthProfile?.current_tz_confirmed ?? Boolean(user?.current_tz_confirmed) ?? false;
 
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
@@ -257,6 +264,9 @@ export default function ProfilePage() {
   const [confirmedLanguage, setConfirmedLanguage] = useState<string | null>(initialInterfaceLanguage);
   const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
   const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
+  const [timezoneName, setTimezoneName] = useState<string | null>(initialTimezoneName);
+  const [timezoneOffset, setTimezoneOffset] = useState<number | null>(initialTimezoneOffset);
+  const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
   const languageSyncRef = useRef(false);
   const [diag, setDiag] = useState<{
     tgLangCodeRaw: string | null;
@@ -275,9 +285,6 @@ export default function ProfilePage() {
     urlLangNorm: null,
     effectiveLang: initialEffectiveLang
   });
-  const timezoneName = user?.current_tz_name ?? null;
-  const timezoneOffset = user?.current_tz_offset_min ?? null;
-  const timezoneConfirmed = Boolean(user?.current_tz_confirmed);
   const deviceTimezone = useMemo(() => detectDeviceTimezone(), []);
   const proposedTimezoneName = timezoneName ?? deviceTimezone.name ?? null;
   const proposedTimezoneOffset =
@@ -312,6 +319,12 @@ export default function ProfilePage() {
     setConfirmedLanguage(initialInterfaceLanguage);
     setLanguageConfirmed(Boolean(initialInterfaceLanguage));
   }, [initialInterfaceLanguage]);
+
+  useEffect(() => {
+    setTimezoneName(initialTimezoneName);
+    setTimezoneOffset(initialTimezoneOffset);
+    setTimezoneConfirmed(Boolean(initialTimezoneConfirmed));
+  }, [initialTimezoneName, initialTimezoneOffset, initialTimezoneConfirmed]);
 
   useEffect(() => {
     if (personalStatus) {
@@ -619,6 +632,26 @@ export default function ProfilePage() {
       birthPayload.gender = personal.gender || null;
     }
 
+    const timezoneNameToPersist = timezoneName ?? proposedTimezoneName;
+    const timezoneOffsetToPersist =
+      typeof timezoneOffset === "number" ? timezoneOffset : proposedTimezoneOffset;
+    if (timezoneNameToPersist && typeof timezoneOffsetToPersist === "number") {
+      birthPayload.current_tz_name = timezoneNameToPersist;
+      birthPayload.current_tz_offset_min = timezoneOffsetToPersist;
+      birthPayload.current_tz_confirmed = timezoneConfirmed;
+    }
+
+    const countryToPersist = (confirmedCountry ?? suggestedCountry)?.toUpperCase();
+    if (countryToPersist) {
+      birthPayload.detected_country = countryToPersist;
+    }
+
+    const languageToPersist = confirmedLanguage ?? suggestedLanguage;
+    if (languageToPersist) {
+      birthPayload.interface_language = languageToPersist;
+      payload.lang = languageToPersist;
+    }
+
     if (Object.keys(birthPayload).length > 0) {
       payload.birth_profile = birthPayload;
     }
@@ -656,11 +689,8 @@ export default function ProfilePage() {
   };
 
   const handleConfirmTimezone = async () => {
-    const nameToSave = timezoneName ?? proposedTimezoneName;
-    const offsetToSave =
-      timezoneName !== null && timezoneOffset !== null
-        ? timezoneOffset
-        : proposedTimezoneOffset;
+    const nameToSave = proposedTimezoneName;
+    const offsetToSave = proposedTimezoneOffset;
 
     if (!nameToSave || typeof offsetToSave !== "number") {
       setTimezoneModalOpen(true);
@@ -669,11 +699,16 @@ export default function ProfilePage() {
 
     setActiveSave("timezone");
     const result = await saveProfile({
-      current_tz_name: nameToSave,
-      current_tz_offset_min: offsetToSave,
-      current_tz_confirmed: true
+      birth_profile: {
+        current_tz_name: nameToSave,
+        current_tz_offset_min: offsetToSave,
+        current_tz_confirmed: true
+      }
     });
     if (result) {
+      setTimezoneName(nameToSave);
+      setTimezoneOffset(offsetToSave);
+      setTimezoneConfirmed(true);
       setTimezoneStatus({ type: "success", message: "Часовой пояс подтверждён" });
       setActiveSave(null);
     }
@@ -682,11 +717,16 @@ export default function ProfilePage() {
   const handleTimezoneSelect = async (name: string, offset: number) => {
     setActiveSave("timezone");
     const result = await saveProfile({
-      current_tz_name: name,
-      current_tz_offset_min: offset,
-      current_tz_confirmed: true
+      birth_profile: {
+        current_tz_name: name,
+        current_tz_offset_min: offset,
+        current_tz_confirmed: true
+      }
     });
     if (result) {
+      setTimezoneName(name);
+      setTimezoneOffset(offset);
+      setTimezoneConfirmed(true);
       setTimezoneStatus({ type: "success", message: "Часовой пояс обновлён" });
       setTimezoneModalOpen(false);
       setActiveSave(null);
