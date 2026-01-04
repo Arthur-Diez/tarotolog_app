@@ -34,6 +34,9 @@ export function useAutoTimezone(profile: ProfileResponse | null | undefined) {
 
       attemptedRef.current = true;
       void saveProfile({
+        current_tz_name: detected.name,
+        current_tz_offset_min: detected.offset,
+        current_tz_confirmed: false,
         birth_profile: {
           current_tz_name: detected.name,
           current_tz_offset_min: detected.offset,
