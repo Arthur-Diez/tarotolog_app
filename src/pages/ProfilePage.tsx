@@ -5,13 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  DEFAULT_WIDGET_KEYS,
-  WIDGET_KEYS,
-  type BirthProfile,
-  type UpdateProfilePayload,
-  type WidgetKey
-} from "@/lib/api";
+import { DEFAULT_WIDGET_KEYS, WIDGET_KEYS, type UpdateProfilePayload, type WidgetKey } from "@/lib/api";
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
@@ -68,25 +62,8 @@ const LANGUAGE_OPTIONS = [
 
 type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile"]>;
 
-const BIRTH_PROFILE_PAYLOAD_KEYS: Array<keyof BirthProfileUpdatePayload> = [
-  "full_name",
-  "birth_date",
-  "birth_time_local",
-  "birth_time_known",
-  "birth_place_text",
-  "birth_lat",
-  "birth_lon",
-  "birth_tz_name",
-  "birth_tz_offset_min",
-  "gender",
-  "detected_country",
-  "interface_language",
-  "current_tz_name",
-  "current_tz_offset_min",
-  "current_tz_confirmed"
-];
-
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
+const DEV_DEBUG = import.meta.env.DEV;
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -248,23 +225,6 @@ export default function ProfilePage() {
   const safeInitialTimezoneOffset: number | null =
     typeof initialTimezoneOffset === "number" ? initialTimezoneOffset : null;
 
-  const birthProfilePayloadBase = useMemo<BirthProfileUpdatePayload>(() => {
-    if (!birthProfile) {
-      return {};
-    }
-
-    const base: BirthProfileUpdatePayload = {};
-    const target = base as Record<string, string | number | boolean | null | undefined>;
-
-    for (const key of BIRTH_PROFILE_PAYLOAD_KEYS) {
-      const value = birthProfile[key as keyof BirthProfile];
-      if (value !== undefined) {
-        target[key] = value;
-      }
-    }
-    return base;
-  }, [birthProfile]);
-
   const initialPersonal = useMemo<PersonalFormState>(() => {
     const telegramFullName = buildFullTelegramName(user?.telegram.first_name, user?.telegram.last_name);
 
@@ -327,30 +287,6 @@ export default function ProfilePage() {
   const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
   const languageSyncRef = useRef(false);
 
-  const birthProfileSnapshot = useMemo<BirthProfileUpdatePayload>(() => {
-    const snapshot: BirthProfileUpdatePayload = { ...birthProfilePayloadBase };
-    if (timezoneName) {
-      snapshot.current_tz_name = timezoneName;
-    }
-    if (typeof timezoneOffset === "number") {
-      snapshot.current_tz_offset_min = timezoneOffset;
-    }
-    snapshot.current_tz_confirmed = timezoneConfirmed;
-    if (confirmedCountry) {
-      snapshot.detected_country = confirmedCountry;
-    }
-    if (confirmedLanguage) {
-      snapshot.interface_language = confirmedLanguage;
-    }
-    return snapshot;
-  }, [
-    birthProfilePayloadBase,
-    confirmedCountry,
-    confirmedLanguage,
-    timezoneConfirmed,
-    timezoneName,
-    timezoneOffset
-  ]);
   const [diag, setDiag] = useState<{
     tgLangCodeRaw: string | null;
     tgLangCodeNorm: string | null;
@@ -581,16 +517,34 @@ export default function ProfilePage() {
     );
   };
 
+  const logPayload = (label: string, payload: UpdateProfilePayload) => {
+    if (DEV_DEBUG) {
+      console.debug(`[ProfilePage] ${label} payload`, payload);
+    }
+  };
+
+  const logResult = (label: string, result: unknown) => {
+    if (DEV_DEBUG) {
+      console.debug(`[ProfilePage] ${label} response`, result);
+    }
+  };
+
+  const runSave = async (label: string, payload: UpdateProfilePayload) => {
+    logPayload(label, payload);
+    const response = await saveProfile(payload);
+    logResult(label, response);
+    return response;
+  };
+
   const handleConfirmCountry = async () => {
     const value = (confirmedCountry ?? suggestedCountry).toUpperCase();
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
-        ...birthProfileSnapshot,
         detected_country: value
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("confirm-country", payload);
     if (result) {
       setConfirmedCountry(value);
       setCountryConfirmed(true);
@@ -605,11 +559,10 @@ export default function ProfilePage() {
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
-        ...birthProfileSnapshot,
         detected_country: value
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("select-country", payload);
     if (result) {
       setConfirmedCountry(value);
       setCountryConfirmed(true);
@@ -625,11 +578,10 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       lang: value,
       birth_profile: {
-        ...birthProfileSnapshot,
         interface_language: value
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("confirm-language", payload);
     if (result) {
       setConfirmedLanguage(value);
       setLanguageConfirmed(true);
@@ -650,11 +602,10 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       lang: value,
       birth_profile: {
-        ...birthProfileSnapshot,
         interface_language: value
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("select-language", payload);
     if (result) {
       setConfirmedLanguage(value);
       setLanguageConfirmed(true);
@@ -700,7 +651,7 @@ export default function ProfilePage() {
 
     const payload: UpdateProfilePayload = {};
 
-    const birthPayload: BirthProfileUpdatePayload = { ...birthProfileSnapshot };
+    const birthPayload: BirthProfileUpdatePayload = {};
 
     if (personal.fullName !== initialPersonal.fullName) {
       birthPayload.full_name = trimToNull(personal.fullName);
@@ -733,10 +684,8 @@ export default function ProfilePage() {
     if (timezoneNameToPersist && typeof timezoneOffsetToPersist === "number") {
       birthPayload.current_tz_name = timezoneNameToPersist;
       birthPayload.current_tz_offset_min = timezoneOffsetToPersist;
-      birthPayload.current_tz_confirmed = timezoneConfirmed;
       payload.current_tz_name = timezoneNameToPersist;
       payload.current_tz_offset_min = timezoneOffsetToPersist;
-      payload.current_tz_confirmed = timezoneConfirmed;
     }
 
     const countryToPersist = (confirmedCountry ?? suggestedCountry)?.toUpperCase();
@@ -759,7 +708,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const result = await saveProfile(payload);
+    const result = await runSave("save-personal", payload);
 
     if (result) {
       setPersonalStatus({ type: "success", message: "Личные данные сохранены" });
@@ -779,7 +728,7 @@ export default function ProfilePage() {
     setActiveSave("widgets");
     setWidgetsStatus(null);
 
-    const result = await saveProfile({ widgets: widgetsPayload });
+    const result = await runSave("save-widgets", { widgets: widgetsPayload });
 
     if (result) {
       setWidgetsStatus({ type: "success", message: "Настройки главной сохранены" });
@@ -800,15 +749,12 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       current_tz_name: nameToSave,
       current_tz_offset_min: offsetToSave,
-      current_tz_confirmed: true,
       birth_profile: {
-        ...birthProfileSnapshot,
         current_tz_name: nameToSave,
-        current_tz_offset_min: offsetToSave,
-        current_tz_confirmed: true
+        current_tz_offset_min: offsetToSave
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("confirm-timezone", payload);
     if (result) {
       setTimezoneName(nameToSave);
       setTimezoneOffset(offsetToSave);
@@ -824,15 +770,12 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       current_tz_name: name,
       current_tz_offset_min: offset,
-      current_tz_confirmed: true,
       birth_profile: {
-        ...birthProfileSnapshot,
         current_tz_name: name,
-        current_tz_offset_min: offset,
-        current_tz_confirmed: true
+        current_tz_offset_min: offset
       }
     };
-    const result = await saveProfile(payload);
+    const result = await runSave("select-timezone", payload);
     if (result) {
       setTimezoneName(name);
       setTimezoneOffset(offset);
