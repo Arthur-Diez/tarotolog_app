@@ -239,12 +239,14 @@ export default function ProfilePage() {
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
   const combinedTimezoneOffset = birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min;
-  const initialTimezoneOffset: number | null =
+  const initialTimezoneOffset =
     typeof combinedTimezoneOffset === "number" ? combinedTimezoneOffset : null;
   const initialTimezoneConfirmed: boolean =
     typeof birthProfile?.current_tz_confirmed === "boolean"
       ? Boolean(birthProfile?.current_tz_confirmed)
       : Boolean(user?.current_tz_confirmed);
+  const safeInitialTimezoneOffset: number | null =
+    typeof initialTimezoneOffset === "number" ? initialTimezoneOffset : null;
 
   const birthProfilePayloadBase = useMemo<BirthProfileUpdatePayload>(() => {
     if (!birthProfile) {
@@ -319,7 +321,7 @@ export default function ProfilePage() {
   const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
   const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
   const [timezoneName, setTimezoneName] = useState<string | null>(initialTimezoneName);
-  const [timezoneOffset, setTimezoneOffset] = useState<number | null>(initialTimezoneOffset ?? null);
+  const [timezoneOffset, setTimezoneOffset] = useState<number | null>(safeInitialTimezoneOffset);
   const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
   const languageSyncRef = useRef(false);
 
@@ -401,7 +403,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setTimezoneName(initialTimezoneName);
-    setTimezoneOffset(initialTimezoneOffset ?? null);
+    setTimezoneOffset(
+      typeof initialTimezoneOffset === "number" ? initialTimezoneOffset : null
+    );
     setTimezoneConfirmed(Boolean(initialTimezoneConfirmed));
   }, [initialTimezoneName, initialTimezoneOffset, initialTimezoneConfirmed]);
 
