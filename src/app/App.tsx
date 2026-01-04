@@ -7,6 +7,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import DiaryPage from "@/pages/DiaryPage";
 import EnergyPage from "@/pages/EnergyPage";
 import ProfilePage from "@/pages/ProfilePage";
+import HoroscopePage from "@/pages/HoroscopePage";
 import InterpretationPage from "@/pages/InterpretationPage";
 import SpreadPlayPage from "@/pages/spreads/SpreadPlayPage";
 import { TabBar } from "@/components/layout/TabBar";
@@ -130,6 +131,7 @@ export default function App() {
               />
               <Route path="/spreads/play/:spreadId" element={<SpreadPlayPage />} />
               <Route path="/reading/:id" element={<InterpretationPage />} />
+              <Route path="/horoscope" element={<HoroscopePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

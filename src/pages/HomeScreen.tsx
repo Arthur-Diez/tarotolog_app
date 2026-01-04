@@ -149,6 +149,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         case "tarot":
           navigate("/spreads");
           break;
+        case "horoscope":
+          navigate("/horoscope");
+          break;
         default:
           console.debug("[ui] section clicked", sectionId);
       }
