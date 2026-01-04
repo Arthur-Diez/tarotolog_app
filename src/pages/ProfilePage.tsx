@@ -522,6 +522,7 @@ export default function ProfilePage() {
       setConfirmedCountry(value);
       setCountryConfirmed(true);
       setCountrySelectOpen(false);
+      void refresh();
     }
     setActiveSave(null);
   };
@@ -539,6 +540,7 @@ export default function ProfilePage() {
       setConfirmedCountry(value);
       setCountryConfirmed(true);
       setCountrySelectOpen(false);
+      void refresh();
     }
     setActiveSave(null);
   };
@@ -561,6 +563,7 @@ export default function ProfilePage() {
         ...prev,
         lang: value
       }));
+      void refresh();
     }
     setActiveSave(null);
   };
@@ -584,6 +587,7 @@ export default function ProfilePage() {
         ...prev,
         lang: value
       }));
+      void refresh();
     }
     setActiveSave(null);
   };
@@ -683,6 +687,7 @@ export default function ProfilePage() {
 
     if (result) {
       setPersonalStatus({ type: "success", message: "Личные данные сохранены" });
+      void refresh();
       setActiveSave(null);
     }
   };
@@ -732,6 +737,7 @@ export default function ProfilePage() {
       setTimezoneOffset(offsetToSave);
       setTimezoneConfirmed(true);
       setTimezoneStatus({ type: "success", message: "Часовой пояс подтверждён" });
+      void refresh();
       setActiveSave(null);
     }
   };
@@ -755,6 +761,7 @@ export default function ProfilePage() {
       setTimezoneConfirmed(true);
       setTimezoneStatus({ type: "success", message: "Часовой пояс обновлён" });
       setTimezoneModalOpen(false);
+      void refresh();
       setActiveSave(null);
     }
   };
