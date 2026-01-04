@@ -254,10 +254,12 @@ export default function ProfilePage() {
     }
 
     const base: BirthProfileUpdatePayload = {};
+    const target = base as Record<string, string | number | boolean | null | undefined>;
+
     for (const key of BIRTH_PROFILE_PAYLOAD_KEYS) {
       const value = birthProfile[key as keyof BirthProfile];
       if (value !== undefined) {
-        base[key] = value as BirthProfileUpdatePayload[typeof key];
+        target[key] = value;
       }
     }
     return base;
