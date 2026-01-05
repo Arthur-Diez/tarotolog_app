@@ -193,11 +193,23 @@ export interface HoroscopeFreeTodayContentSection {
   text?: string | null;
 }
 
-export interface HoroscopeFreeTodayContent {
+export interface HoroscopeFreeTodayContentLegacy {
   summary?: string | null;
   sections?: HoroscopeFreeTodayContentSection[] | null;
   best_time?: string | null;
   lucky_color?: string | null;
+}
+
+export interface HoroscopeLocalizedJson {
+  day_theme?: string | null;
+  mood?: string | null;
+  love?: { focus?: string | null; advice?: string | null } | null;
+  career?: { focus?: string | null; advice?: string | null } | null;
+  money?: { focus?: string | null; advice?: string | null } | null;
+  health?: { focus?: string | null; advice?: string | null } | null;
+  lucky?: { color?: string | null; number?: string | null | number; time_window?: string | null } | null;
+  affirmation?: string | null;
+  [key: string]: unknown;
 }
 
 export interface HoroscopeFreeTodayMeta {
@@ -212,10 +224,16 @@ export interface HoroscopeFreeTodayMeta {
   } | null;
 }
 
+export interface HoroscopeFreeTodayContent {
+  text_md?: string | null;
+  localized_json?: HoroscopeLocalizedJson | HoroscopeFreeTodayContentLegacy | null;
+}
+
 export interface HoroscopeFreeTodayResponse {
-  text_md: string;
-  localized_json?: HoroscopeFreeTodayContent | null;
+  success: boolean;
+  core_id?: string | null;
   meta?: HoroscopeFreeTodayMeta | null;
+  content?: HoroscopeFreeTodayContent | null;
 }
 
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";

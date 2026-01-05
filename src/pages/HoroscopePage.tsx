@@ -96,6 +96,19 @@ interface PaywallPreviewState {
   onConfirm: () => void;
 }
 
+interface StructuredSection {
+  key: string;
+  emoji: string;
+  title: string;
+  body: string;
+}
+
+interface NormalizedLocalizedContent {
+  sections: StructuredSection[];
+  bestTime: string | null;
+  luckyColor: string | null;
+}
+
 export default function HoroscopePage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
@@ -239,12 +252,12 @@ export default function HoroscopePage() {
     setActivePlan((prev) => (prev === plan ? null : plan));
   };
 
-  const horoscopeContent = horoscope?.localized_json;
-  const localizedSections = (horoscopeContent?.sections ?? []).filter(
-    (section): section is HoroscopeFreeTodayContentSection => Boolean(section && (section.text || section.title))
+  const content = horoscope?.content ?? null;
+  const textMd = content?.text_md ?? "";
+  const { sections: localizedSections, bestTime, luckyColor } = useMemo(
+    () => normalizeLocalizedContent(content?.localized_json),
+    [content?.localized_json]
   );
-  const bestTime = horoscopeContent?.best_time ?? null;
-  const luckyColor = horoscopeContent?.lucky_color ?? null;
 
   const zodiacLabel = horoscope?.meta?.zodiac_sign ?? birthProfile?.zodiac_sign ?? mockProfile.zodiacSign;
   const genderFromProfile = getGenderLabel(birthProfile?.gender);
@@ -375,15 +388,15 @@ export default function HoroscopePage() {
 
         {isOpened && horoscope ? (
           <div className="space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
-            {horoscope.text_md ? <HoroscopeMarkdown text={horoscope.text_md} /> : null}
+            {textMd ? <HoroscopeMarkdown text={textMd} /> : null}
             {localizedSections.length ? (
-              <div className="grid gap-4 text-sm text-[var(--text-secondary)]">
-                {localizedSections.map((section, index) => (
+              <div className="space-y-4 text-sm text-[var(--text-secondary)]">
+                {localizedSections.map((section) => (
                   <HoroscopeSection
-                    key={`section-${section.key ?? section.title ?? index}`}
-                    emoji={section.emoji ?? "✨"}
-                    title={section.title ?? "Секция"}
-                    body={section.text ?? section.title ?? ""}
+                    key={section.key}
+                    emoji={section.emoji}
+                    title={section.title}
+                    body={section.body}
                   />
                 ))}
               </div>
@@ -393,6 +406,9 @@ export default function HoroscopePage() {
                 {bestTime ? <p>🎯 Лучшее время: {bestTime}</p> : null}
                 {luckyColor ? <p>🎨 Цвет дня: {luckyColor}</p> : null}
               </div>
+            ) : null}
+            {!textMd && !localizedSections.length && !bestTime && !luckyColor ? (
+              <p className="text-sm text-[var(--text-secondary)]">Нет данных. Попробуйте ещё раз позже.</p>
             ) : null}
             <Button className="w-full" onClick={handlePersonalize}>
               Персонализировать 🔥
@@ -431,6 +447,144 @@ function getGenderLabel(value?: string | null): string | null {
   if (value === "female") return "Женщина";
   if (value === "other") return "Другое";
   return null;
+}
+
+function normalizeLocalizedContent(raw: unknown): NormalizedLocalizedContent {
+  const sections: StructuredSection[] = [];
+  let bestTime: string | null = null;
+  let luckyColor: string | null = null;
+
+  if (!raw) {
+    return { sections, bestTime, luckyColor };
+  }
+
+  const record = isRecord(raw) ? raw : null;
+
+  if (record) {
+    const dayTheme = readString(record.day_theme);
+    if (dayTheme) {
+      sections.push({ key: "day_theme", emoji: "🌗", title: "Тема дня", body: dayTheme });
+    }
+
+    const mood = readString(record.mood);
+    if (mood) {
+      sections.push({ key: "mood", emoji: "🧠", title: "Настрой", body: mood });
+    }
+
+    const blockConfigs: Array<{ key: string; emoji: string; title: string }> = [
+      { key: "love", emoji: "❤️", title: "Любовь" },
+      { key: "career", emoji: "💼", title: "Карьера" },
+      { key: "money", emoji: "💰", title: "Деньги" },
+      { key: "health", emoji: "🧘", title: "Здоровье" }
+    ];
+
+    blockConfigs.forEach(({ key, emoji, title }) => {
+      const block = readFocusAdvice(record[key]);
+      if (block) {
+        sections.push({ key, emoji, title, body: block });
+      }
+    });
+
+    const lucky = readLucky(record.lucky);
+    if (lucky) {
+      const luckyParts: string[] = [];
+      if (lucky.color) {
+        luckyParts.push(`Цвет: ${capitalize(lucky.color)}`);
+        luckyColor = lucky.color;
+      }
+      if (lucky.number) {
+        luckyParts.push(`Число: ${lucky.number}`);
+      }
+      if (lucky.timeWindow) {
+        luckyParts.push(`Время: ${lucky.timeWindow}`);
+        bestTime = lucky.timeWindow;
+      }
+      if (luckyParts.length) {
+        sections.push({ key: "lucky", emoji: "🍀", title: "Удача", body: luckyParts.join(" • ") });
+      }
+    }
+
+    const affirmation = readString(record.affirmation);
+    if (affirmation) {
+      sections.push({ key: "affirmation", emoji: "🪄", title: "Аффирмация", body: affirmation });
+    }
+
+    bestTime = bestTime ?? readString(record.best_time) ?? null;
+    luckyColor = luckyColor ?? readString(record.lucky_color) ?? null;
+
+    const legacySections = readLegacySections(record.sections);
+    sections.push(...legacySections);
+  }
+
+  return { sections, bestTime, luckyColor };
+}
+
+function readLegacySections(value: unknown): StructuredSection[] {
+  if (!Array.isArray(value)) return [];
+  const result: StructuredSection[] = [];
+  value.forEach((item, index) => {
+    if (!item || typeof item !== "object") return;
+    const section = item as HoroscopeFreeTodayContentSection;
+    const body = section.text ?? section.title;
+    if (!body) return;
+    result.push({
+      key: `legacy-${section.key ?? index}`,
+      emoji: section.emoji ?? "✨",
+      title: section.title ?? "Секция",
+      body
+    });
+  });
+  return result;
+}
+
+function readFocusAdvice(value: unknown): string | null {
+  if (!isRecord(value)) return null;
+  const focus = readString(value.focus);
+  const advice = readString(value.advice);
+  const parts: string[] = [];
+  if (focus) {
+    parts.push(focus);
+  }
+  if (advice) {
+    parts.push(`Совет: ${advice}`);
+  }
+  if (!parts.length) {
+    return null;
+  }
+  return parts.join(" ");
+}
+
+function readLucky(value: unknown): { color?: string | null; number?: string | null; timeWindow?: string | null } | null {
+  if (!isRecord(value)) return null;
+  const color = readString(value.color);
+  const numberValue = value.number;
+  const number =
+    typeof numberValue === "number"
+      ? String(numberValue)
+      : typeof numberValue === "string"
+        ? numberValue
+        : null;
+  const timeWindow = readString(value.time_window ?? value.timeWindow ?? value.time);
+  if (!color && !number && !timeWindow) {
+    return null;
+  }
+  return { color, number, timeWindow };
+}
+
+function readString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null;
+}
+
+function capitalize(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function splitMarkdownLine(line: string) {
