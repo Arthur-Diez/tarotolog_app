@@ -1,13 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useProfile } from "@/hooks/useProfile";
+import {
+  ApiError,
+  getFreeHoroscopeToday,
+  type HoroscopeFreeTodayContentSection,
+  type HoroscopeFreeTodayResponse
+} from "@/lib/api";
 
-type RitualState = "closed" | "loading" | "opened";
 type OneOffId = "tomorrow" | "week" | "month" | "quarter" | "halfyear" | "year";
 type SubscriptionId = "lite" | "plus";
+type RitualErrorKind = "profile" | "auth" | "common" | null;
 
 const mockProfile = {
   zodiacSign: "Лев",
@@ -16,11 +23,7 @@ const mockProfile = {
   tzName: "Москва (UTC+03)"
 };
 
-const ritualStatuses = [
-  "Настраиваемся на ваш знак…",
-  `Учитываем ваш часовой пояс (${mockProfile.tzName})…`,
-  "Соединяем энергию дня…"
-];
+const RITUAL_MIN_DURATION_MS = 1200;
 
 const oneOffProducts: Array<{
   id: OneOffId;
@@ -95,8 +98,25 @@ interface PaywallPreviewState {
 
 export default function HoroscopePage() {
   const navigate = useNavigate();
-  const [ritualState, setRitualState] = useState<RitualState>("closed");
-  const [ritualStep, setRitualStep] = useState(0);
+  const { profile } = useProfile();
+  const birthProfile = profile?.birth_profile;
+  const timezoneLabel = profile?.user?.current_tz_name ?? mockProfile.tzName;
+
+  const statusMessages = useMemo(
+    () => [
+      "Настраиваемся на ваш знак…",
+      `Учитываем ваш часовой пояс (${timezoneLabel})…`,
+      "Соединяем энергию дня…"
+    ],
+    [timezoneLabel]
+  );
+
+  const [isOpening, setIsOpening] = useState(false);
+  const [isOpened, setIsOpened] = useState(false);
+  const [statusIndex, setStatusIndex] = useState(0);
+  const [horoscope, setHoroscope] = useState<HoroscopeFreeTodayResponse | null>(null);
+  const [errorKind, setErrorKind] = useState<RitualErrorKind>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<Record<OneOffId, boolean>>(() => ({
     tomorrow: false,
     week: false,
@@ -109,39 +129,83 @@ export default function HoroscopePage() {
   const [preview, setPreview] = useState<PaywallPreviewState | null>(null);
 
   useEffect(() => {
-    if (ritualState !== "loading") return;
-    setRitualStep(0);
-    let step = 0;
-    const statusInterval = window.setInterval(() => {
-      step = Math.min(step + 1, ritualStatuses.length - 1);
-      setRitualStep(step);
-    }, 600);
-    const finishTimeout = window.setTimeout(() => {
-      setRitualState("opened");
-      window.clearInterval(statusInterval);
-    }, 2000);
-    return () => {
-      window.clearInterval(statusInterval);
-      window.clearTimeout(finishTimeout);
-    };
-  }, [ritualState]);
-
-  const currentStatus = ritualStatuses[Math.min(ritualStep, ritualStatuses.length - 1)];
-
-  const handleOpenRitual = () => {
-    if (ritualState === "loading") return;
-    if (ritualState === "opened") {
-      setRitualState("closed");
+    if (!isOpening) {
+      setStatusIndex(0);
       return;
     }
-    setRitualState("loading");
+    setStatusIndex(0);
+    const interval = window.setInterval(() => {
+      setStatusIndex((prev) => (prev + 1 < statusMessages.length ? prev + 1 : prev));
+    }, 500);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isOpening, statusMessages]);
+
+  const currentStatus = statusMessages[Math.min(statusIndex, statusMessages.length - 1)];
+
+  const runHoroscopeFlow = () => {
+    if (isOpening) return;
+    if (isOpened) {
+      setIsOpened(false);
+      return;
+    }
+
+    setErrorKind(null);
+    setErrorMsg(null);
+    setIsOpening(true);
+    setStatusIndex(0);
+
+    const startedAt = Date.now();
+    const ensureAuraDelay = async () => {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < RITUAL_MIN_DURATION_MS) {
+        await new Promise((resolve) => window.setTimeout(resolve, RITUAL_MIN_DURATION_MS - elapsed));
+      }
+    };
+
+    const loadHoroscope = async () => {
+      try {
+        const response = await getFreeHoroscopeToday();
+        await ensureAuraDelay();
+        setHoroscope(response);
+        setIsOpened(true);
+      } catch (error) {
+        await ensureAuraDelay();
+        setHoroscope(null);
+        setIsOpened(false);
+        if (error instanceof ApiError) {
+          if (error.status === 409) {
+            setErrorKind("profile");
+            setErrorMsg("Заполните профиль (дата рождения, пол, часовой пояс), чтобы получить прогноз");
+          } else if (error.status === 401) {
+            setErrorKind("auth");
+            setErrorMsg("Сессия истекла. Откройте мини-приложение из Telegram-бота, чтобы продолжить.");
+          } else {
+            setErrorKind("common");
+            setErrorMsg(error.message || "Не удалось получить гороскоп, попробуйте ещё раз.");
+          }
+        } else {
+          setErrorKind("common");
+          setErrorMsg("Не удалось получить гороскоп, попробуйте ещё раз.");
+        }
+      } finally {
+        setIsOpening(false);
+      }
+    };
+
+    void loadHoroscope();
   };
 
   const handlePersonalize = () => {
     setPreview({
       title: "Персонализировать 🔥",
       priceLabel: "Скоро",
-      bullets: ["Индивидуальные расчёты по времени рождения", "Глубокая настройка под ваш запрос", "Интеграция с персональными циклами"],
+      bullets: [
+        "Индивидуальные расчёты по времени рождения",
+        "Глубокая настройка под ваш запрос",
+        "Интеграция с персональными циклами"
+      ],
       confirmLabel: "Узнать первым",
       onConfirm: () => {
         setPreview(null);
@@ -175,6 +239,37 @@ export default function HoroscopePage() {
     setActivePlan((prev) => (prev === plan ? null : plan));
   };
 
+  const horoscopeContent = horoscope?.localized_json;
+  const localizedSections = (horoscopeContent?.sections ?? []).filter(
+    (section): section is HoroscopeFreeTodayContentSection => Boolean(section && (section.text || section.title))
+  );
+  const bestTime = horoscopeContent?.best_time ?? null;
+  const luckyColor = horoscopeContent?.lucky_color ?? null;
+
+  const zodiacLabel = horoscope?.meta?.zodiac_sign ?? birthProfile?.zodiac_sign ?? mockProfile.zodiacSign;
+  const genderFromProfile = getGenderLabel(birthProfile?.gender);
+  const genderLabel = horoscope?.meta?.gender_label ?? genderFromProfile ?? mockProfile.genderLabel;
+  const todayLabel = horoscope?.meta?.period_label ?? mockProfile.todayLabel;
+
+  const renderErrorBlock = () => {
+    if (!errorKind || !errorMsg) return null;
+    if (errorKind === "profile") {
+      return (
+        <div className="space-y-3 rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-secondary)]">
+          <p>{errorMsg}</p>
+          <Button className="w-full" onClick={() => navigate("/profile")}>
+            Заполнить профиль
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="rounded-[20px] border border-white/10 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        {errorMsg}
+      </div>
+    );
+  };
+
   const oneOffCards = oneOffProducts.map((product) => {
     const purchased = purchases[product.id];
     return (
@@ -198,12 +293,7 @@ export default function HoroscopePage() {
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => openProductPreview(product.id)}
-            >
+            <Button variant="outline" size="sm" className="w-full" onClick={() => openProductPreview(product.id)}>
               Подробнее
             </Button>
           )}
@@ -238,16 +328,14 @@ export default function HoroscopePage() {
             </li>
           ))}
         </ul>
-        <Button
-          className="mt-4 w-full"
-          variant={plan.id === "plus" ? "primary" : "default"}
-          onClick={() => handlePlanToggle(plan.id)}
-        >
+        <Button className="mt-4 w-full" variant={plan.id === "plus" ? "primary" : "default"} onClick={() => handlePlanToggle(plan.id)}>
           {active ? "Посмотреть сегодня" : "Подключить"}
         </Button>
       </Card>
     );
   });
+
+  const openButtonLabel = isOpening ? "Открываем…" : isOpened ? "Свернуть ритуал" : "Открыть гороскоп 🔮";
 
   return (
     <div className="space-y-6 pb-28">
@@ -266,14 +354,14 @@ export default function HoroscopePage() {
           <p className="text-sm text-[var(--text-secondary)]">Ритуал дня · FREE</p>
           <h2 className="text-2xl font-semibold text-[var(--text-primary)]">🌙 Гороскоп на сегодня</h2>
           <p className="text-sm text-[var(--text-secondary)]">
-            {mockProfile.zodiacSign} · {mockProfile.genderLabel} · {mockProfile.todayLabel}
+            {zodiacLabel} · {genderLabel} · {todayLabel}
           </p>
         </div>
-        {ritualState === "closed" ? (
+        {!isOpening && !isOpened && !errorKind ? (
           <p className="text-base text-[var(--text-secondary)]">✨ Узнай, что приготовил этот день именно для тебя</p>
         ) : null}
 
-        {ritualState === "loading" ? (
+        {isOpening ? (
           <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-white/5 p-5 text-center">
             <div className="absolute inset-0 animate-pulse bg-white/5" />
             <div className="relative flex flex-col items-center gap-2">
@@ -283,35 +371,38 @@ export default function HoroscopePage() {
           </div>
         ) : null}
 
-        {ritualState === "opened" ? (
+        {!isOpening && renderErrorBlock()}
+
+        {isOpened && horoscope ? (
           <div className="space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
-            <p className="text-lg font-semibold text-[var(--text-primary)]">🌞 Сегодня для вас важно сохранять внутреннюю устойчивость</p>
-            <div className="grid gap-4 text-sm text-[var(--text-secondary)]">
-              <HoroscopeSection emoji="❤️" title="Любовь" body="Диалог откроет новые смыслы, не бойтесь мягкости." />
-              <HoroscopeSection emoji="💼" title="Работа" body="Фокус на задачах до обеда принесёт лучший результат." />
-              <HoroscopeSection emoji="💰" title="Деньги" body="Сдержанность поможет сохранить ресурсы." />
-              <HoroscopeSection emoji="🧘" title="Здоровье" body="Поддержите тело дыхательными практиками." />
-            </div>
-            <div className="space-y-1 text-sm text-[var(--text-primary)]">
-              <p>🎯 Лучшее время: 11:00–13:00</p>
-              <p>🎨 Цвет дня: Золото</p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button className="flex-1" onClick={handlePersonalize}>
-                Персонализировать 🔥
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={() => setRitualState("closed")}>
-                Свернуть
-              </Button>
-            </div>
+            {horoscope.text_md ? <HoroscopeMarkdown text={horoscope.text_md} /> : null}
+            {localizedSections.length ? (
+              <div className="grid gap-4 text-sm text-[var(--text-secondary)]">
+                {localizedSections.map((section, index) => (
+                  <HoroscopeSection
+                    key={`section-${section.key ?? section.title ?? index}`}
+                    emoji={section.emoji ?? "✨"}
+                    title={section.title ?? "Секция"}
+                    body={section.text ?? section.title ?? ""}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {bestTime || luckyColor ? (
+              <div className="space-y-1 text-sm text-[var(--text-primary)]">
+                {bestTime ? <p>🎯 Лучшее время: {bestTime}</p> : null}
+                {luckyColor ? <p>🎨 Цвет дня: {luckyColor}</p> : null}
+              </div>
+            ) : null}
+            <Button className="w-full" onClick={handlePersonalize}>
+              Персонализировать 🔥
+            </Button>
           </div>
         ) : null}
 
-        {ritualState !== "loading" ? (
-          <Button className="w-full" onClick={handleOpenRitual}>
-            {ritualState === "opened" ? "Свернуть ритуал" : "Открыть гороскоп 🔮"}
-          </Button>
-        ) : null}
+        <Button className="w-full" onClick={runHoroscopeFlow} disabled={isOpening}>
+          {openButtonLabel}
+        </Button>
       </Card>
 
       <section className="space-y-3">
@@ -319,9 +410,7 @@ export default function HoroscopePage() {
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">🔓 Разовые прогнозы</h3>
           <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">витрина</p>
         </div>
-        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
-          {oneOffCards}
-        </div>
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">{oneOffCards}</div>
       </section>
 
       <section className="space-y-3">
@@ -337,11 +426,66 @@ export default function HoroscopePage() {
   );
 }
 
-function HoroscopeSection({ emoji, title, body }: { emoji: string; title: string; body: string }) {
+function getGenderLabel(value?: string | null): string | null {
+  if (value === "male") return "Мужчина";
+  if (value === "female") return "Женщина";
+  if (value === "other") return "Другое";
+  return null;
+}
+
+function splitMarkdownLine(line: string) {
+  const nodes: Array<{ type: "text" | "bold"; value: string }> = [];
+  const regex = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push({ type: "text", value: line.slice(lastIndex, match.index) });
+    }
+    nodes.push({ type: "bold", value: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < line.length) {
+    nodes.push({ type: "text", value: line.slice(lastIndex) });
+  }
+  if (!nodes.length) {
+    nodes.push({ type: "text", value: line });
+  }
+  return nodes;
+}
+
+function HoroscopeMarkdown({ text }: { text: string }) {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+      {lines.map((line, index) => (
+        <p key={`line-${index}`} className="leading-relaxed">
+          {splitMarkdownLine(line).map((node, nodeIndex) =>
+            node.type === "bold" ? (
+              <strong key={`bold-${index}-${nodeIndex}`} className="text-[var(--text-primary)]">
+                {node.value}
+              </strong>
+            ) : (
+              <span key={`text-${index}-${nodeIndex}`}>{node.value}</span>
+            )
+          )}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function HoroscopeSection({ emoji, title, body }: { emoji?: string | null; title: string; body: string }) {
+  if (!body) return null;
   return (
     <div>
       <p className="text-sm font-semibold text-[var(--text-primary)]">
-        {emoji} {title}
+        {emoji ? `${emoji} ` : null}
+        {title}
       </p>
       <p className="text-sm text-[var(--text-secondary)]">{body}</p>
     </div>
@@ -364,11 +508,7 @@ function PaywallPreviewModal({ open, onClose, state }: PaywallPreviewModalProps)
             <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">предпросмотр</p>
             <h4 className="text-xl font-semibold text-[var(--text-primary)]">{state.title}</h4>
           </div>
-          <button
-            type="button"
-            className="text-sm text-[var(--text-secondary)]"
-            onClick={onClose}
-          >
+          <button type="button" className="text-sm text-[var(--text-secondary)]" onClick={onClose}>
             Закрыть
           </button>
         </div>

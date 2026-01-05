@@ -133,6 +133,7 @@ export interface BirthProfile {
   current_tz_name?: string | null;
   current_tz_offset_min?: number | null;
   current_tz_confirmed?: boolean | null;
+  zodiac_sign?: string | null;
 }
 
 export interface ProfileResponse {
@@ -183,6 +184,38 @@ export interface UpdateProfilePayload {
     current_tz_offset_min?: number | null;
     current_tz_confirmed?: boolean | null;
   };
+}
+
+export interface HoroscopeFreeTodayContentSection {
+  key?: string | null;
+  title?: string | null;
+  emoji?: string | null;
+  text?: string | null;
+}
+
+export interface HoroscopeFreeTodayContent {
+  summary?: string | null;
+  sections?: HoroscopeFreeTodayContentSection[] | null;
+  best_time?: string | null;
+  lucky_color?: string | null;
+}
+
+export interface HoroscopeFreeTodayMeta {
+  zodiac_sign?: string | null;
+  gender_label?: string | null;
+  period_label?: string | null;
+  generated_at?: string | null;
+  cached?: boolean;
+  source?: {
+    name?: string | null;
+    version?: string | null;
+  } | null;
+}
+
+export interface HoroscopeFreeTodayResponse {
+  text_md: string;
+  localized_json?: HoroscopeFreeTodayContent | null;
+  meta?: HoroscopeFreeTodayMeta | null;
 }
 
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
@@ -357,4 +390,12 @@ export async function getEnergy(): Promise<EnergyBalanceResponse> {
     headers: withAuthHeaders()
   });
   return handleResponse<EnergyBalanceResponse>(res);
+}
+
+export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/free/today`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeFreeTodayResponse>(res);
 }
