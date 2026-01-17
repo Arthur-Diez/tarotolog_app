@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getSubscriptionStatus, type SubscriptionStatusResponse } from "@/lib/api";
 
@@ -8,56 +8,69 @@ let inflightRequest: Promise<SubscriptionStatusResponse> | null = null;
 interface SubscriptionState {
   loading: boolean;
   data: SubscriptionStatusResponse | null;
+  error: string | null;
+}
+
+async function requestSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
+  if (!inflightRequest) {
+    inflightRequest = getSubscriptionStatus()
+      .then((response) => {
+        cachedStatus = response;
+        return response;
+      })
+      .finally(() => {
+        inflightRequest = null;
+      });
+  }
+  return inflightRequest;
 }
 
 export function useSubscriptionStatus() {
   const [state, setState] = useState<SubscriptionState>({
     loading: cachedStatus === null,
-    data: cachedStatus
+    data: cachedStatus,
+    error: null
   });
+  const retryRef = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (cachedStatus) {
-      setState({ loading: false, data: cachedStatus });
+  const fetchStatus = useCallback(async (force = false) => {
+    if (cachedStatus && !force) {
+      setState({ loading: false, data: cachedStatus, error: null });
       return;
     }
 
-    if (!inflightRequest) {
-      inflightRequest = getSubscriptionStatus()
-        .then((response) => {
-          cachedStatus = response;
-          return response;
-        })
-        .finally(() => {
-          inflightRequest = null;
-        });
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    try {
+      const response = await requestSubscriptionStatus();
+      setState({ loading: false, data: response, error: null });
+    } catch (error) {
+      if (!retryRef.current) {
+        retryRef.current = true;
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        return fetchStatus(true);
+      }
+      const message = error instanceof Error ? error.message : "Не удалось получить статус подписки";
+      setState({ loading: false, data: null, error: message });
     }
-
-    setState((prev) => ({ ...prev, loading: true }));
-
-    inflightRequest
-      .then((response) => {
-        if (!cancelled) {
-          setState({ loading: false, data: response });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ loading: false, data: null });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    void fetchStatus(false);
+  }, [fetchStatus]);
+
+  const refetch = useCallback(async () => {
+    cachedStatus = null;
+    retryRef.current = false;
+    await fetchStatus(true);
+  }, [fetchStatus]);
 
   return {
     hasSubscription: state.data?.has_subscription ?? false,
     loading: state.loading,
     planCode: state.data?.plan_code ?? null,
-    endsAt: state.data?.ends_at ?? null
+    endsAt: state.data?.ends_at ?? null,
+    error: state.error,
+    refetch
   };
 }
