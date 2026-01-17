@@ -3,11 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ADGRAM_SCRIPT_URL, ADGRAM_TASK_UNIT_ID } from "@/config/ads";
 
+import styles from "./AdsgramTaskBanner.module.css";
+
 let adsgramScriptPromise: Promise<void> | null = null;
-const ADSGRAM_CONTAINER_ID = "adsgram-task-top";
 const ADSGRAM_COMPONENT_TAG = "adsgram-task";
 const ADSGRAM_READY_TIMEOUT = 4000;
 const ADSGRAM_RENDER_TIMEOUT = 2500;
+const ADSGRAM_MIN_HEIGHT = 120;
 
 declare global {
   namespace JSX {
@@ -15,6 +17,7 @@ declare global {
       "adsgram-task": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         "data-block-id"?: string;
         "data-debug"?: string;
+        "data-debug-console"?: string;
       };
     }
   }
@@ -76,7 +79,7 @@ async function waitForAdsgramElement(): Promise<void> {
 }
 
 export function AdsgramTaskBanner({ visible, loading }: AdsgramTaskBannerProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const taskRef = useRef<HTMLElement | null>(null);
   const [hidden, setHidden] = useState(false);
   const [scriptReady, setScriptReady] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -117,16 +120,8 @@ export function AdsgramTaskBanner({ visible, loading }: AdsgramTaskBannerProps) 
   }, [visible]);
 
   useEffect(() => {
-    if (!visible || !scriptReady || !containerRef.current) return;
-    const container = containerRef.current;
-    container.innerHTML = "";
-
-    const taskElement = document.createElement(ADSGRAM_COMPONENT_TAG);
-    taskElement.setAttribute("data-block-id", ADGRAM_TASK_UNIT_ID);
-    if (isDev) {
-      taskElement.setAttribute("data-debug", "true");
-    }
-    container.appendChild(taskElement);
+    if (!visible || !scriptReady || !taskRef.current) return;
+    const taskElement = taskRef.current;
 
     const mountedTimeout = window.setTimeout(() => {
       const hasShadow = Boolean(taskElement.shadowRoot);
@@ -170,7 +165,7 @@ export function AdsgramTaskBanner({ visible, loading }: AdsgramTaskBannerProps) 
 
   const containerClassName = useMemo(() => {
     const base =
-      "rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-3 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 ease-out";
+      "rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 ease-out";
     if (rendered) {
       return `${base} translate-y-0 opacity-100`;
     }
@@ -197,7 +192,7 @@ export function AdsgramTaskBanner({ visible, loading }: AdsgramTaskBannerProps) 
   if (shouldShowSkeleton) {
     return (
       <div className={containerClassName}>
-        <div className="min-h-[84px] w-full animate-pulse rounded-[18px] border border-white/10 bg-white/5" />
+        <div className="min-h-[120px] w-full animate-pulse rounded-[18px] border border-white/10 bg-white/5" />
       </div>
     );
   }
@@ -208,7 +203,31 @@ export function AdsgramTaskBanner({ visible, loading }: AdsgramTaskBannerProps) 
 
   return (
     <div className={containerClassName}>
-      <div className="min-h-[84px]" id={ADSGRAM_CONTAINER_ID} ref={containerRef} />
+      {!scriptReady ? (
+        <div className="min-h-[120px] w-full animate-pulse rounded-[18px] border border-white/10 bg-white/5" />
+      ) : (
+        <adsgram-task
+          className={styles.task}
+          data-block-id={ADGRAM_TASK_UNIT_ID}
+          data-debug={isDev ? "true" : undefined}
+          data-debug-console="false"
+          ref={taskRef}
+          style={{ minHeight: ADSGRAM_MIN_HEIGHT }}
+        >
+          <span slot="reward" className={styles.reward}>
+            100 ⚡
+          </span>
+          <div slot="button" className={styles.button}>
+            Перейти
+          </div>
+          <div slot="claim" className={styles.buttonClaim}>
+            Забрать
+          </div>
+          <div slot="done" className={styles.buttonDone}>
+            Готово
+          </div>
+        </adsgram-task>
+      )}
     </div>
   );
 }

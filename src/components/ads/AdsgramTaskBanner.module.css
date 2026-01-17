@@ -1,0 +1,53 @@
+.task {
+  --adsgram-task-font-size: 18px;
+  --adsgram-task-icon-size: 64px;
+  --adsgram-task-icon-title-gap: 16px;
+  --adsgram-task-button-width: 96px;
+  --adsgram-task-icon-border-radius: 16px;
+
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.reward {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.button,
+.buttonClaim,
+.buttonDone {
+  margin-left: 12px;
+  padding: 8px 12px;
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+.button {
+  background: var(--accent-pink);
+  color: #1c111f;
+}
+
+.buttonClaim {
+  background: var(--accent-gold);
+  color: #1b1406;
+}
+
+.buttonDone {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text-primary);
+}
