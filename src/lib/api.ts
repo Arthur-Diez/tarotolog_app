@@ -296,6 +296,12 @@ export interface EnergyBalanceResponse {
   energy_balance: number;
 }
 
+export interface SubscriptionStatusResponse {
+  has_subscription: boolean;
+  plan_code?: string | null;
+  ends_at?: string | null;
+}
+
 // ====== ВЫЗОВЫ API ======
 
 export async function authWebApp(payload: AuthWebAppPayload): Promise<AuthWebAppResponse> {
@@ -408,6 +414,14 @@ export async function getEnergy(): Promise<EnergyBalanceResponse> {
     headers: withAuthHeaders()
   });
   return handleResponse<EnergyBalanceResponse>(res);
+}
+
+export async function getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
+  const res = await fetch(`${API_BASE}/subscription/status`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<SubscriptionStatusResponse>(res);
 }
 
 export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {
