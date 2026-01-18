@@ -2,58 +2,65 @@ const RICHADS_PUB_ID = "999441";
 const RICHADS_APP_ID = "5734";
 
 let initialized = false;
-let initPromise: Promise<void> | null = null;
+let initPromise: Promise<TelegramAdsControllerInstance | null> | null = null;
 
 function log(event: "sdk_present" | "initialized_ok" | "initialized_skip" | "init_error", detail?: string) {
   const payload = detail ? ` ${detail}` : "";
   console.info(`[richads] ${event}${payload}`);
 }
 
+type TelegramAdsControllerInstance = {
+  initialize: (options: { pubId: string; appId: string }) => void;
+  show?: (options?: { containerId?: string }) => void;
+  render?: (options?: { containerId?: string }) => void;
+};
+
 declare global {
   interface Window {
-    TelegramAdsController?: {
-      initialize: (options: { pubId: string; appId: string }) => void;
-      show?: (options?: { containerId?: string }) => void;
-      render?: (options?: { containerId?: string }) => void;
-    };
+    TelegramAdsController?: new () => TelegramAdsControllerInstance;
+    __richadsController?: TelegramAdsControllerInstance;
   }
 }
 
-export async function initRichAds(): Promise<void> {
+export async function initRichAds(): Promise<TelegramAdsControllerInstance | null> {
   if (typeof window === "undefined") {
-    return;
+    return null;
   }
 
-  if (initialized) {
+  if (initialized && window.__richadsController) {
     log("initialized_skip");
-    return;
+    return window.__richadsController;
   }
 
   if (initPromise) {
-    await initPromise;
-    return;
+    return initPromise;
   }
 
   initPromise = (async () => {
     try {
-      const controller = window.TelegramAdsController;
-      if (!controller) {
+      const Controller = window.TelegramAdsController;
+      if (!Controller) {
         log("sdk_present", "false");
-        return;
+        return null;
       }
       log("sdk_present", "true");
 
       window.Telegram?.WebApp?.ready?.();
 
+      const controller = new Controller();
       controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID });
+      window.__richadsController = controller;
       initialized = true;
       log("initialized_ok");
+      return controller;
     } catch (error) {
       log("init_error", error instanceof Error ? error.message : "unknown");
+      return null;
     }
   })()
     .catch((error) => {
       log("init_error", error instanceof Error ? error.message : "unknown");
+      return null;
     })
     .finally(() => {
       if (!initialized) {
@@ -61,5 +68,5 @@ export async function initRichAds(): Promise<void> {
       }
     });
 
-  await initPromise;
+  return initPromise;
 }

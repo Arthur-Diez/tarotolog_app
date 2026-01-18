@@ -20,9 +20,8 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
     let cancelled = false;
 
     initRichAds()
-      .then(() => {
+      .then((controller) => {
         if (cancelled) return;
-        const controller = window.TelegramAdsController;
         if (!controller) {
           setHidden(true);
           return;
