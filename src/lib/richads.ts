@@ -16,11 +16,6 @@ declare global {
       show?: (options?: { containerId?: string }) => void;
       render?: (options?: { containerId?: string }) => void;
     };
-    Telegram?: {
-      WebApp?: {
-        ready?: () => void;
-      };
-    };
   }
 }
 
