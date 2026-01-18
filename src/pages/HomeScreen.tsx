@@ -13,7 +13,7 @@ import {
 
 import { EnergyGauge } from "@/components/layout/EnergyGauge";
 import { Header } from "@/components/layout/Header";
-import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
+import { RichAdsTopBanner } from "@/components/ads/RichAdsTopBanner";
 import { SectionGrid } from "@/components/sections/SectionGrid";
 import { useEnergy } from "@/hooks/useEnergy";
 import { useProfile } from "@/hooks/useProfile";
@@ -165,7 +165,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   return (
     <div className="space-y-6">
       <Header name={displayName} username={telegramUser?.username} energy={energyBalance} />
-      <AdsgramTaskBanner visible={!subscriptionLoading && !hasSubscription} loading={subscriptionLoading} />
+      <RichAdsTopBanner visible={!subscriptionLoading && !hasSubscription} />
       <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
       <SectionGrid sections={sections} onSectionSelect={handleSectionSelect} />
       {loading && !profile ? skeletons : null}
