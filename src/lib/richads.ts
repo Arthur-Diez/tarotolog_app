@@ -15,9 +15,11 @@ type TelegramAdsControllerInstance = {
   render?: (options?: { containerId?: string }) => void;
 };
 
+type TelegramAdsControllerCtor = new () => TelegramAdsControllerInstance;
+
 declare global {
   interface Window {
-    TelegramAdsController?: new () => TelegramAdsControllerInstance;
+    TelegramAdsController?: TelegramAdsControllerCtor | TelegramAdsControllerInstance;
     __richadsController?: TelegramAdsControllerInstance;
   }
 }
@@ -47,7 +49,8 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
       window.Telegram?.WebApp?.ready?.();
 
-      const controller = new Controller();
+      const controller =
+        typeof Controller === "function" ? new Controller() : (Controller as TelegramAdsControllerInstance);
       controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID });
       window.__richadsController = controller;
       initialized = true;
