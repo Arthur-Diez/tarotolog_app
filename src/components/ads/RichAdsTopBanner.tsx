@@ -19,27 +19,27 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
 
     let cancelled = false;
 
-    initRichAds()
-      .then((controller) => {
-        if (cancelled) return;
-        if (!controller) {
-          setHidden(true);
-          return;
-        }
+    const attempt = async () => {
+      const controller = await initRichAds();
+      if (cancelled) return;
+      if (!controller) {
+        return;
+      }
 
-        if (typeof controller.show === "function") {
-          controller.show({ containerId: RICHADS_CONTAINER_ID });
-        } else if (typeof controller.render === "function") {
-          controller.render({ containerId: RICHADS_CONTAINER_ID });
-        }
+      if (typeof controller.show === "function") {
+        controller.show({ containerId: RICHADS_CONTAINER_ID });
+      } else if (typeof controller.render === "function") {
+        controller.render({ containerId: RICHADS_CONTAINER_ID });
+      }
 
-        setInitialized(true);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setHidden(true);
-        }
-      });
+      setInitialized(true);
+    };
+
+    attempt().catch(() => {
+      if (!cancelled) {
+        setHidden(true);
+      }
+    });
 
     return () => {
       cancelled = true;

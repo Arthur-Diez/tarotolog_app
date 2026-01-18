@@ -3,6 +3,8 @@ const RICHADS_APP_ID = "5734";
 
 let initialized = false;
 let initPromise: Promise<TelegramAdsControllerInstance | null> | null = null;
+const CONTROLLER_WAIT_MS = 4000;
+const CONTROLLER_POLL_MS = 200;
 
 function log(event: "sdk_present" | "initialized_ok" | "initialized_skip" | "init_error", detail?: string) {
   const payload = detail ? ` ${detail}` : "";
@@ -21,7 +23,23 @@ declare global {
   interface Window {
     TelegramAdsController?: TelegramAdsControllerCtor | TelegramAdsControllerInstance;
     __richadsController?: TelegramAdsControllerInstance;
+    __richadsInitialized?: boolean;
   }
+}
+
+async function waitForController(): Promise<TelegramAdsControllerInstance | null> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < CONTROLLER_WAIT_MS) {
+    const controller = window.__richadsController ?? window.TelegramAdsController;
+    if (controller && typeof controller !== "function") {
+      return controller as TelegramAdsControllerInstance;
+    }
+    if (controller && typeof controller === "function") {
+      return null;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, CONTROLLER_POLL_MS));
+  }
+  return null;
 }
 
 export async function initRichAds(): Promise<TelegramAdsControllerInstance | null> {
@@ -40,6 +58,15 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
   initPromise = (async () => {
     try {
+      const existing = await waitForController();
+      if (existing) {
+        log("sdk_present", "true");
+        window.__richadsController = existing;
+        initialized = true;
+        log("initialized_ok");
+        return existing;
+      }
+
       const Controller = window.TelegramAdsController;
       if (!Controller) {
         log("sdk_present", "false");
@@ -51,7 +78,10 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
       const controller =
         typeof Controller === "function" ? new Controller() : (Controller as TelegramAdsControllerInstance);
-      controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID });
+      if (!window.__richadsInitialized) {
+        controller.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID });
+        window.__richadsInitialized = true;
+      }
       window.__richadsController = controller;
       initialized = true;
       log("initialized_ok");
