@@ -18,18 +18,27 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
     }
 
     let cancelled = false;
+    let renderTimeout: number | undefined;
 
     const attempt = async () => {
       const controller = await initRichAds();
       if (cancelled) return;
       if (!controller) {
+        setHidden(true);
         return;
       }
 
-      if (typeof controller.show === "function") {
-        controller.show({ containerId: RICHADS_CONTAINER_ID });
-      } else if (typeof controller.render === "function") {
+      if (typeof controller.render === "function") {
         controller.render({ containerId: RICHADS_CONTAINER_ID });
+        renderTimeout = window.setTimeout(() => {
+          const container = document.getElementById(RICHADS_CONTAINER_ID);
+          if (!container || container.childElementCount === 0) {
+            setHidden(true);
+          }
+        }, 2500);
+      } else {
+        setHidden(true);
+        return;
       }
 
       setInitialized(true);
@@ -43,6 +52,9 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
 
     return () => {
       cancelled = true;
+      if (renderTimeout) {
+        window.clearTimeout(renderTimeout);
+      }
     };
   }, [visible]);
 
