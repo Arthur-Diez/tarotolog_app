@@ -23,17 +23,19 @@ interface BonusState {
 }
 
 function toBonusState(status: DailyBonusStatusResponse): BonusState {
+  const nextClaimInSec = Math.max(0, status.next_claim_in_sec);
   return {
-    canClaim: status.can_claim,
-    nextClaimInSec: status.next_claim_in_sec,
+    canClaim: status.can_claim || nextClaimInSec === 0,
+    nextClaimInSec,
     energyAward: status.energy_award
   };
 }
 
 function toBonusStateFromStart(status: DailyBonusStartResponse): BonusState {
+  const nextClaimInSec = Math.max(0, status.next_claim_in_sec);
   return {
-    canClaim: status.can_claim,
-    nextClaimInSec: status.next_claim_in_sec,
+    canClaim: status.can_claim || nextClaimInSec === 0,
+    nextClaimInSec,
     energyAward: status.energy_award ?? 0
   };
 }
