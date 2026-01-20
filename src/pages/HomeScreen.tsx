@@ -13,7 +13,7 @@ import {
 
 import { EnergyGauge } from "@/components/layout/EnergyGauge";
 import { Header } from "@/components/layout/Header";
-import { RichAdsTopBanner } from "@/components/ads/RichAdsTopBanner";
+import { DailyBonusCard } from "@/components/sections/DailyBonusCard";
 import { SectionGrid } from "@/components/sections/SectionGrid";
 import { useEnergy } from "@/hooks/useEnergy";
 import { useProfile } from "@/hooks/useProfile";
@@ -75,7 +75,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
-  const { profile, loading } = useProfile();
+  const { profile, loading, refresh } = useProfile();
   const { hasSubscription, loading: subscriptionLoading } = useSubscriptionStatus();
   const profileData = profile?.user;
   const widgetKeys =
@@ -165,7 +165,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   return (
     <div className="space-y-6">
       <Header name={displayName} username={telegramUser?.username} energy={energyBalance} />
-      <RichAdsTopBanner visible={!subscriptionLoading && !hasSubscription} />
+      {!subscriptionLoading ? (
+        <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
+      ) : null}
       <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
       <SectionGrid sections={sections} onSectionSelect={handleSectionSelect} />
       {loading && !profile ? skeletons : null}

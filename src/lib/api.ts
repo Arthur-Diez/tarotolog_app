@@ -302,6 +302,24 @@ export interface SubscriptionStatusResponse {
   ends_at?: string | null;
 }
 
+export interface DailyBonusStatusResponse {
+  can_claim: boolean;
+  next_claim_in_sec: number;
+  energy_award: number;
+}
+
+export interface DailyBonusStartResponse {
+  can_claim: boolean;
+  next_claim_in_sec: number;
+  energy_award?: number;
+  session_id?: string;
+}
+
+export interface DailyBonusCompleteResponse {
+  success: boolean;
+  status?: DailyBonusStatusResponse;
+}
+
 // ====== ВЫЗОВЫ API ======
 
 export async function authWebApp(payload: AuthWebAppPayload): Promise<AuthWebAppResponse> {
@@ -422,6 +440,35 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatusRespons
     headers: withAuthHeaders()
   });
   return handleResponse<SubscriptionStatusResponse>(res);
+}
+
+export async function getDailyBonusStatus(): Promise<DailyBonusStatusResponse> {
+  const res = await fetch(`${API_BASE}/bonus/daily/status`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DailyBonusStatusResponse>(res);
+}
+
+export async function startDailyBonus(): Promise<DailyBonusStartResponse> {
+  const res = await fetch(`${API_BASE}/bonus/daily/start`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<DailyBonusStartResponse>(res);
+}
+
+export async function completeDailyBonus(payload: {
+  session_id: string;
+  ad_payload?: unknown;
+}): Promise<DailyBonusCompleteResponse> {
+  const res = await fetch(`${API_BASE}/bonus/daily/complete`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DailyBonusCompleteResponse>(res);
 }
 
 export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {
