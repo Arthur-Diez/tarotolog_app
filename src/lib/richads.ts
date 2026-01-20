@@ -13,8 +13,8 @@ function log(event: "sdk_present" | "initialized_ok" | "initialized_skip" | "ini
 
 type TelegramAdsControllerInstance = {
   initialize: (options: { pubId: string; appId: string }) => void;
-  show?: (options?: { containerId?: string }) => void;
-  render?: (options?: { containerId?: string }) => void;
+  show?: (options?: Record<string, unknown>) => unknown;
+  render?: (options?: Record<string, unknown>) => unknown;
 };
 
 type TelegramAdsControllerCtor = new () => TelegramAdsControllerInstance;
