@@ -34,9 +34,6 @@ async function waitForController(): Promise<TelegramAdsControllerInstance | null
     if (controller && typeof controller !== "function") {
       return controller as TelegramAdsControllerInstance;
     }
-    if (controller && typeof controller === "function") {
-      return null;
-    }
     await new Promise((resolve) => window.setTimeout(resolve, CONTROLLER_POLL_MS));
   }
   return null;
@@ -47,7 +44,7 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
     return null;
   }
 
-  if (initialized && window.__richadsController) {
+  if (window.__richadsInitialized && window.__richadsController) {
     log("initialized_skip");
     return window.__richadsController;
   }
@@ -74,6 +71,10 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
       }
       log("sdk_present", "true");
 
+      const tgStart = Date.now();
+      while (!window.Telegram?.WebApp && Date.now() - tgStart < 3000) {
+        await new Promise((resolve) => window.setTimeout(resolve, 200));
+      }
       window.Telegram?.WebApp?.ready?.();
 
       const controller =

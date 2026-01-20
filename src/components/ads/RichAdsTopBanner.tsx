@@ -19,34 +19,43 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
 
     let cancelled = false;
     let renderTimeout: number | undefined;
+    let retryTimeout: number | undefined;
 
     const attempt = async () => {
       const controller = await initRichAds();
       if (cancelled) return;
       if (!controller) {
-        setHidden(true);
+        retryTimeout = window.setTimeout(() => {
+          if (!cancelled) {
+            void attempt();
+          }
+        }, 1500);
         return;
       }
 
       if (typeof controller.render === "function") {
         controller.render({ containerId: RICHADS_CONTAINER_ID });
-        renderTimeout = window.setTimeout(() => {
-          const container = document.getElementById(RICHADS_CONTAINER_ID);
-          if (!container || container.childElementCount === 0) {
-            setHidden(true);
-          }
-        }, 2500);
+      } else if (typeof controller.show === "function") {
+        controller.show({ containerId: RICHADS_CONTAINER_ID });
       } else {
-        setHidden(true);
         return;
       }
 
-      setInitialized(true);
+      renderTimeout = window.setTimeout(() => {
+        const container = document.getElementById(RICHADS_CONTAINER_ID);
+        if (container && container.childElementCount > 0) {
+          setInitialized(true);
+        }
+      }, 8000);
     };
 
     attempt().catch(() => {
       if (!cancelled) {
-        setHidden(true);
+        retryTimeout = window.setTimeout(() => {
+          if (!cancelled) {
+            void attempt();
+          }
+        }, 1500);
       }
     });
 
@@ -54,6 +63,9 @@ export function RichAdsTopBanner({ visible }: RichAdsTopBannerProps) {
       cancelled = true;
       if (renderTimeout) {
         window.clearTimeout(renderTimeout);
+      }
+      if (retryTimeout) {
+        window.clearTimeout(retryTimeout);
       }
     };
   }, [visible]);
