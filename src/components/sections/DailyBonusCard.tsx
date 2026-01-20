@@ -7,7 +7,7 @@ import {
   type DailyBonusStartResponse,
   type DailyBonusStatusResponse
 } from "@/lib/api";
-import { showInterstitialVideo, showPushStyle } from "@/lib/ads/richads";
+import { showAdsgramReward } from "@/lib/ads/adsgram";
 
 const SKIP_ADS_FOR_PREMIUM = true;
 
@@ -123,27 +123,17 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         return;
       }
 
-      console.info("daily-bonus: ad_interstitial");
-      const videoResult = await showInterstitialVideo();
-      if (!videoResult.ok) {
-        console.info("daily-bonus: ad_interstitial_failed", videoResult.error);
-        console.info("daily-bonus: ad_push");
-        const pushResult = await showPushStyle();
-        if (!pushResult.ok) {
-          console.info("daily-bonus: ad_push_failed", pushResult.error);
-          setError("Реклама недоступна, попробуйте позже");
-          return;
-        }
-        await completeDailyBonus({
-          session_id: startResponse.session_id,
-          ad_payload: pushResult.payload
-        });
-      } else {
-        await completeDailyBonus({
-          session_id: startResponse.session_id,
-          ad_payload: videoResult.payload
-        });
+      console.info("daily-bonus: ad_reward");
+      const rewardResult = await showAdsgramReward();
+      if (!rewardResult.ok) {
+        console.info("daily-bonus: ad_failed", rewardResult.error);
+        setError("Реклама недоступна, попробуйте позже");
+        return;
       }
+      await completeDailyBonus({
+        session_id: startResponse.session_id,
+        ad_payload: rewardResult.payload
+      });
 
       if (onBonusClaimed) {
         await onBonusClaimed();
