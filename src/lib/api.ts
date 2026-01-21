@@ -1,7 +1,7 @@
 import type { SpreadId } from "@/data/rws_spreads";
 
 // api.ts
-export const API_BASE = "https://api.freakdev.site/api";
+export const API_BASE = "https://tarotapi.freakdev.site/api";
 
 export const WIDGET_KEYS = [
   "card_of_day",
