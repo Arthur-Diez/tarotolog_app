@@ -172,35 +172,32 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
 async function detectAdStarted(timeoutMs = RICHADS_START_DETECT_MS): Promise<boolean> {
   return new Promise((resolve) => {
-    let resolved = false;
+    let done = false;
+
     const finish = (started: boolean) => {
-      if (resolved) return;
-      resolved = true;
-      document.removeEventListener("visibilitychange", onVisibility);
+      if (done) return;
+      done = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
       window.clearTimeout(timeoutId);
       resolve(started);
     };
-    const onVisibility = () => {
-      if (document.hidden) {
-        finish(true);
-      }
-    };
-    const onVisibility = () => {
+
+    const onVisibilityChange = () => {
       if (document.hidden) finish(true);
     };
 
     const onBlur = () => {
+      // blur может быть не от рекламы, поэтому подтверждаем через document.hidden
       setTimeout(() => {
         if (document.hidden) finish(true);
       }, 0);
     };
+
     const timeoutId = window.setTimeout(() => finish(false), timeoutMs);
 
-    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
   });
 }
 
