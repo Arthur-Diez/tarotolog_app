@@ -1,7 +1,7 @@
 import type { SpreadId } from "@/data/rws_spreads";
 
 // api.ts
-export const API_BASE = "https://tarotapi.freakdev.site/api";
+export const API_BASE = "https://api.freakdev.site/api";
 
 export const WIDGET_KEYS = [
   "card_of_day",
@@ -302,22 +302,16 @@ export interface SubscriptionStatusResponse {
   ends_at?: string | null;
 }
 
-export interface DailyBonusStatusResponse {
-  can_claim: boolean;
-  next_claim_in_sec: number;
-  energy_award: number;
+export interface DailyRewardStartResponse {
+  reward_id: string | null;
+  amount: number;
+  expires_at: string | null;
+  next_available_at: string | null;
 }
 
-export interface DailyBonusStartResponse {
-  can_claim: boolean;
-  next_claim_in_sec: number;
-  energy_award?: number;
-  session_id?: string;
-}
-
-export interface DailyBonusCompleteResponse {
-  success: boolean;
-  status?: DailyBonusStatusResponse;
+export interface DailyRewardClaimResponse {
+  new_balance: number;
+  claimed_at: string;
 }
 
 // ====== ВЫЗОВЫ API ======
@@ -442,33 +436,24 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatusRespons
   return handleResponse<SubscriptionStatusResponse>(res);
 }
 
-export async function getDailyBonusStatus(): Promise<DailyBonusStatusResponse> {
-  const res = await fetch(`${API_BASE}/bonus/daily/status`, {
-    method: "GET",
-    headers: withAuthHeaders()
-  });
-  return handleResponse<DailyBonusStatusResponse>(res);
-}
-
-export async function startDailyBonus(): Promise<DailyBonusStartResponse> {
-  const res = await fetch(`${API_BASE}/bonus/daily/start`, {
+export async function startDailyReward(): Promise<DailyRewardStartResponse> {
+  const res = await fetch(`${API_BASE}/rewards/daily/start`, {
     method: "POST",
     headers: withAuthHeaders(undefined, true),
     body: JSON.stringify({})
   });
-  return handleResponse<DailyBonusStartResponse>(res);
+  return handleResponse<DailyRewardStartResponse>(res);
 }
 
-export async function completeDailyBonus(payload: {
-  session_id: string;
-  ad_payload?: unknown;
-}): Promise<DailyBonusCompleteResponse> {
-  const res = await fetch(`${API_BASE}/bonus/daily/complete`, {
+export async function claimDailyReward(payload: {
+  reward_id: string;
+}): Promise<DailyRewardClaimResponse> {
+  const res = await fetch(`${API_BASE}/rewards/daily/claim`, {
     method: "POST",
     headers: withAuthHeaders(undefined, true),
     body: JSON.stringify(payload)
   });
-  return handleResponse<DailyBonusCompleteResponse>(res);
+  return handleResponse<DailyRewardClaimResponse>(res);
 }
 
 export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {

@@ -1,43 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  completeDailyBonus,
-  getDailyBonusStatus,
-  startDailyBonus,
-  type DailyBonusStartResponse,
-  type DailyBonusStatusResponse
-} from "@/lib/api";
-import { showAdsgramReward } from "@/lib/ads/adsgram";
+import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
+import { showRichAds } from "@/lib/ads/richads";
 
-const SKIP_ADS_FOR_PREMIUM = true;
+const SKIP_ADS_FOR_PREMIUM = false;
+
+type BonusStatus = "idle" | "loading_start" | "ad_showing" | "claiming" | "cooldown" | "error";
 
 interface DailyBonusCardProps {
   hasSubscription: boolean;
   onBonusClaimed?: () => Promise<void> | void;
 }
 
-interface BonusState {
-  canClaim: boolean;
-  nextClaimInSec: number;
-  energyAward: number;
-}
-
-function toBonusState(status: DailyBonusStatusResponse): BonusState {
-  const nextClaimInSec = Math.max(0, status.next_claim_in_sec);
-  return {
-    canClaim: status.can_claim || nextClaimInSec === 0,
-    nextClaimInSec,
-    energyAward: status.energy_award
-  };
-}
-
-function toBonusStateFromStart(status: DailyBonusStartResponse): BonusState {
-  const nextClaimInSec = Math.max(0, status.next_claim_in_sec);
-  return {
-    canClaim: status.can_claim || nextClaimInSec === 0,
-    nextClaimInSec,
-    energyAward: status.energy_award ?? 0
-  };
+interface RewardState {
+  rewardId: string | null;
+  amount: number;
+  expiresAt: string | null;
+  nextAvailableAt: string | null;
+  status: BonusStatus;
+  error: string | null;
 }
 
 function formatCountdown(totalSeconds: number): string {
@@ -57,175 +38,175 @@ function isCorsError(error: unknown): boolean {
   return false;
 }
 
+function extractCooldownSeconds(nextAvailableAt: string | null): number | null {
+  if (!nextAvailableAt) return null;
+  const target = new Date(nextAvailableAt).getTime();
+  if (Number.isNaN(target)) return null;
+  return Math.max(0, Math.floor((target - Date.now()) / 1000));
+}
+
 export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCardProps) {
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [bonus, setBonus] = useState<BonusState | null>(null);
-  const [checkingReward, setCheckingReward] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
+  const [reward, setReward] = useState<RewardState>({
+    rewardId: null,
+    amount: 0,
+    expiresAt: null,
+    nextAvailableAt: null,
+    status: "idle",
+    error: null
+  });
 
-  const isPremium = hasSubscription;
-  const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && isPremium;
-
-  const refreshStatus = useCallback(async () => {
-    setError(null);
-    try {
-      console.info("daily-bonus: status_fetch");
-      const status = await getDailyBonusStatus();
-      setBonus(toBonusState(status));
-    } catch (err) {
-      console.info("daily-bonus: status_error", err);
-      setError("Не удалось загрузить бонус");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && hasSubscription;
 
   useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus]);
-
-  useEffect(() => {
-    if (!bonus || bonus.canClaim || bonus.nextClaimInSec <= 0) {
+    if (reward.status !== "cooldown" || !reward.nextAvailableAt) {
+      setCooldownSeconds(null);
       return;
     }
 
-    const interval = window.setInterval(() => {
-      setBonus((current) => {
-        if (!current) return current;
-        const next = Math.max(0, current.nextClaimInSec - 1);
-        if (next === 0) {
-          return { ...current, nextClaimInSec: 0, canClaim: true };
-        }
-        return { ...current, nextClaimInSec: next };
-      });
-    }, 1000);
+    const tick = () => {
+      const next = extractCooldownSeconds(reward.nextAvailableAt);
+      setCooldownSeconds(next);
+    };
 
+    tick();
+    const interval = window.setInterval(tick, 1000);
     return () => window.clearInterval(interval);
-  }, [bonus]);
+  }, [reward.nextAvailableAt, reward.status]);
+
+  const waitForAdClose = useCallback(async () => {
+    console.info("daily-bonus: wait_close");
+    return new Promise<void>((resolve) => {
+      let resolved = false;
+      const finish = () => {
+        if (resolved) return;
+        resolved = true;
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("focus", onFocus);
+        window.clearTimeout(timeoutId);
+        resolve();
+      };
+      const onVisibility = () => {
+        if (!document.hidden) {
+          finish();
+        }
+      };
+      const onFocus = () => finish();
+      const timeoutId = window.setTimeout(finish, 9000);
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("focus", onFocus);
+    });
+  }, []);
 
   const handleClaim = useCallback(async () => {
-    if (!bonus || processing) return;
+    if (processing) return;
     setProcessing(true);
-    setError(null);
+    setReward((current) => ({ ...current, status: "loading_start", error: null }));
 
     try {
       console.info("daily-bonus: start");
-      const startResponse = await startDailyBonus();
-      const startState = toBonusStateFromStart(startResponse);
-      setBonus(startState);
+      const startResponse = await startDailyReward();
+      console.info("daily-bonus: start_response", startResponse);
 
-      if (!startResponse.can_claim || !startResponse.session_id) {
-        console.info("daily-bonus: no_session");
+      if (!startResponse.reward_id) {
+        setReward((current) => ({
+          ...current,
+          rewardId: null,
+          amount: startResponse.amount,
+          expiresAt: startResponse.expires_at,
+          nextAvailableAt: startResponse.next_available_at,
+          status: "cooldown",
+          error: null
+        }));
         return;
       }
 
-      if (shouldSkipAds) {
-        console.info("daily-bonus: skip_ads");
-        await completeDailyBonus({
-          session_id: startResponse.session_id,
-          ad_payload: { skipped: true, reason: "premium" }
-        });
-        if (onBonusClaimed) {
-          await onBonusClaimed();
+      setReward((current) => ({
+        ...current,
+        rewardId: startResponse.reward_id,
+        amount: startResponse.amount,
+        expiresAt: startResponse.expires_at,
+        nextAvailableAt: startResponse.next_available_at,
+        status: "ad_showing",
+        error: null
+      }));
+
+      if (!shouldSkipAds) {
+        const adResult = await showRichAds();
+        if (!adResult.ok) {
+          console.info("daily-bonus: ad_failed", adResult.error);
+          setReward((current) => ({ ...current, status: "error", error: "Реклама недоступна" }));
+          return;
         }
-        await refreshStatus();
-        return;
+        console.info("daily-bonus: ad_showing");
+        await waitForAdClose();
       }
 
-      console.info("daily-bonus: ad_open");
-      const rewardResult = await showAdsgramReward();
-      if (!rewardResult.ok) {
-        console.info("daily-bonus: ad_failed", rewardResult.error);
-        setError("Реклама недоступна, попробуйте позже");
-        return;
+      setReward((current) => ({ ...current, status: "claiming", error: null }));
+      const claimResponse = await claimDailyReward({ reward_id: startResponse.reward_id });
+      console.info("daily-bonus: claim_response", claimResponse);
+
+      if (onBonusClaimed) {
+        await onBonusClaimed();
       }
 
-      const payload = rewardResult.payload as
-        | { done?: boolean; error?: boolean; description?: string }
-        | undefined;
-
-      if (payload?.error) {
-        console.info("daily-bonus: ad_error", payload.description);
-        setError("Ошибка рекламы");
-        return;
-      }
-
-      if (payload?.done === false) {
-        console.info("daily-bonus: ad_not_completed");
-        setError("Реклама не завершена");
-        return;
-      }
-
-      setSessionId(startResponse.session_id);
-      void pollReward();
+      setReward((current) => ({
+        ...current,
+        status: "cooldown",
+        error: null
+      }));
     } catch (err) {
       if (isCorsError(err)) {
         console.info("daily-bonus: start_failed cors_blocked", err);
-        setError("Сервис недоступен, обновите приложение");
-      } else {
-        console.info("daily-bonus: start_failed", err);
-        setError("Не удалось получить бонус");
+        setReward((current) => ({
+          ...current,
+          status: "error",
+          error: "Сервис недоступен, обновите приложение"
+        }));
+        return;
       }
+
+      if (err instanceof ApiError) {
+        if (err.status === 400 && err.code === "reward_expired") {
+          setReward((current) => ({
+            ...current,
+            status: "error",
+            error: "Время вышло, попробуйте ещё раз"
+          }));
+          return;
+        }
+        if (err.status === 409 && err.code === "already_claimed_today") {
+          setReward((current) => ({
+            ...current,
+            status: "cooldown",
+            error: "Бонус уже получен"
+          }));
+          return;
+        }
+      }
+
+      console.info("daily-bonus: start_failed", err);
+      setReward((current) => ({ ...current, status: "error", error: "Не удалось получить бонус" }));
     } finally {
       setProcessing(false);
     }
-  }, [bonus, onBonusClaimed, processing, refreshStatus, shouldSkipAds]);
-
-  const pollReward = useCallback(async () => {
-    const currentSession = sessionId;
-    if (!currentSession) return;
-    setCheckingReward(true);
-    console.info("daily-bonus: polling_start");
-
-    const startedAt = Date.now();
-    const timeoutMs = 25000;
-    const tickMs = 1500;
-
-    while (Date.now() - startedAt < timeoutMs) {
-      try {
-        const status = await getDailyBonusStatus();
-        console.info("daily-bonus: polling_tick", status);
-        setBonus(toBonusState(status));
-        if (!status.can_claim || status.next_claim_in_sec > 0) {
-          if (onBonusClaimed) {
-            await onBonusClaimed();
-          }
-          setCheckingReward(false);
-          setSessionId(null);
-          console.info("daily-bonus: polling_success");
-          return;
-        }
-      } catch (err) {
-        console.info("daily-bonus: polling_error", err);
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, tickMs));
-    }
-
-    setCheckingReward(false);
-    setError("Награда не подтверждена, попробуйте ещё раз");
-    console.info("daily-bonus: polling_timeout");
-  }, [onBonusClaimed, sessionId]);
+  }, [onBonusClaimed, processing, shouldSkipAds, waitForAdClose]);
 
   const title = "🎁 Ежедневная энергия";
 
   const countdownLabel = useMemo(() => {
-    if (!bonus) return "";
-    return formatCountdown(bonus.nextClaimInSec);
-  }, [bonus]);
+    if (cooldownSeconds === null) return "";
+    return formatCountdown(cooldownSeconds);
+  }, [cooldownSeconds]);
 
-  if (loading) {
-    return (
-      <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <div className="h-[88px] w-full animate-pulse rounded-[18px] border border-white/10 bg-white/5" />
-      </div>
-    );
-  }
-
-  if (!bonus) {
-    return null;
-  }
+  const actionLabel = useMemo(() => {
+    if (reward.status === "loading_start") return "Готовим бонус...";
+    if (reward.status === "ad_showing") return "Смотрим рекламу...";
+    if (reward.status === "claiming") return "Проверяем награду...";
+    if (reward.status === "cooldown") return countdownLabel || "Доступно позже";
+    return "Забрать";
+  }, [countdownLabel, reward.status]);
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -233,11 +214,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         <div>
           <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            Сначала короткая реклама, затем начислим энергию.
+            Смотри рекламу — получи +{reward.amount || 0} ⚡
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
-          +{bonus.energyAward} ⚡
+          +{reward.amount || 0} ⚡
         </span>
       </div>
 
@@ -245,12 +226,18 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         <button
           className="rounded-full bg-[var(--accent-pink)] px-5 py-2 text-sm font-semibold text-[#1b111b] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-[var(--text-tertiary)]"
           onClick={handleClaim}
-          disabled={processing || checkingReward || !bonus.canClaim}
+          disabled={
+            processing ||
+            reward.status === "loading_start" ||
+            reward.status === "ad_showing" ||
+            reward.status === "claiming" ||
+            reward.status === "cooldown"
+          }
         >
-          {checkingReward ? "Проверяем награду..." : bonus.canClaim ? "Забрать" : countdownLabel}
+          {actionLabel}
         </button>
-        {error ? (
-          <span className="text-xs text-[var(--accent-gold)]">{error}</span>
+        {reward.error ? (
+          <span className="text-xs text-[var(--accent-gold)]">{reward.error}</span>
         ) : null}
       </div>
     </div>
