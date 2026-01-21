@@ -48,6 +48,20 @@ function formatCountdown(totalSeconds: number): string {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
+function isAdsgramReady(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(customElements.get("adsgram-task"));
+}
+
+function isCorsError(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  if (error && typeof error === "object" && "message" in error) {
+    const msg = String((error as { message?: unknown }).message ?? "");
+    return msg.includes("Failed to fetch") || msg.includes("CORS") || msg.includes("NetworkError");
+  }
+  return false;
+}
+
 export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCardProps) {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -109,7 +123,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       setBonus(startState);
 
       if (!startResponse.can_claim || !startResponse.session_id) {
-        console.info("daily-bonus: not_available");
+        console.info("daily-bonus: no_session");
         return;
       }
 
@@ -126,12 +140,23 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         return;
       }
 
+      if (!isAdsgramReady()) {
+        console.info("daily-bonus: ad_not_loaded");
+        setError("Реклама недоступна, попробуйте позже");
+        return;
+      }
+
       console.info("daily-bonus: ad_open");
       setSessionId(startResponse.session_id);
       setShowAds(true);
     } catch (err) {
-      console.info("daily-bonus: error", err);
-      setError("Не удалось получить бонус");
+      if (isCorsError(err)) {
+        console.info("daily-bonus: start_failed cors_blocked", err);
+        setError("Сервис недоступен, обновите приложение");
+      } else {
+        console.info("daily-bonus: start_failed", err);
+        setError("Не удалось получить бонус");
+      }
     } finally {
       setProcessing(false);
     }
