@@ -8,15 +8,18 @@ type AdsgramController = {
 
 type AdResult = { ok: boolean; payload?: unknown; error?: unknown };
 
-const DEFAULT_REWARD_BLOCK_ID = "reward-21501";
+const DEFAULT_REWARD_BLOCK_ID = "21501";
 const resolveRewardBlockId = () => {
   const raw =
     (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_REWARD_BLOCK_ID ??
     DEFAULT_REWARD_BLOCK_ID;
   const normalized = raw.trim();
+  if (normalized.startsWith("int-")) {
+    return normalized;
+  }
   const digits = normalized.match(/\d+/)?.[0];
   if (digits) {
-    return `reward-${digits}`;
+    return digits;
   }
   return DEFAULT_REWARD_BLOCK_ID;
 };
