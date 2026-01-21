@@ -85,8 +85,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && hasSubscription;
 
   useEffect(() => {
-    let intervalId: number | undefined;
-
     void initRichAds().catch((error) => {
       console.info("daily-bonus: prewarm_failed", error);
     });
@@ -95,6 +93,14 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         console.info("daily-bonus: prewarm_retry_failed", error);
       });
     }, 400);
+
+    return () => {
+      window.clearTimeout(retryId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let intervalId: number | undefined;
 
     if (reward.status === "cooldown" && reward.nextAvailableAt) {
       const tick = () => {
@@ -109,7 +115,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     }
 
     return () => {
-      window.clearTimeout(retryId);
       if (intervalId) {
         window.clearInterval(intervalId);
       }

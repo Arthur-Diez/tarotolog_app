@@ -5,6 +5,7 @@ type TelegramAdsControllerInstance = {
 };
 
 type TelegramAdsControllerCtor = new () => TelegramAdsControllerInstance;
+type TelegramAdsControllerGlobal = TelegramAdsControllerInstance | TelegramAdsControllerCtor;
 
 export type RichAdsError =
   | "tg_sdk_unavailable"
@@ -16,7 +17,7 @@ export type RichAdsError =
 type RichAdsResult = { ok: boolean; payload?: unknown; error?: RichAdsError; detail?: unknown };
 
 const RICHADS_PUB_ID = "999441";
-const RICHADS_APP_ID = "5823";
+const RICHADS_APP_ID = "5826";
 const RICHADS_INIT_TIMEOUT_MS = 6000;
 const RICHADS_READY_TICK_MS = 250;
 const RICHADS_SHOW_ATTEMPTS = 3;
@@ -26,9 +27,10 @@ const RICHADS_START_DETECT_MS = 700;
 
 let controllerInstance: TelegramAdsControllerInstance | null = null;
 let initPromise: Promise<TelegramAdsControllerInstance | null> | null = null;
+let controllerInitialized = false;
 let lastEvent: string | null = null;
 let lastError: RichAdsError | null = null;
-let lastErrorDetail: unknown;
+let lastErrorDetail: string | null = null;
 
 function log(event: string, detail?: unknown) {
   lastEvent = event;
@@ -56,8 +58,9 @@ export function getRichAdsDebugInfo() {
 
   const win = window as Window & {
     Telegram?: { WebApp?: unknown };
-    TelegramAdsController?: TelegramAdsControllerCtor;
+    TelegramAdsController?: TelegramAdsControllerGlobal;
     __richadsController?: TelegramAdsControllerInstance;
+    __richadsInited?: boolean;
   };
 
   return {
@@ -66,7 +69,7 @@ export function getRichAdsDebugInfo() {
     origin: window.location.origin,
     tgWebApp: Boolean(win.Telegram?.WebApp),
     controllerPresent: Boolean(win.TelegramAdsController),
-    initialized: Boolean(controllerInstance || win.__richadsController),
+    initialized: Boolean(controllerInstance || win.__richadsController || win.__richadsInited),
     lastEvent,
     lastError,
     lastErrorDetail
@@ -78,18 +81,56 @@ function getTelegramWebApp(): unknown {
   return (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp ?? null;
 }
 
-function getControllerConstructor(): TelegramAdsControllerCtor | null {
+function getControllerGlobal(): TelegramAdsControllerGlobal | null {
   if (typeof window === "undefined") return null;
-  const ctor = (window as Window & { TelegramAdsController?: TelegramAdsControllerCtor }).TelegramAdsController;
-  return ctor ?? null;
+  const controller = (window as Window & { TelegramAdsController?: TelegramAdsControllerGlobal })
+    .TelegramAdsController;
+  if (!controller) return null;
+  if (typeof controller === "object" || typeof controller === "function") {
+    return controller;
+  }
+  return null;
 }
 
-async function waitForControllerReady(timeoutMs = 3000, tickMs = 200): Promise<TelegramAdsControllerCtor | null> {
+function getControllerInstanceFromWindow(): TelegramAdsControllerInstance | null {
+  if (typeof window === "undefined") return null;
+  const win = window as Window & {
+    TelegramAdsController?: TelegramAdsControllerGlobal;
+    __richadsController?: TelegramAdsControllerInstance;
+  };
+
+  if (win.__richadsController) {
+    return win.__richadsController;
+  }
+
+  const controller = win.TelegramAdsController;
+  if (!controller) return null;
+
+  if (typeof controller === "object" && "initialize" in controller) {
+    return controller as TelegramAdsControllerInstance;
+  }
+
+  if (typeof controller === "function") {
+    try {
+      return new (controller as TelegramAdsControllerCtor)();
+    } catch (error) {
+      log("controller_ctor_failed", error);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function waitForAdsController(
+  timeoutMs = RICHADS_INIT_TIMEOUT_MS,
+  tickMs = RICHADS_READY_TICK_MS
+): Promise<TelegramAdsControllerGlobal | null> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    const ctor = getControllerConstructor();
-    if (ctor) {
-      return ctor;
+    const controller = getControllerGlobal();
+    if (controller) {
+      return controller;
     }
     await new Promise((resolve) => window.setTimeout(resolve, tickMs));
   }
@@ -108,28 +149,47 @@ async function waitForTelegramWebApp(timeoutMs = TG_SDK_WAIT_MS): Promise<boolea
   return Boolean(getTelegramWebApp());
 }
 
-async function waitForSdk(): Promise<TelegramAdsControllerCtor | null> {
-  const startedAt = Date.now();
-  const timeoutMs = RICHADS_INIT_TIMEOUT_MS;
-  const tickMs = RICHADS_READY_TICK_MS;
+function getDebugFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("debugAds") === "1";
+}
 
-  while (Date.now() - startedAt < timeoutMs) {
-    const ctor = getControllerConstructor();
-    if (ctor) {
-      return ctor;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, tickMs));
+function normalizeErrorDetail(detail: unknown): string | null {
+  if (detail === undefined || detail === null) return null;
+  if (detail instanceof Error) return detail.message.slice(0, 140);
+  return String(detail).slice(0, 140);
+}
+
+function setLastError(error: RichAdsError | null, detail?: unknown) {
+  lastError = error;
+  lastErrorDetail = detail ? normalizeErrorDetail(detail) : null;
+}
+
+function mapErrorToResult(error: unknown): RichAdsResult {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (message.includes("403") || message.includes("publisher-config") || message.includes("cdn.adx1.com")) {
+    setLastError("publisher_blocked", error);
+    return { ok: false, error: "publisher_blocked", detail: error };
   }
-  return null;
+  if (message.includes("Load failed") || message.includes("NetworkError")) {
+    setLastError("network_blocked", error);
+    return { ok: false, error: "network_blocked", detail: error };
+  }
+  setLastError("ad_not_available", error);
+  return { ok: false, error: "ad_not_available", detail: error };
 }
 
 export async function initRichAds(): Promise<TelegramAdsControllerInstance | null> {
-  log("tg_webapp", getTelegramWebApp() ? "present" : "missing");
-  log("ads_controller", getControllerConstructor() ? "present" : "missing");
   if (typeof window !== "undefined") {
-    const win = window as Window & { __richadsController?: TelegramAdsControllerInstance };
+    const win = window as Window & {
+      __richadsController?: TelegramAdsControllerInstance;
+      __richadsInited?: boolean;
+    };
     if (win.__richadsController) {
       controllerInstance = win.__richadsController;
+      if (win.__richadsInited) {
+        controllerInitialized = true;
+      }
       log("initialized_from_global");
       return controllerInstance;
     }
@@ -143,25 +203,47 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
   }
 
   initPromise = (async () => {
-    const ctor = await waitForSdk();
-    if (!ctor) {
-      log("sdk_missing");
+    const controllerGlobal = await waitForAdsController();
+    if (!controllerGlobal) {
+      log("controller_missing");
       return null;
     }
 
-    const instance = new ctor();
-    log("init_config", {
-      pubId: RICHADS_PUB_ID,
-      appId: RICHADS_APP_ID,
-      origin: typeof window !== "undefined" ? window.location.origin : "unknown"
-    });
-    instance.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID });
+    log("controller_present");
+    const instance = getControllerInstanceFromWindow();
+    if (!instance) {
+      log("controller_instance_missing");
+      return null;
+    }
+
     controllerInstance = instance;
     if (typeof window !== "undefined") {
       const win = window as Window & { __richadsController?: TelegramAdsControllerInstance };
       win.__richadsController = instance;
     }
-    log("initialized_ok");
+
+    const alreadyInitialized =
+      controllerInitialized ||
+      (typeof window !== "undefined" &&
+        (window as Window & { __richadsInited?: boolean }).__richadsInited);
+
+    if (!alreadyInitialized) {
+      const debug = getDebugFlag();
+      log("init_config", {
+        pubId: RICHADS_PUB_ID,
+        appId: RICHADS_APP_ID,
+        debug,
+        origin: typeof window !== "undefined" ? window.location.origin : "unknown"
+      });
+      instance.initialize({ pubId: RICHADS_PUB_ID, appId: RICHADS_APP_ID, debug: debug || undefined });
+      controllerInitialized = true;
+      if (typeof window !== "undefined") {
+        (window as Window & { __richadsInited?: boolean }).__richadsInited = true;
+      }
+      log("initialized_ok");
+    } else {
+      log("initialized_skip");
+    }
     return instance;
   })().catch((error) => {
     log("init_error", error);
@@ -211,27 +293,24 @@ export async function showRichAds(): Promise<RichAdsResult> {
     log("tg_webapp_ready", hasTg ? "present" : "missing");
 
     if (!hasTg) {
-      lastError = "tg_sdk_unavailable";
-      lastErrorDetail = undefined;
+      setLastError("tg_sdk_unavailable");
       return { ok: false, error: "tg_sdk_unavailable" };
     }
 
-    log("controller_initial", getControllerConstructor() ? "present" : "missing");
+    log("controller_initial", getControllerGlobal() ? "present" : "missing");
 
-    const ctor = await waitForControllerReady(RICHADS_INIT_TIMEOUT_MS, RICHADS_READY_TICK_MS);
-    log("controller_ready", ctor ? "present" : "missing");
-    if (!ctor) {
+    const controllerGlobal = await waitForAdsController();
+    log("controller_ready", controllerGlobal ? "present" : "missing");
+    if (!controllerGlobal) {
       log("controller_missing");
-      lastError = "richads_sdk_missing";
-      lastErrorDetail = undefined;
+      setLastError("richads_sdk_missing");
       return { ok: false, error: "richads_sdk_missing" };
     }
 
     const controller = await initRichAds();
     if (!controller || typeof controller.show !== "function") {
       log("show_unavailable");
-      lastError = "richads_sdk_missing";
-      lastErrorDetail = undefined;
+      setLastError("richads_sdk_missing");
       return { ok: false, error: "richads_sdk_missing" };
     }
 
@@ -247,8 +326,7 @@ export async function showRichAds(): Promise<RichAdsResult> {
         if (result && typeof (result as Promise<unknown>).then === "function") {
           const payload = await result;
           log("show_resolved", payload);
-          lastError = null;
-          lastErrorDetail = undefined;
+          setLastError(null);
           return { ok: true, payload };
         }
         log("show_called");
@@ -256,8 +334,7 @@ export async function showRichAds(): Promise<RichAdsResult> {
         log("ad_started_detected", started);
 
         if (started) {
-          lastError = null;
-          lastErrorDetail = undefined;
+          setLastError(null);
           return { ok: true };
         }
 
@@ -274,61 +351,60 @@ export async function showRichAds(): Promise<RichAdsResult> {
       }
     }
 
-    lastError = "ad_not_available";
-    lastErrorDetail = undefined;
+    setLastError("ad_not_available");
     return { ok: false, error: "ad_not_available" };
   } catch (error) {
     log("show_failed", error);
-    const message = error instanceof Error ? error.message : String(error ?? "");
-    if (message.includes("403") || message.includes("publisher-config") || message.includes("cdn.adx1.com")) {
-      lastError = "publisher_blocked";
-      lastErrorDetail = error;
-      return { ok: false, error: "publisher_blocked", detail: error };
-    }
-    if (message.includes("Load failed") || message.includes("NetworkError")) {
-      lastError = "network_blocked";
-      lastErrorDetail = error;
-      return { ok: false, error: "network_blocked", detail: error };
-    }
-    lastError = "ad_not_available";
-    lastErrorDetail = error;
-    return { ok: false, error: "ad_not_available", detail: error };
+    return mapErrorToResult(error);
   }
 }
 
 export async function showRichAdsRewarded(): Promise<RichAdsResult> {
   log("rewarded_attempt");
   try {
+    const hasTgInitial = Boolean(getTelegramWebApp());
+    log("tg_webapp_initial", hasTgInitial ? "present" : "missing");
+
+    const hasTg = hasTgInitial || (await waitForTelegramWebApp());
+    log("tg_webapp_ready", hasTg ? "present" : "missing");
+
+    if (!hasTg) {
+      setLastError("tg_sdk_unavailable");
+      return { ok: false, error: "tg_sdk_unavailable" };
+    }
+
+    const controllerGlobal = await waitForAdsController();
+    log("controller_present", controllerGlobal ? "present" : "missing");
+    if (!controllerGlobal) {
+      setLastError("richads_sdk_missing");
+      return { ok: false, error: "richads_sdk_missing" };
+    }
+
     const controller = await initRichAds();
+    if (!controller) {
+      setLastError("richads_sdk_missing");
+      return { ok: false, error: "richads_sdk_missing" };
+    }
     if (controller?.triggerNativeNotification) {
       const payload = await controller.triggerNativeNotification(true);
       log("rewarded_resolved", payload);
-      lastError = null;
-      lastErrorDetail = undefined;
+      setLastError(null);
       return { ok: true, payload };
     }
-    const fallback = await showRichAds();
-    if (!fallback.ok) {
-      log("rewarded_failed", fallback);
-    } else {
-      log("rewarded_resolved", fallback.payload);
+    if (typeof controller.show === "function") {
+      const fallback = await showRichAds();
+      if (!fallback.ok) {
+        log("rewarded_failed", fallback);
+      } else {
+        log("rewarded_resolved", fallback.payload);
+      }
+      return fallback;
     }
-    return fallback;
+    log("rewarded_missing_method");
+    setLastError("richads_sdk_missing");
+    return { ok: false, error: "richads_sdk_missing" };
   } catch (error) {
     log("rewarded_failed", error);
-    const message = error instanceof Error ? error.message : String(error ?? "");
-    if (message.includes("403") || message.includes("publisher-config") || message.includes("cdn.adx1.com")) {
-      lastError = "publisher_blocked";
-      lastErrorDetail = error;
-      return { ok: false, error: "publisher_blocked", detail: error };
-    }
-    if (message.includes("Load failed") || message.includes("NetworkError")) {
-      lastError = "network_blocked";
-      lastErrorDetail = error;
-      return { ok: false, error: "network_blocked", detail: error };
-    }
-    lastError = "ad_not_available";
-    lastErrorDetail = error;
-    return { ok: false, error: "ad_not_available", detail: error };
+    return mapErrorToResult(error);
   }
 }
