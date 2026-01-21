@@ -7,7 +7,7 @@ import {
   type DailyBonusStartResponse,
   type DailyBonusStatusResponse
 } from "@/lib/api";
-import { showAdsgramReward } from "@/lib/ads/adsgram";
+import { AdsGramTaskSlot } from "@/components/ads/AdsGramTaskSlot";
 
 const SKIP_ADS_FOR_PREMIUM = true;
 
@@ -53,6 +53,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bonus, setBonus] = useState<BonusState | null>(null);
+  const [showAds, setShowAds] = useState(false);
+  const [checkingReward, setCheckingReward] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const isPremium = hasSubscription;
   const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && isPremium;
@@ -123,22 +126,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         return;
       }
 
-      console.info("daily-bonus: ad_reward");
-      const rewardResult = await showAdsgramReward();
-      if (!rewardResult.ok) {
-        console.info("daily-bonus: ad_failed", rewardResult.error);
-        setError("Реклама недоступна, попробуйте позже");
-        return;
-      }
-      await completeDailyBonus({
-        session_id: startResponse.session_id,
-        ad_payload: rewardResult.payload
-      });
-
-      if (onBonusClaimed) {
-        await onBonusClaimed();
-      }
-      await refreshStatus();
+      console.info("daily-bonus: ad_open");
+      setSessionId(startResponse.session_id);
+      setShowAds(true);
     } catch (err) {
       console.info("daily-bonus: error", err);
       setError("Не удалось получить бонус");
@@ -146,6 +136,41 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       setProcessing(false);
     }
   }, [bonus, onBonusClaimed, processing, refreshStatus, shouldSkipAds]);
+
+  const pollReward = useCallback(async () => {
+    const currentSession = sessionId;
+    if (!currentSession) return;
+    setCheckingReward(true);
+    console.info("daily-bonus: polling_start");
+
+    const startedAt = Date.now();
+    const timeoutMs = 25000;
+    const tickMs = 1500;
+
+    while (Date.now() - startedAt < timeoutMs) {
+      try {
+        const status = await getDailyBonusStatus();
+        console.info("daily-bonus: polling_tick", status);
+        setBonus(toBonusState(status));
+        if (!status.can_claim || status.next_claim_in_sec > 0) {
+          if (onBonusClaimed) {
+            await onBonusClaimed();
+          }
+          setCheckingReward(false);
+          setSessionId(null);
+          console.info("daily-bonus: polling_success");
+          return;
+        }
+      } catch (err) {
+        console.info("daily-bonus: polling_error", err);
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, tickMs));
+    }
+
+    setCheckingReward(false);
+    setError("Награда не подтверждена, попробуйте ещё раз");
+    console.info("daily-bonus: polling_timeout");
+  }, [onBonusClaimed, sessionId]);
 
   const title = "🎁 Ежедневная энергия";
 
@@ -184,14 +209,37 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         <button
           className="rounded-full bg-[var(--accent-pink)] px-5 py-2 text-sm font-semibold text-[#1b111b] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-[var(--text-tertiary)]"
           onClick={handleClaim}
-          disabled={processing || !bonus.canClaim}
+          disabled={processing || checkingReward || !bonus.canClaim}
         >
-          {bonus.canClaim ? "Забрать" : countdownLabel}
+          {checkingReward ? "Проверяем награду..." : bonus.canClaim ? "Забрать" : countdownLabel}
         </button>
         {error ? (
           <span className="text-xs text-[var(--accent-gold)]">{error}</span>
         ) : null}
       </div>
+      <AdsGramTaskSlot
+        open={showAds}
+        onReward={() => {
+          setShowAds(false);
+          void pollReward();
+        }}
+        onDone={() => {
+          setShowAds(false);
+          void pollReward();
+        }}
+        onError={() => {
+          setShowAds(false);
+          setError("Ошибка рекламы");
+        }}
+        onNotFound={() => {
+          setShowAds(false);
+          setError("Нет доступной рекламы, попробуйте позже");
+        }}
+        onClose={() => {
+          setShowAds(false);
+          void pollReward();
+        }}
+      />
     </div>
   );
 }
