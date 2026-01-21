@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
-import { showRichAds } from "@/lib/ads/richads";
+import { showRichAds, type RichAdsError } from "@/lib/ads/richads";
 
 const SKIP_ADS_FOR_PREMIUM = false;
 
@@ -43,6 +43,20 @@ function extractCooldownSeconds(nextAvailableAt: string | null): number | null {
   const target = new Date(nextAvailableAt).getTime();
   if (Number.isNaN(target)) return null;
   return Math.max(0, Math.floor((target - Date.now()) / 1000));
+}
+
+function mapRichAdsError(error?: RichAdsError): string {
+  switch (error) {
+    case "tg_sdk_unavailable":
+      return "Проверь VPN/время/сеть";
+    case "richads_sdk_missing":
+      return "Проверь VPN/время/сеть";
+    case "network_blocked":
+      return "Отключи AdBlock/Private DNS";
+    case "ad_not_available":
+    default:
+      return "Источник RichAds не настроен/не разрешён домен";
+  }
 }
 
 export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCardProps) {
@@ -135,8 +149,12 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       if (!shouldSkipAds) {
         const adResult = await showRichAds();
         if (!adResult.ok) {
-          console.info("daily-bonus: ad_failed", adResult.error);
-          setReward((current) => ({ ...current, status: "error", error: "Реклама недоступна" }));
+          console.info("daily-bonus: ad_failed", adResult);
+          setReward((current) => ({
+            ...current,
+            status: "error",
+            error: mapRichAdsError(adResult.error)
+          }));
           return;
         }
         console.info("daily-bonus: ad_showing");
@@ -237,7 +255,17 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           {actionLabel}
         </button>
         {reward.error ? (
-          <span className="text-xs text-[var(--accent-gold)]">{reward.error}</span>
+          <div className="flex items-center gap-2 text-xs text-[var(--accent-gold)]">
+            <span>{reward.error}</span>
+            <button
+              type="button"
+              className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-[var(--text-secondary)]"
+              onClick={handleClaim}
+              disabled={processing}
+            >
+              Повторить
+            </button>
+          </div>
         ) : null}
       </div>
     </div>

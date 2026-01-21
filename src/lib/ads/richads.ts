@@ -5,7 +5,13 @@ type TelegramAdsControllerInstance = {
 
 type TelegramAdsControllerCtor = new () => TelegramAdsControllerInstance;
 
-type RichAdsResult = { ok: boolean; payload?: unknown; error?: unknown };
+export type RichAdsError =
+  | "tg_sdk_unavailable"
+  | "richads_sdk_missing"
+  | "network_blocked"
+  | "ad_not_available";
+
+type RichAdsResult = { ok: boolean; payload?: unknown; error?: RichAdsError; detail?: unknown };
 
 const RICHADS_PUB_ID = "999441";
 const RICHADS_APP_ID = "5823";
@@ -19,6 +25,11 @@ function log(event: string, detail?: unknown) {
   } else {
     console.info(`[richads] ${event}`);
   }
+}
+
+function getTelegramWebApp(): unknown {
+  if (typeof window === "undefined") return null;
+  return (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp ?? null;
 }
 
 function getControllerConstructor(): TelegramAdsControllerCtor | null {
@@ -43,6 +54,8 @@ async function waitForSdk(): Promise<TelegramAdsControllerCtor | null> {
 }
 
 export async function initRichAds(): Promise<TelegramAdsControllerInstance | null> {
+  log("tg_webapp", getTelegramWebApp() ? "present" : "missing");
+  log("ads_controller", getControllerConstructor() ? "present" : "missing");
   if (controllerInstance) {
     log("initialized_skip");
     return controllerInstance;
@@ -73,10 +86,14 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
 export async function showRichAds(): Promise<RichAdsResult> {
   try {
+    if (!getTelegramWebApp()) {
+      log("tg_sdk_unavailable");
+      return { ok: false, error: "tg_sdk_unavailable" };
+    }
     const controller = await initRichAds();
     if (!controller || typeof controller.show !== "function") {
       log("show_unavailable");
-      return { ok: false, error: "show_unavailable" };
+      return { ok: false, error: "richads_sdk_missing" };
     }
 
     log("show_start");
@@ -91,6 +108,13 @@ export async function showRichAds(): Promise<RichAdsResult> {
     return { ok: true };
   } catch (error) {
     log("show_failed", error);
-    return { ok: false, error };
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    if (message.includes("403") || message.includes("publisher-config")) {
+      return { ok: false, error: "ad_not_available", detail: error };
+    }
+    if (message.includes("Load failed") || message.includes("NetworkError")) {
+      return { ok: false, error: "network_blocked", detail: error };
+    }
+    return { ok: false, error: "ad_not_available", detail: error };
   }
 }
