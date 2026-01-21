@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 
-const DEFAULT_TASK_BLOCK_ID = "task-21501";
+const DEFAULT_TASK_BLOCK_ID = "reward-21501";
 
 interface AdsGramTaskSlotProps {
   open: boolean;
@@ -24,9 +24,19 @@ declare global {
 }
 
 const isDev = Boolean(import.meta.env?.DEV);
-const getBlockId = () =>
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ??
-  DEFAULT_TASK_BLOCK_ID;
+const getBlockId = () => {
+  const raw =
+    (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ??
+    DEFAULT_TASK_BLOCK_ID;
+  const normalized = raw.trim();
+  if (/^\\d+$/.test(normalized)) {
+    return `reward-${normalized}`;
+  }
+  if (normalized.startsWith("task-")) {
+    return normalized.replace(/^task-/, "reward-");
+  }
+  return normalized;
+};
 
 export function AdsGramTaskSlot({ open, onReward, onDone, onError, onNotFound, onClose }: AdsGramTaskSlotProps) {
   const taskRef = useRef<HTMLElement | null>(null);
