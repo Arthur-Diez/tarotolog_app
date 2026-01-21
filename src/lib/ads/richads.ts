@@ -1,6 +1,7 @@
 type TelegramAdsControllerInstance = {
-  initialize: (options: { pubId: string; appId: string }) => void;
+  initialize: (options: { pubId: string; appId: string; debug?: boolean }) => void;
   show?: () => Promise<unknown> | void;
+  triggerNativeNotification?: (immediate?: boolean) => Promise<unknown>;
 };
 
 type TelegramAdsControllerCtor = new () => TelegramAdsControllerInstance;
@@ -278,6 +279,43 @@ export async function showRichAds(): Promise<RichAdsResult> {
     return { ok: false, error: "ad_not_available" };
   } catch (error) {
     log("show_failed", error);
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    if (message.includes("403") || message.includes("publisher-config") || message.includes("cdn.adx1.com")) {
+      lastError = "publisher_blocked";
+      lastErrorDetail = error;
+      return { ok: false, error: "publisher_blocked", detail: error };
+    }
+    if (message.includes("Load failed") || message.includes("NetworkError")) {
+      lastError = "network_blocked";
+      lastErrorDetail = error;
+      return { ok: false, error: "network_blocked", detail: error };
+    }
+    lastError = "ad_not_available";
+    lastErrorDetail = error;
+    return { ok: false, error: "ad_not_available", detail: error };
+  }
+}
+
+export async function showRichAdsRewarded(): Promise<RichAdsResult> {
+  log("rewarded_attempt");
+  try {
+    const controller = await initRichAds();
+    if (controller?.triggerNativeNotification) {
+      const payload = await controller.triggerNativeNotification(true);
+      log("rewarded_resolved", payload);
+      lastError = null;
+      lastErrorDetail = undefined;
+      return { ok: true, payload };
+    }
+    const fallback = await showRichAds();
+    if (!fallback.ok) {
+      log("rewarded_failed", fallback);
+    } else {
+      log("rewarded_resolved", fallback.payload);
+    }
+    return fallback;
+  } catch (error) {
+    log("rewarded_failed", error);
     const message = error instanceof Error ? error.message : String(error ?? "");
     if (message.includes("403") || message.includes("publisher-config") || message.includes("cdn.adx1.com")) {
       lastError = "publisher_blocked";

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
-import { getRichAdsDebugInfo, initRichAds, showRichAds, type RichAdsError } from "@/lib/ads/richads";
+import {
+  getRichAdsDebugInfo,
+  initRichAds,
+  showRichAdsRewarded,
+  type RichAdsError
+} from "@/lib/ads/richads";
 
 const SKIP_ADS_FOR_PREMIUM = false;
 
@@ -170,7 +175,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
       if (!shouldSkipAds) {
         console.info("daily-bonus: ad_loading");
-        const adResult = await showRichAds();
+        const adResult = await showRichAdsRewarded();
         if (!adResult.ok) {
           console.info("daily-bonus: ad_failed", adResult);
           setReward((current) => ({
