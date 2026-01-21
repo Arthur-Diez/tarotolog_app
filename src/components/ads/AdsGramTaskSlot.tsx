@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 
-const DEFAULT_TASK_BLOCK_ID = "reward-21501";
+const DEFAULT_TASK_BLOCK_ID = "task-21501";
 
 interface AdsGramTaskSlotProps {
   open: boolean;
@@ -30,10 +30,10 @@ const getBlockId = () => {
     DEFAULT_TASK_BLOCK_ID;
   const normalized = raw.trim();
   if (/^\\d+$/.test(normalized)) {
-    return `reward-${normalized}`;
+    return `task-${normalized}`;
   }
-  if (normalized.startsWith("task-")) {
-    return normalized.replace(/^task-/, "reward-");
+  if (normalized.startsWith("reward-")) {
+    return normalized.replace(/^reward-/, "task-");
   }
   return normalized;
 };
