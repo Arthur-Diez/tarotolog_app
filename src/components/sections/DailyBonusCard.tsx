@@ -80,6 +80,8 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && hasSubscription;
 
   useEffect(() => {
+    let intervalId: number | undefined;
+
     void initRichAds().catch((error) => {
       console.info("daily-bonus: prewarm_failed", error);
     });
@@ -89,22 +91,23 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       });
     }, 400);
 
-    if (reward.status !== "cooldown" || !reward.nextAvailableAt) {
-      window.clearTimeout(retryId);
+    if (reward.status === "cooldown" && reward.nextAvailableAt) {
+      const tick = () => {
+        const next = extractCooldownSeconds(reward.nextAvailableAt);
+        setCooldownSeconds(next);
+      };
+
+      tick();
+      intervalId = window.setInterval(tick, 1000);
+    } else {
       setCooldownSeconds(null);
-      return;
     }
 
-    const tick = () => {
-      const next = extractCooldownSeconds(reward.nextAvailableAt);
-      setCooldownSeconds(next);
-    };
-
-    tick();
-    const interval = window.setInterval(tick, 1000);
     return () => {
       window.clearTimeout(retryId);
-      window.clearInterval(interval);
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
     };
   }, [reward.nextAvailableAt, reward.status]);
 

@@ -21,6 +21,7 @@ const RICHADS_READY_TICK_MS = 250;
 const RICHADS_SHOW_ATTEMPTS = 3;
 const RICHADS_SHOW_RETRY_MS = 600;
 const TG_SDK_WAIT_MS = 1500;
+const RICHADS_START_DETECT_MS = 700;
 
 let controllerInstance: TelegramAdsControllerInstance | null = null;
 let initPromise: Promise<TelegramAdsControllerInstance | null> | null = null;
@@ -169,6 +170,40 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
   return initPromise;
 }
 
+async function detectAdStarted(timeoutMs = RICHADS_START_DETECT_MS): Promise<boolean> {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = (started: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      window.clearTimeout(timeoutId);
+      resolve(started);
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        finish(true);
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) finish(true);
+    };
+
+    const onBlur = () => {
+      setTimeout(() => {
+        if (document.hidden) finish(true);
+      }, 0);
+    };
+    const timeoutId = window.setTimeout(() => finish(false), timeoutMs);
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+  });
+}
+
 export async function showRichAds(): Promise<RichAdsResult> {
   try {
     const hasTgInitial = Boolean(getTelegramWebApp());
@@ -219,9 +254,20 @@ export async function showRichAds(): Promise<RichAdsResult> {
           return { ok: true, payload };
         }
         log("show_called");
-        lastError = null;
-        lastErrorDetail = undefined;
-        return { ok: true };
+        const started = await detectAdStarted();
+        log("ad_started_detected", started);
+
+        if (started) {
+          lastError = null;
+          lastErrorDetail = undefined;
+          return { ok: true };
+        }
+
+        // если не стартовало — даём ретрай
+        if (i < RICHADS_SHOW_ATTEMPTS) {
+          await new Promise((r) => window.setTimeout(r, RICHADS_SHOW_RETRY_MS));
+          continue;
+        }
       } catch (error) {
         log("show_failed_attempt", error);
         if (i < RICHADS_SHOW_ATTEMPTS) {
