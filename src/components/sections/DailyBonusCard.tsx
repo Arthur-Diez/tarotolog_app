@@ -7,7 +7,7 @@ import {
   type DailyBonusStartResponse,
   type DailyBonusStatusResponse
 } from "@/lib/api";
-import { AdsGramTaskSlot } from "@/components/ads/AdsGramTaskSlot";
+import { showAdsgramReward } from "@/lib/ads/adsgram";
 
 const SKIP_ADS_FOR_PREMIUM = true;
 
@@ -48,11 +48,6 @@ function formatCountdown(totalSeconds: number): string {
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
-function isAdsgramReady(): boolean {
-  if (typeof window === "undefined") return false;
-  return Boolean(customElements.get("adsgram-task"));
-}
-
 function isCorsError(error: unknown): boolean {
   if (error instanceof TypeError) return true;
   if (error && typeof error === "object" && "message" in error) {
@@ -67,7 +62,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bonus, setBonus] = useState<BonusState | null>(null);
-  const [showAds, setShowAds] = useState(false);
   const [checkingReward, setCheckingReward] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -140,15 +134,32 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         return;
       }
 
-      if (!isAdsgramReady()) {
-        console.info("daily-bonus: ad_not_loaded");
+      console.info("daily-bonus: ad_open");
+      const rewardResult = await showAdsgramReward();
+      if (!rewardResult.ok) {
+        console.info("daily-bonus: ad_failed", rewardResult.error);
         setError("Реклама недоступна, попробуйте позже");
         return;
       }
 
-      console.info("daily-bonus: ad_open");
+      const payload = rewardResult.payload as
+        | { done?: boolean; error?: boolean; description?: string }
+        | undefined;
+
+      if (payload?.error) {
+        console.info("daily-bonus: ad_error", payload.description);
+        setError("Ошибка рекламы");
+        return;
+      }
+
+      if (payload?.done === false) {
+        console.info("daily-bonus: ad_not_completed");
+        setError("Реклама не завершена");
+        return;
+      }
+
       setSessionId(startResponse.session_id);
-      setShowAds(true);
+      void pollReward();
     } catch (err) {
       if (isCorsError(err)) {
         console.info("daily-bonus: start_failed cors_blocked", err);
@@ -242,29 +253,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           <span className="text-xs text-[var(--accent-gold)]">{error}</span>
         ) : null}
       </div>
-      <AdsGramTaskSlot
-        open={showAds}
-        onReward={() => {
-          setShowAds(false);
-          void pollReward();
-        }}
-        onDone={() => {
-          setShowAds(false);
-          void pollReward();
-        }}
-        onError={() => {
-          setShowAds(false);
-          setError("Ошибка рекламы");
-        }}
-        onNotFound={() => {
-          setShowAds(false);
-          setError("Нет доступной рекламы, попробуйте позже");
-        }}
-        onClose={() => {
-          setShowAds(false);
-          void pollReward();
-        }}
-      />
     </div>
   );
 }

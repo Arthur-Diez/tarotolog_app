@@ -9,9 +9,19 @@ type AdsgramController = {
 type AdResult = { ok: boolean; payload?: unknown; error?: unknown };
 
 const DEFAULT_REWARD_BLOCK_ID = "reward-21501";
-const ADSGRAM_REWARD_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_REWARD_BLOCK_ID ??
-  DEFAULT_REWARD_BLOCK_ID;
+const resolveRewardBlockId = () => {
+  const raw =
+    (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_REWARD_BLOCK_ID ??
+    DEFAULT_REWARD_BLOCK_ID;
+  const normalized = raw.trim();
+  if (/^\\d+$/.test(normalized)) {
+    return `reward-${normalized}`;
+  }
+  if (normalized.startsWith(\"task-\")) {
+    return normalized.replace(/^task-/, \"reward-\");
+  }
+  return normalized;
+};
 
 let adsgramController: AdsgramController | null = null;
 let adsgramReadyPromise: Promise<void> | null = null;
@@ -58,7 +68,7 @@ function getRewardController(): AdsgramController | null {
     return null;
   }
   if (!adsgramController) {
-    adsgramController = sdk.init({ blockId: ADSGRAM_REWARD_BLOCK_ID });
+    adsgramController = sdk.init({ blockId: resolveRewardBlockId() });
   }
   return adsgramController;
 }
