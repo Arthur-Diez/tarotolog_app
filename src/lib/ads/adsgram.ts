@@ -14,13 +14,11 @@ const resolveRewardBlockId = () => {
     (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_REWARD_BLOCK_ID ??
     DEFAULT_REWARD_BLOCK_ID;
   const normalized = raw.trim();
-  if (/^\\d+$/.test(normalized)) {
-    return `reward-${normalized}`;
+  const digits = normalized.match(/\d+/)?.[0];
+  if (digits) {
+    return `reward-${digits}`;
   }
-  if (normalized.startsWith(\"task-\")) {
-    return normalized.replace(/^task-/, \"reward-\");
-  }
-  return normalized;
+  return DEFAULT_REWARD_BLOCK_ID;
 };
 
 let adsgramController: AdsgramController | null = null;
@@ -68,7 +66,9 @@ function getRewardController(): AdsgramController | null {
     return null;
   }
   if (!adsgramController) {
-    adsgramController = sdk.init({ blockId: resolveRewardBlockId() });
+    const blockId = resolveRewardBlockId();
+    console.info("adsgram: init", blockId);
+    adsgramController = sdk.init({ blockId });
   }
   return adsgramController;
 }
