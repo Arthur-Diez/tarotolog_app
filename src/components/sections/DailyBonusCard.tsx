@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
-import { showRichAds, type RichAdsError } from "@/lib/ads/richads";
+import { initRichAds, showRichAds, type RichAdsError } from "@/lib/ads/richads";
 
 const SKIP_ADS_FOR_PREMIUM = false;
 
@@ -50,7 +50,7 @@ function mapRichAdsError(error?: RichAdsError): string {
     case "tg_sdk_unavailable":
       return "Проверь VPN/время/сеть";
     case "richads_sdk_missing":
-      return "Проверь VPN/время/сеть";
+      return "Реклама сейчас недоступна";
     case "network_blocked":
       return "Отключи AdBlock/Private DNS";
     case "ad_not_available":
@@ -74,6 +74,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && hasSubscription;
 
   useEffect(() => {
+    void initRichAds().catch((error) => {
+      console.info("daily-bonus: prewarm_failed", error);
+    });
     if (reward.status !== "cooldown" || !reward.nextAvailableAt) {
       setCooldownSeconds(null);
       return;
@@ -147,6 +150,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       }));
 
       if (!shouldSkipAds) {
+        console.info("daily-bonus: ad_loading");
         const adResult = await showRichAds();
         if (!adResult.ok) {
           console.info("daily-bonus: ad_failed", adResult);
@@ -157,7 +161,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           }));
           return;
         }
-        console.info("daily-bonus: ad_showing");
+        console.info("daily-bonus: ad_started");
         await waitForAdClose();
       }
 
@@ -220,7 +224,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
   const actionLabel = useMemo(() => {
     if (reward.status === "loading_start") return "Готовим бонус...";
-    if (reward.status === "ad_showing") return "Смотрим рекламу...";
+    if (reward.status === "ad_showing") return "Загрузка рекламы...";
     if (reward.status === "claiming") return "Проверяем награду...";
     if (reward.status === "cooldown") return countdownLabel || "Доступно позже";
     return "Забрать";

@@ -38,6 +38,18 @@ function getControllerConstructor(): TelegramAdsControllerCtor | null {
   return ctor ?? null;
 }
 
+async function waitForControllerReady(timeoutMs = 3000, tickMs = 200): Promise<TelegramAdsControllerCtor | null> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const ctor = getControllerConstructor();
+    if (ctor) {
+      return ctor;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, tickMs));
+  }
+  return null;
+}
+
 async function waitForSdk(): Promise<TelegramAdsControllerCtor | null> {
   const startedAt = Date.now();
   const timeoutMs = 5000;
@@ -86,26 +98,45 @@ export async function initRichAds(): Promise<TelegramAdsControllerInstance | nul
 
 export async function showRichAds(): Promise<RichAdsResult> {
   try {
-    if (!getTelegramWebApp()) {
-      log("tg_sdk_unavailable");
+    const hasTg = Boolean(getTelegramWebApp());
+    log("tg_webapp", hasTg ? "present" : "missing");
+    if (!hasTg) {
       return { ok: false, error: "tg_sdk_unavailable" };
     }
+
+    const ctor = await waitForControllerReady(3500, 250);
+    if (!ctor) {
+      log("controller_missing");
+      return { ok: false, error: "richads_sdk_missing" };
+    }
+
     const controller = await initRichAds();
     if (!controller || typeof controller.show !== "function") {
       log("show_unavailable");
       return { ok: false, error: "richads_sdk_missing" };
     }
 
-    log("show_start");
-    const result = controller.show();
-    if (result && typeof (result as Promise<unknown>).then === "function") {
-      const payload = await result;
-      log("show_resolved", payload);
-      return { ok: true, payload };
+    const attempts = 3;
+    for (let i = 1; i <= attempts; i += 1) {
+      log("show_attempt", i);
+      try {
+        const result = controller.show();
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          const payload = await result;
+          log("show_resolved", payload);
+          return { ok: true, payload };
+        }
+        log("show_called");
+        return { ok: true };
+      } catch (error) {
+        log("show_failed_attempt", error);
+        if (i < attempts) {
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+        }
+      }
     }
 
-    log("show_called");
-    return { ok: true };
+    return { ok: false, error: "ad_not_available" };
   } catch (error) {
     log("show_failed", error);
     const message = error instanceof Error ? error.message : String(error ?? "");
