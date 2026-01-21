@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
-import { initRichAds, showRichAds, type RichAdsError } from "@/lib/ads/richads";
+import { getRichAdsDebugInfo, initRichAds, showRichAds, type RichAdsError } from "@/lib/ads/richads";
 
 const SKIP_ADS_FOR_PREMIUM = false;
 
@@ -53,15 +53,21 @@ function mapRichAdsError(error?: RichAdsError): string {
       return "Реклама сейчас недоступна";
     case "network_blocked":
       return "Отключи AdBlock/Private DNS";
+    case "publisher_blocked":
+      return "RichAds source/domain/appId не совпадают или WebApp URL указан неверно";
     case "ad_not_available":
     default:
-      return "Источник RichAds не настроен/не разрешён домен";
+      return "Инвентарь недоступен (видео может быть недоступно — проверь настройки interstitial video в кабинете)";
   }
 }
 
 export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCardProps) {
   const [processing, setProcessing] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
+  const [debugEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("debugAds") === "1";
+  });
   const [reward, setReward] = useState<RewardState>({
     rewardId: null,
     amount: 0,
@@ -77,7 +83,14 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     void initRichAds().catch((error) => {
       console.info("daily-bonus: prewarm_failed", error);
     });
+    const retryId = window.setTimeout(() => {
+      void initRichAds().catch((error) => {
+        console.info("daily-bonus: prewarm_retry_failed", error);
+      });
+    }, 400);
+
     if (reward.status !== "cooldown" || !reward.nextAvailableAt) {
+      window.clearTimeout(retryId);
       setCooldownSeconds(null);
       return;
     }
@@ -89,7 +102,10 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
     tick();
     const interval = window.setInterval(tick, 1000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(retryId);
+      window.clearInterval(interval);
+    };
   }, [reward.nextAvailableAt, reward.status]);
 
   const waitForAdClose = useCallback(async () => {
@@ -202,7 +218,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           setReward((current) => ({
             ...current,
             status: "cooldown",
-            error: "Бонус уже получен"
+            error: null
           }));
           return;
         }
@@ -229,6 +245,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     if (reward.status === "cooldown") return countdownLabel || "Доступно позже";
     return "Забрать";
   }, [countdownLabel, reward.status]);
+
+  const debugInfo = useMemo(() => {
+    if (!debugEnabled) return null;
+    return getRichAdsDebugInfo();
+  }, [debugEnabled, reward.status]);
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -258,7 +279,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         >
           {actionLabel}
         </button>
-        {reward.error ? (
+        {reward.status === "error" && reward.error ? (
           <div className="flex items-center gap-2 text-xs text-[var(--accent-gold)]">
             <span>{reward.error}</span>
             <button
@@ -272,6 +293,21 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           </div>
         ) : null}
       </div>
+      {debugInfo ? (
+        <div className="mt-3 rounded-[16px] border border-white/10 bg-black/30 px-3 py-2 text-[10px] text-[var(--text-tertiary)]">
+          <div>richads: pubId={debugInfo.pubId} appId={debugInfo.appId}</div>
+          <div>origin: {debugInfo.origin}</div>
+          <div>tg_webapp: {debugInfo.tgWebApp ? "ok" : "missing"}</div>
+          <div>controller: {debugInfo.controllerPresent ? "ok" : "missing"}</div>
+          <div>init: {debugInfo.initialized ? "ok" : "missing"}</div>
+          <div>last_event: {debugInfo.lastEvent ?? "-"}</div>
+          <div>last_error: {debugInfo.lastError ?? "-"}</div>
+          <div>
+            last_error_detail:{" "}
+            {debugInfo.lastErrorDetail ? String(debugInfo.lastErrorDetail).slice(0, 120) : "-"}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
