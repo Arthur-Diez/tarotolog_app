@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, claimDailyReward, startDailyReward } from "@/lib/api";
 import {
-  getRichAdsDebugInfo,
-  initRichAds,
-  showRichAdsRewarded,
-  type RichAdsError
-} from "@/lib/ads/richads";
+  getAdsgramDebugInfo,
+  initAdsgram,
+  showAdsgramRewarded,
+  triggerAdsgramRewardLink,
+  type AdsgramError
+} from "@/lib/ads/adsgram";
 
 const SKIP_ADS_FOR_PREMIUM = false;
 
@@ -50,19 +51,20 @@ function extractCooldownSeconds(nextAvailableAt: string | null): number | null {
   return Math.max(0, Math.floor((target - Date.now()) / 1000));
 }
 
-function mapRichAdsError(error?: RichAdsError): string {
+function mapAdsgramError(error?: AdsgramError): string {
   switch (error) {
     case "tg_sdk_unavailable":
       return "Проверь VPN/время/сеть";
-    case "richads_sdk_missing":
+    case "sdk_missing":
+    case "controller_missing":
       return "Реклама сейчас недоступна";
-    case "network_blocked":
-      return "Отключи AdBlock/Private DNS";
-    case "publisher_blocked":
-      return "RichAds source/domain/appId не совпадают или WebApp URL указан неверно";
-    case "ad_not_available":
+    case "ad_not_completed":
+      return "Реклама не завершена";
+    case "reward_link_failed":
+      return "Не удалось подтвердить награду, попробуйте ещё раз";
+    case "ad_error":
     default:
-      return "Инвентарь недоступен (видео может быть недоступно — проверь настройки interstitial video в кабинете)";
+      return "Ошибка рекламы, попробуйте позже";
   }
 }
 
@@ -85,11 +87,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const shouldSkipAds = SKIP_ADS_FOR_PREMIUM && hasSubscription;
 
   useEffect(() => {
-    void initRichAds().catch((error) => {
+    void initAdsgram().catch((error) => {
       console.info("daily-bonus: prewarm_failed", error);
     });
     const retryId = window.setTimeout(() => {
-      void initRichAds().catch((error) => {
+      void initAdsgram().catch((error) => {
         console.info("daily-bonus: prewarm_retry_failed", error);
       });
     }, 400);
@@ -120,30 +122,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       }
     };
   }, [reward.nextAvailableAt, reward.status]);
-
-  const waitForAdClose = useCallback(async () => {
-    console.info("daily-bonus: wait_close");
-    return new Promise<void>((resolve) => {
-      let resolved = false;
-      const finish = () => {
-        if (resolved) return;
-        resolved = true;
-        document.removeEventListener("visibilitychange", onVisibility);
-        window.removeEventListener("focus", onFocus);
-        window.clearTimeout(timeoutId);
-        resolve();
-      };
-      const onVisibility = () => {
-        if (!document.hidden) {
-          finish();
-        }
-      };
-      const onFocus = () => finish();
-      const timeoutId = window.setTimeout(finish, 9000);
-      document.addEventListener("visibilitychange", onVisibility);
-      window.addEventListener("focus", onFocus);
-    });
-  }, []);
 
   const handleClaim = useCallback(async () => {
     if (processing) return;
@@ -180,18 +158,30 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
       if (!shouldSkipAds) {
         console.info("daily-bonus: ad_loading");
-        const adResult = await showRichAdsRewarded();
+        const adResult = await showAdsgramRewarded();
         if (!adResult.ok) {
           console.info("daily-bonus: ad_failed", adResult);
           setReward((current) => ({
             ...current,
             status: "error",
-            error: mapRichAdsError(adResult.error)
+            error: mapAdsgramError(adResult.error)
           }));
           return;
         }
         console.info("daily-bonus: ad_started");
-        await waitForAdClose();
+
+        const rewardLinkResult = await triggerAdsgramRewardLink({
+          rewardId: startResponse.reward_id
+        });
+        if (!rewardLinkResult.ok) {
+          console.info("daily-bonus: reward_link_failed", rewardLinkResult);
+          setReward((current) => ({
+            ...current,
+            status: "error",
+            error: mapAdsgramError(rewardLinkResult.error)
+          }));
+          return;
+        }
       }
 
       setReward((current) => ({ ...current, status: "claiming", error: null }));
@@ -242,7 +232,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     } finally {
       setProcessing(false);
     }
-  }, [onBonusClaimed, processing, shouldSkipAds, waitForAdClose]);
+  }, [onBonusClaimed, processing, shouldSkipAds]);
 
   const title = "🎁 Ежедневная энергия";
 
@@ -261,7 +251,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
   const debugInfo = useMemo(() => {
     if (!debugEnabled) return null;
-    return getRichAdsDebugInfo();
+    return getAdsgramDebugInfo();
   }, [debugEnabled, reward.status]);
 
   return (
@@ -308,11 +298,12 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       </div>
       {debugInfo ? (
         <div className="mt-3 rounded-[16px] border border-white/10 bg-black/30 px-3 py-2 text-[10px] text-[var(--text-tertiary)]">
-          <div>richads: pubId={debugInfo.pubId} appId={debugInfo.appId}</div>
+          <div>adsgram: blockId={debugInfo.blockId}</div>
           <div>origin: {debugInfo.origin}</div>
           <div>tg_webapp: {debugInfo.tgWebApp ? "ok" : "missing"}</div>
-          <div>controller: {debugInfo.controllerPresent ? "ok" : "missing"}</div>
-          <div>init: {debugInfo.initialized ? "ok" : "missing"}</div>
+          <div>sdk: {debugInfo.sdkPresent ? "ok" : "missing"}</div>
+          <div>controller: {debugInfo.controllerReady ? "ok" : "missing"}</div>
+          <div>reward_link: {debugInfo.rewardLinkConfigured ? "ok" : "missing"}</div>
           <div>last_event: {debugInfo.lastEvent ?? "-"}</div>
           <div>last_error: {debugInfo.lastError ?? "-"}</div>
           <div>
