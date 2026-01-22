@@ -314,6 +314,24 @@ export interface DailyRewardClaimResponse {
   claimed_at: string;
 }
 
+export interface DailyBonusStatusResponse {
+  status: string;
+  amount: number;
+  next_available_at: string | null;
+  rewarded_at?: string | null;
+  energy_balance?: number | null;
+}
+
+export interface DailyBonusStartResponse {
+  reward_session_id: string | null;
+  amount: number;
+  expires_at: string | null;
+  next_available_at: string | null;
+  adsgram?: {
+    block_id?: string | null;
+  } | null;
+}
+
 // ====== ВЫЗОВЫ API ======
 
 export async function authWebApp(payload: AuthWebAppPayload): Promise<AuthWebAppResponse> {
@@ -454,6 +472,23 @@ export async function claimDailyReward(payload: {
     body: JSON.stringify(payload)
   });
   return handleResponse<DailyRewardClaimResponse>(res);
+}
+
+export async function getDailyBonusStatus(): Promise<DailyBonusStatusResponse> {
+  const res = await fetch(`${API_BASE}/daily-bonus/status`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DailyBonusStatusResponse>(res);
+}
+
+export async function startDailyBonus(): Promise<DailyBonusStartResponse> {
+  const res = await fetch(`${API_BASE}/daily-bonus/start`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<DailyBonusStartResponse>(res);
 }
 
 export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {
