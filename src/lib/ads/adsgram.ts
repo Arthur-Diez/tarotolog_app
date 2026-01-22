@@ -17,6 +17,7 @@ export type AdsgramError =
   | "tg_sdk_unavailable"
   | "sdk_missing"
   | "controller_missing"
+  | "block_id_missing"
   | "no_inventory"
   | "network_error"
   | "ad_error";
@@ -33,17 +34,14 @@ export type AdsgramInitOptions = {
   debug?: boolean;
 };
 
-const DEFAULT_REWARD_BLOCK_ID = "21501";
 const ADSGRAM_INIT_TIMEOUT_MS = 6000;
 const ADSGRAM_READY_TICK_MS = 250;
 const ADSGRAM_SHOW_TIMEOUT_MS = 12000;
 
 const resolveRewardBlockId = (value?: string | null) => {
-  const fallback =
-    (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_REWARD_BLOCK_ID ??
-    DEFAULT_REWARD_BLOCK_ID;
+  const fallback = (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ?? "";
   const normalized = (value ?? fallback).trim();
-  return normalized || DEFAULT_REWARD_BLOCK_ID;
+  return normalized || null;
 };
 
 let adsgramController: AdsgramController | null = null;
@@ -112,6 +110,8 @@ async function waitForAdsgramSdk(
 
 export function getAdsgramDebugState() {
   return {
+    blockId: adsgramBlockId,
+    controllerReady: Boolean(adsgramController),
     lastEvent,
     lastError,
     lastErrorDetail
@@ -120,6 +120,11 @@ export function getAdsgramDebugState() {
 
 export async function initAdsgramController(options: AdsgramInitOptions): Promise<AdsgramController | null> {
   const blockId = resolveRewardBlockId(options.blockId);
+  if (!blockId) {
+    setLastError("block_id_missing");
+    log("block_id_missing");
+    return null;
+  }
   if (adsgramController && adsgramBlockId === blockId) {
     log("initialized_skip", { blockId });
     return adsgramController;
@@ -158,7 +163,12 @@ export async function initAdsgramController(options: AdsgramInitOptions): Promis
 }
 
 export async function showAdsgramRewarded(options: AdsgramInitOptions): Promise<AdsgramResult> {
-  log("show_attempt", { blockId: resolveRewardBlockId(options.blockId) });
+  const blockId = resolveRewardBlockId(options.blockId);
+  log("show_attempt", { blockId });
+  if (!blockId) {
+    setLastError("block_id_missing");
+    return { ok: false, error: "block_id_missing", detail: "Adsgram blockId missing" };
+  }
   try {
     const controller = await initAdsgramController(options);
     if (!controller?.show) {
