@@ -335,6 +335,8 @@ export interface DailyBonusStartResponse {
   rewardId?: string | null;
   expiresAt?: string | null;
   nextAvailableAt?: string | null;
+  adsgram_block_id?: string | null;
+  adsgramBlockId?: string | null;
   adsgram?: {
     block_id?: string | null;
     blockId?: string | null;
@@ -511,6 +513,7 @@ export async function startDailyBonus(): Promise<DailyBonusStartResponse> {
 export async function claimDailyBonus(payload: {
   reward_session_id?: string;
   reward_id?: string;
+  ad_event_payload?: Record<string, unknown>;
 }): Promise<DailyBonusClaimResponse> {
   const res = await fetch(`${API_BASE}/daily-bonus/claim`, {
     method: "POST",

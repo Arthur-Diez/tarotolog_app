@@ -67,7 +67,7 @@ function mapAdsgramError(error?: AdsgramError): string {
     case "sdk_missing":
     case "controller_missing":
     case "block_id_missing":
-      return "Реклама сейчас недоступна";
+      return "Реклама сейчас недоступна (нет blockId)";
     case "no_inventory":
       return "Нет доступной рекламы, попробуйте позже";
     case "network_error":
@@ -207,7 +207,12 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         startResponse.nextAvailableAt
       );
       const amount = startResponse.amount ?? 0;
-      const adsgramBlockId = startResponse.adsgram?.block_id ?? startResponse.adsgram?.blockId ?? null;
+      const adsgramBlockId =
+        startResponse.adsgram?.block_id ??
+        startResponse.adsgram?.blockId ??
+        startResponse.adsgram_block_id ??
+        startResponse.adsgramBlockId ??
+        null;
       const cooldownSeconds = extractCooldownSeconds(nextAvailableAt);
 
       if (!claimId || (cooldownSeconds !== null && cooldownSeconds > 0)) {
@@ -249,6 +254,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       refreshAdsDebug();
       if (!adResult.ok) {
         console.info("daily-bonus: ad_error", adResult);
+        refreshAdsDebug();
         const adErrorMessage = mapAdsgramError(adResult.error);
         setReward((current) => ({
           ...current,
@@ -262,7 +268,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       setReward((current) => ({ ...current, status: "claiming", error: null }));
       console.info("daily-bonus: claim", { claimId, claimKey });
       const claimPayload =
-        claimKey === "reward_id" ? { reward_id: claimId } : { reward_session_id: claimId };
+        claimKey === "reward_id"
+          ? { reward_id: claimId, ad_event_payload: adResult.payload ?? {} }
+          : { reward_session_id: claimId, ad_event_payload: adResult.payload ?? {} };
       const claimResponse = await claimDailyBonus(claimPayload);
       console.info("daily-bonus: claim_response", claimResponse);
       const claimNextAvailableAt = normalizeNextAvailableAt(
@@ -375,7 +383,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           </div>
         ) : null}
       </div>
-      {debugAds ? (
+      {debugAds || reward.status === "error" ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
           <div>AdsGram blockId: {reward.adsgramBlockId ?? adsDebugState.blockId ?? "missing"}</div>
           <div>Controller: {adsDebugState.controllerReady ? "ready" : "missing"}</div>
