@@ -36,6 +36,7 @@ export type AdsgramInitOptions = {
 const DEFAULT_REWARD_BLOCK_ID = "21501";
 const ADSGRAM_INIT_TIMEOUT_MS = 6000;
 const ADSGRAM_READY_TICK_MS = 250;
+const ADSGRAM_SHOW_TIMEOUT_MS = 12000;
 
 const resolveRewardBlockId = (value?: string | null) => {
   const fallback =
@@ -167,7 +168,13 @@ export async function showAdsgramRewarded(options: AdsgramInitOptions): Promise<
       return { ok: false, error: fallbackError };
     }
 
-    const result = await controller.show();
+    const showPromise = controller.show();
+    let timeoutId = 0;
+    const timeoutPromise = new Promise<AdsgramShowResult>((_, reject) => {
+      timeoutId = window.setTimeout(() => reject(new Error("Adsgram show timeout")), ADSGRAM_SHOW_TIMEOUT_MS);
+    });
+    const result = await Promise.race([showPromise, timeoutPromise]);
+    window.clearTimeout(timeoutId);
     log("show_resolved", result);
     if (result?.error) {
       setLastError("ad_error", result?.description);

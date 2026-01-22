@@ -117,7 +117,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
   const loadStatus = useCallback(async () => {
     try {
+      console.info("daily-bonus: status_load");
       const status = await getDailyBonusStatus();
+      console.info("daily-bonus: status_loaded", status);
       const nextAvailableAt = status.next_available_at ?? null;
       const cooldownSeconds = extractCooldownSeconds(nextAvailableAt);
       const amount = status.amount ?? 0;
@@ -199,6 +201,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
   const handleClaim = useCallback(async () => {
     if (processing) return;
+    console.info("daily-bonus: click_claim");
     setProcessing(true);
     setReward((current) => ({ ...current, status: "loading_start", error: null }));
 
@@ -213,6 +216,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       const cooldownSeconds = extractCooldownSeconds(nextAvailableAt);
 
       if (!startResponse.reward_session_id || (cooldownSeconds !== null && cooldownSeconds > 0)) {
+        console.info("daily-bonus: start_cooldown", {
+          reward_session_id: startResponse.reward_session_id,
+          next_available_at: nextAvailableAt,
+          cooldownSeconds
+        });
         setReward((current) => ({
           ...current,
           amount,
@@ -233,6 +241,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         status: "ad_showing",
         error: null
       });
+      console.info("daily-bonus: ad_showing", { blockId: adsgramBlockId });
 
       let adErrorMessage: string | null = null;
       if (shouldSkipAds) {
@@ -252,6 +261,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       }
 
       setReward((current) => ({ ...current, status: "waiting_reward", error: null }));
+      console.info("daily-bonus: waiting_reward");
       const pollResult = await pollRewardStatus(amount);
       if (!pollResult.rewarded) {
         const fallbackError = "Не пришло подтверждение. Нажми 'Проверить'";
@@ -260,6 +270,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           status: "error",
           error: adErrorMessage ?? fallbackError
         }));
+        console.info("daily-bonus: reward_timeout");
       }
       return;
     } catch (err) {
