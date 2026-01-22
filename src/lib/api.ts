@@ -327,10 +327,12 @@ export interface DailyBonusStatusResponse {
 
 export interface DailyBonusStartResponse {
   reward_session_id: string | null;
+  reward_id?: string | null;
   amount: number;
   expires_at: string | null;
   next_available_at: string | null;
   rewardSessionId?: string | null;
+  rewardId?: string | null;
   expiresAt?: string | null;
   nextAvailableAt?: string | null;
   adsgram?: {

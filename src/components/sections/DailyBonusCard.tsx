@@ -15,6 +15,7 @@ interface RewardState {
   amount: number;
   nextAvailableAt: string | null;
   rewardSessionId: string | null;
+  rewardId: string | null;
   adsgramBlockId: string | null;
   status: BonusStatus;
   error: string | null;
@@ -54,6 +55,11 @@ function normalizeRewardSessionId(value?: string | null, fallback?: string | nul
   return resolved && resolved.length > 0 ? resolved : null;
 }
 
+function normalizeRewardId(value?: string | null, fallback?: string | null): string | null {
+  const resolved = value ?? fallback ?? null;
+  return resolved && resolved.length > 0 ? resolved : null;
+}
+
 function mapAdsgramError(error?: AdsgramError): string {
   switch (error) {
     case "tg_sdk_unavailable":
@@ -80,6 +86,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     amount: 0,
     nextAvailableAt: null,
     rewardSessionId: null,
+    rewardId: null,
     adsgramBlockId: null,
     status: "idle",
     error: null
@@ -152,6 +159,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         amount,
         nextAvailableAt,
         rewardSessionId: null,
+        rewardId: null,
         adsgramBlockId: null,
         status: isCooldown ? "cooldown" : "idle",
         error: null
@@ -191,6 +199,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         startResponse.reward_session_id,
         startResponse.rewardSessionId
       );
+      const rewardId = normalizeRewardId(startResponse.reward_id, startResponse.rewardId);
+      const claimId = rewardSessionId ?? rewardId;
+      const claimKey = rewardSessionId ? "reward_session_id" : rewardId ? "reward_id" : null;
       const nextAvailableAt = normalizeNextAvailableAt(
         startResponse.next_available_at,
         startResponse.nextAvailableAt
@@ -199,9 +210,10 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       const adsgramBlockId = startResponse.adsgram?.block_id ?? startResponse.adsgram?.blockId ?? null;
       const cooldownSeconds = extractCooldownSeconds(nextAvailableAt);
 
-      if (!rewardSessionId || (cooldownSeconds !== null && cooldownSeconds > 0)) {
+      if (!claimId || (cooldownSeconds !== null && cooldownSeconds > 0)) {
         console.info("daily-bonus: start_cooldown", {
           reward_session_id: rewardSessionId,
+          reward_id: rewardId,
           next_available_at: nextAvailableAt,
           cooldownSeconds
         });
@@ -210,9 +222,10 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           amount,
           nextAvailableAt,
           rewardSessionId,
+          rewardId,
           adsgramBlockId,
-          status: cooldownSeconds && cooldownSeconds > 0 ? "cooldown" : "idle",
-          error: rewardSessionId ? null : "Бонус пока недоступен"
+          status: cooldownSeconds && cooldownSeconds > 0 ? "cooldown" : claimId ? "idle" : "error",
+          error: claimId ? null : "Бонус пока недоступен"
         }));
         return;
       }
@@ -221,6 +234,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         amount,
         nextAvailableAt,
         rewardSessionId,
+        rewardId,
         adsgramBlockId,
         status: "ad_showing",
         error: null
@@ -246,8 +260,10 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       console.info("daily-bonus: ad_closed", adResult.payload);
 
       setReward((current) => ({ ...current, status: "claiming", error: null }));
-      console.info("daily-bonus: claim", { rewardSessionId });
-      const claimResponse = await claimDailyBonus({ reward_session_id: rewardSessionId });
+      console.info("daily-bonus: claim", { claimId, claimKey });
+      const claimPayload =
+        claimKey === "reward_id" ? { reward_id: claimId } : { reward_session_id: claimId };
+      const claimResponse = await claimDailyBonus(claimPayload);
       console.info("daily-bonus: claim_response", claimResponse);
       const claimNextAvailableAt = normalizeNextAvailableAt(
         claimResponse.next_available_at,
@@ -258,6 +274,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         ...current,
         nextAvailableAt: claimNextAvailableAt ?? current.nextAvailableAt,
         rewardSessionId: null,
+        rewardId: null,
         status: claimCooldownSeconds && claimCooldownSeconds > 0 ? "cooldown" : "idle",
         error: null
       }));
