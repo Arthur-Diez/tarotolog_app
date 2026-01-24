@@ -20,6 +20,7 @@ interface ReadingInputMeta {
   question: string | null;
   deckId: string | null;
   spreadId: string | null;
+  cards: Array<{ position: number; card_code: string; reversed: boolean }>;
 }
 
 interface NormalizedOutputCard {
@@ -55,27 +56,76 @@ function normalizeReading(input: ReadingResponse | ViewReadingResponse | undefin
 
 function extractInputMeta(payload: unknown): ReadingInputMeta {
   if (!payload || typeof payload !== "object") {
-    return { question: null, deckId: null, spreadId: null };
+    return { question: null, deckId: null, spreadId: null, cards: [] };
   }
 
   const obj = payload as Record<string, unknown>;
   const question = typeof obj.question === "string" ? obj.question : null;
   const deckId = typeof obj.deck_id === "string" ? obj.deck_id : null;
   const spreadId = typeof obj.spread_id === "string" ? obj.spread_id : null;
+  const cards = Array.isArray(obj.cards)
+    ? (obj.cards
+        .map((card) => {
+          if (!card || typeof card !== "object") return null;
+          const cObj = card as Record<string, unknown>;
+          const position =
+            typeof cObj.position === "number"
+              ? cObj.position
+              : typeof cObj.position_index === "number"
+              ? cObj.position_index
+              : 0;
+          const cardCode =
+            typeof cObj.card_code === "string"
+              ? cObj.card_code
+              : typeof cObj.card === "string"
+              ? cObj.card
+              : null;
+          if (!cardCode) return null;
+          return { position, card_code: cardCode, reversed: Boolean(cObj.reversed) };
+        })
+        .filter(Boolean) as Array<{ position: number; card_code: string; reversed: boolean }>)
+    : [];
 
-  return { question, deckId, spreadId };
+  return { question, deckId, spreadId, cards };
+}
+
+function coerceObject(payload: unknown): Record<string, unknown> | null {
+  if (!payload) return null;
+  if (typeof payload === "object") return payload as Record<string, unknown>;
+  if (typeof payload === "string") {
+    try {
+      const parsed = JSON.parse(payload);
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function normalizeOutput(payload: unknown): NormalizedOutput {
-  if (!payload || typeof payload !== "object") {
+  const obj = coerceObject(payload);
+  if (!obj) {
     return { summary: null, cards: [] };
   }
 
-  const obj = payload as Record<string, unknown>;
-  const summary = typeof obj.summary === "string" ? obj.summary : null;
+  const summary =
+    typeof obj.summary === "string"
+      ? obj.summary
+      : typeof obj.interpretation === "string"
+      ? obj.interpretation
+      : null;
   const generatedAt = typeof obj.generated_at === "string" ? obj.generated_at : undefined;
-  const cards = Array.isArray(obj.cards)
-    ? (obj.cards
+  const cardsSource =
+    (Array.isArray(obj.cards) && obj.cards) ||
+    (obj.result && typeof obj.result === "object" && Array.isArray((obj.result as Record<string, unknown>).cards)
+      ? ((obj.result as Record<string, unknown>).cards as unknown[])
+      : null) ||
+    (obj.output && typeof obj.output === "object" && Array.isArray((obj.output as Record<string, unknown>).cards)
+      ? ((obj.output as Record<string, unknown>).cards as unknown[])
+      : null);
+  const cards = Array.isArray(cardsSource)
+    ? (cardsSource
         .map((card) => {
           if (!card || typeof card !== "object") return null;
           const cObj = card as Record<string, unknown>;
@@ -185,7 +235,7 @@ export default function InterpretationPage() {
   }, [fetchReading, id, initialReading]);
 
   const output = useMemo(() => normalizeOutput(reading?.output_payload), [reading?.output_payload]);
-  const cards = output.cards;
+  const cards = output.cards.length > 0 ? output.cards : inputMeta?.cards ?? [];
   const questionText = inputMeta?.question ?? "Вопрос не указан";
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
