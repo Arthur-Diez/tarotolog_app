@@ -9,10 +9,8 @@ import { DECKS } from "@/data/decks";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode } from "@/lib/cardCode";
-
-interface LocationState {
-  reading?: ViewReadingResponse;
-}
+import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
+import { faceUrl } from "@/lib/cardAsset";
 
 interface LocationState {
   reading?: ViewReadingResponse;
@@ -103,6 +101,27 @@ function normalizeOutput(payload: unknown): NormalizedOutput {
   return { summary, generatedAt, cards };
 }
 
+function normalizeSummaryText(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const cleaned = trimmed
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .replace(/^json\s*/i, "")
+    .trim();
+  if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+      if (typeof parsed.summary === "string" && parsed.summary.trim()) {
+        return parsed.summary.trim();
+      }
+    } catch {
+      // fall through to raw text
+    }
+  }
+  return cleaned;
+}
+
 export default function InterpretationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -177,16 +196,31 @@ export default function InterpretationPage() {
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
-  const generatedAt = output.generatedAt;
-  const summaryText = output.summary ?? reading?.summary_text ?? "Интерпретация готовится...";
+  const summaryText =
+    normalizeSummaryText(output.summary ?? reading?.summary_text ?? null) ?? "Интерпретация готовится...";
+
+  const positionLabelMap = useMemo(() => {
+    const spreadId = inputMeta?.spreadId;
+    if (!spreadId || !(spreadId in SPREAD_SCHEMAS)) {
+      return new Map<number, string>();
+    }
+    const map = new Map<number, string>();
+    SPREAD_SCHEMAS[spreadId as SpreadId].positions.forEach((pos) => {
+      map.set(pos.id, pos.label);
+    });
+    return map;
+  }, [inputMeta?.spreadId]);
 
   const cardDisplayList = cards.map((card) => {
+    const assetName = cardNameMap.get(card.card_code) ?? null;
     const friendlyName =
-      cardNameMap.get(card.card_code) ??
+      assetName ??
       card.card_code.replace("RWS_", "").replaceAll("_", " ").replace(/\s+/g, " ").trim();
     return {
       ...card,
-      displayName: friendlyName
+      displayName: friendlyName,
+      assetName,
+      positionLabel: positionLabelMap.get(card.position) ?? `Позиция ${card.position}`
     };
   });
 
@@ -207,17 +241,6 @@ export default function InterpretationPage() {
           <span>Интерпретация расклада</span>
         </div>
         <h1 className="mt-3 text-3xl font-semibold mystic-heading text-[var(--accent-pink)]">Послание вашей карты</h1>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Расклад № {reading?.id ?? id} •{" "}
-          {generatedAt
-            ? new Date(generatedAt).toLocaleString("ru-RU", {
-                hour: "2-digit",
-                minute: "2-digit",
-                day: "2-digit",
-                month: "2-digit"
-              })
-            : "ожидание данных"}
-        </p>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           {spreadTitle} • {deckTitle}
         </p>
@@ -250,47 +273,46 @@ export default function InterpretationPage() {
           <p className="text-base text-[var(--text-primary)]">{questionText}</p>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto rounded-[28px] border border-white/10 bg-[var(--bg-card)]/70 p-4">
-          {cardDisplayList.length > 0 ? (
-            cardDisplayList.map((card) => (
-              <div
-                key={`${card.position}-${card.card_code}`}
-                className="flex min-w-[120px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/90 p-3 text-center text-xs text-[var(--text-secondary)] shadow-[0_20px_40px_rgba(0,0,0,0.6)]"
-              >
-                <div className="mb-2 flex h-36 w-full items-center justify-center rounded-xl border border-white/15 bg-gradient-to-b from-[var(--accent-pink)]/15 to-transparent px-2 text-[var(--text-secondary)]">
-                  {card.displayName}
-                </div>
-                <p className="font-semibold uppercase tracking-[0.2em] text-[var(--accent-gold)]">{card.position}</p>
-                <p className="mt-1 text-[11px] opacity-80">
-                  {card.displayName}
-                  {card.reversed ? " • Перевёрнута" : ""}
-                </p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-[var(--text-secondary)]">Данные по картам появятся сразу после генерации.</p>
-          )}
-        </div>
-
         <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Краткий итог</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Интерпретация расклада</p>
           <p className="text-lg font-semibold leading-relaxed">{summaryText}</p>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
-          <ul className="mt-3 space-y-2 text-base leading-relaxed">
-            {cardDisplayList.length > 0 ? (
-              cardDisplayList.map((card) => (
-                <li key={`${card.position}-${card.card_code}`}>
-                  {card.position}. {card.displayName} {card.reversed ? "(перевернута)" : ""}
-                  </li>
-                ))
-              ) : (
-                <li>Карты появятся после генерации.</li>
-              )}
-            </ul>
-          </div>
+          {cardDisplayList.length > 0 ? (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {cardDisplayList.map((card) => (
+                <div
+                  key={`${card.position}-${card.card_code}`}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3 text-center"
+                >
+                  {card.assetName ? (
+                    <img
+                      src={faceUrl("rws", card.assetName)}
+                      alt={card.displayName}
+                      className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-28 w-20 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-[10px] text-white/70">
+                      {card.displayName}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">{card.displayName}</p>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      {card.positionLabel}
+                      {card.reversed ? " • Перевёрнута" : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">Карты пока не доступны.</p>
+          )}
+        </div>
 
         <Button className="w-full border border-white/15 bg-[var(--bg-card)]/60 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]" onClick={() => alert("Скоро будет реализовано")}>
           Записать расклад в дневник

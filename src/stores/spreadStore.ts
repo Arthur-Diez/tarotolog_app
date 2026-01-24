@@ -78,7 +78,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
     const cards = schema.positions.map((position, index) => ({
       positionIndex: position.id,
       name: shuffled[index],
-      reversed: Math.random() < 0.45,
+      reversed: false,
       isOpen: false
     }));
     set({

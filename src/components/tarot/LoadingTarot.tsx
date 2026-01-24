@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import styles from "./LoadingTarot.module.css";
+import { backUrl } from "@/lib/cardAsset";
 
 interface LoadingTarotProps {
   message?: string;
@@ -16,11 +17,13 @@ export function LoadingTarot({ message, subMessage }: LoadingTarotProps) {
   type TarotCSSVars = CSSProperties & {
     "--card-color": string;
     "--glow-color": string;
+    "--card-image": string;
   };
 
   const cardsStyle: TarotCSSVars = {
     "--card-color": cardColor,
-    "--glow-color": glowColor
+    "--glow-color": glowColor,
+    "--card-image": `url(${backUrl("rws")})`
   };
 
   return (
