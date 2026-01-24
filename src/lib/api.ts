@@ -43,6 +43,15 @@ function getTelegramId(): number | null {
   return user?.id ?? null;
 }
 
+function withTelegramId(url: string): string {
+  const telegramId = getTelegramId();
+  if (!telegramId) {
+    throw new Error("Не найдены данные Telegram пользователя");
+  }
+  const joiner = url.includes("?") ? "&" : "?";
+  return `${url}${joiner}telegram_id=${encodeURIComponent(String(telegramId))}`;
+}
+
 function withAuthHeaders(headers?: HeadersInit, includeJson = false): HeadersInit {
   const base: Record<string, string> = {
     "X-Telegram-Init-Data": getInitData()
@@ -433,7 +442,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Prof
 }
 
 export async function createReading(payload: CreateReadingPayload): Promise<CreateReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings`, {
+  const res = await fetch(withTelegramId(`${API_BASE}/readings`), {
     method: "POST",
     headers: withAuthHeaders(undefined, true),
     body: JSON.stringify(payload)
@@ -442,7 +451,7 @@ export async function createReading(payload: CreateReadingPayload): Promise<Crea
 }
 
 export async function getReading(readingId: string): Promise<ReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings/${readingId}`, {
+  const res = await fetch(withTelegramId(`${API_BASE}/readings/${readingId}`), {
     method: "GET",
     headers: withAuthHeaders()
   });
@@ -450,7 +459,7 @@ export async function getReading(readingId: string): Promise<ReadingResponse> {
 }
 
 export async function viewReading(readingId: string): Promise<ViewReadingResponse> {
-  const res = await fetch(`${API_BASE}/readings/${readingId}/view`, {
+  const res = await fetch(withTelegramId(`${API_BASE}/readings/${readingId}/view`), {
     method: "POST",
     headers: withAuthHeaders()
   });

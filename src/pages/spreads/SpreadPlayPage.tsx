@@ -421,8 +421,12 @@ export default function SpreadPlayPage() {
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
             <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100] flex -translate-x-1/2 -translate-y-1/2">
-              <motion.div className="deal-host relative" initial={{ y: -16, opacity: 0 }} style={{ willChange: "transform" }}>
+            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100]">
+              <motion.div
+                className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
+                initial={{ y: -16, opacity: 0 }}
+                style={{ willChange: "transform" }}
+              >
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                   const showOrderLabel =
@@ -431,7 +435,7 @@ export default function SpreadPlayPage() {
                     <div
                       key={position.id}
                       className="absolute flex flex-col items-center"
-                      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+                      style={{ left: position.x, top: position.y, transform: "translate(-50%, -50%)" }}
                     >
                       {card && faceSrc && (
                         <div className="relative">
