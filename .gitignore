@@ -9,3 +9,15 @@ dist/
 # local
 .env
 .DS_Store
+
+# macOS
+.DS_Store
+
+# build
+/dist
+
+# deps
+node_modules
+
+# env
+.env
