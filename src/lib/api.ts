@@ -360,6 +360,11 @@ export interface DailyBonusClaimResponse {
   status?: string | null;
 }
 
+export interface ShareCreateResponse {
+  share_token: string;
+  expires_at: string;
+}
+
 // ====== ВЫЗОВЫ API ======
 
 export async function authWebApp(payload: AuthWebAppPayload): Promise<AuthWebAppResponse> {
@@ -538,4 +543,17 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
     headers: withAuthHeaders()
   });
   return handleResponse<HoroscopeFreeTodayResponse>(res);
+}
+
+export async function createShare(payload: { reading_id: string; image: Blob }): Promise<ShareCreateResponse> {
+  const formData = new FormData();
+  formData.append("reading_id", payload.reading_id);
+  formData.append("image", payload.image, "reading.png");
+
+  const res = await fetch(`${API_BASE}/share/create`, {
+    method: "POST",
+    headers: withAuthHeaders(),
+    body: formData
+  });
+  return handleResponse<ShareCreateResponse>(res);
 }

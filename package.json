@@ -13,6 +13,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "framer-motion": "^10.16.4",
+    "html-to-image": "^1.11.11",
     "lucide-react": "^0.323.0",
     "react-router-dom": "^6.26.0",
     "react": "^18.2.0",

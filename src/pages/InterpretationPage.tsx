@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { toBlob } from "html-to-image";
 
 import { Button } from "@/components/ui/button";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
-import { getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
+import { createShare, getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
 import { DECKS } from "@/data/decks";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { faceUrl } from "@/lib/cardAsset";
+import ShareCard from "@/components/sections/ShareCard";
 
 interface LocationState {
   reading?: ViewReadingResponse;
@@ -183,6 +185,9 @@ export default function InterpretationPage() {
   const [loading, setLoading] = useState(!initialReading);
   const [error, setError] = useState<string | null>(null);
   const [inputMeta, setInputMeta] = useState<ReadingInputMeta | null>(null);
+  const [shareStatus, setShareStatus] = useState<"idle" | "uploading" | "ready" | "error">("idle");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const shareRef = useRef<HTMLDivElement | null>(null);
 
   const cardNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -273,6 +278,55 @@ export default function InterpretationPage() {
       positionLabel: positionLabelMap.get(card.position) ?? `Позиция ${card.position}`
     };
   });
+
+  const shareCards = cardDisplayList.map((card) => ({
+    name: card.displayName,
+    positionLabel: card.positionLabel,
+    imageSrc: card.assetName ? faceUrl("rws", card.assetName) : null,
+    reversed: card.reversed
+  }));
+
+  const handleShare = useCallback(async () => {
+    if (!reading?.id) {
+      setShareError("Не удалось определить расклад для отправки.");
+      setShareStatus("error");
+      return;
+    }
+    if (!shareRef.current) {
+      setShareError("Не удалось подготовить карточку для отправки.");
+      setShareStatus("error");
+      return;
+    }
+
+    setShareStatus("uploading");
+    setShareError(null);
+
+    try {
+      const height = shareRef.current.scrollHeight || shareRef.current.clientHeight || 1;
+      const blob = await toBlob(shareRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        width: 900,
+        height
+      });
+      if (!blob) {
+        throw new Error("Не удалось создать изображение.");
+      }
+
+      const response = await createShare({ reading_id: reading.id, image: blob });
+      const query = `share_reading:${response.share_token}`;
+      const tg = window.Telegram?.WebApp;
+      if (!tg?.switchInlineQuery) {
+        throw new Error("Telegram WebApp не поддерживает отправку.");
+      }
+      tg.switchInlineQuery(query, { choose_chat: true });
+      setShareStatus("ready");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
+      setShareError(message);
+      setShareStatus("error");
+    }
+  }, [reading?.id]);
 
   return (
     <div className="space-y-5 text-[var(--text-primary)]">
@@ -367,8 +421,31 @@ export default function InterpretationPage() {
         <Button className="w-full border border-white/15 bg-[var(--bg-card)]/60 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]" onClick={() => alert("Скоро будет реализовано")}>
           Записать расклад в дневник
         </Button>
+        <Button
+          variant="outline"
+          className="w-full border-white/20 text-white"
+          onClick={handleShare}
+          disabled={shareStatus === "uploading"}
+        >
+          {shareStatus === "uploading" ? "Готовим карточку..." : "Поделиться"}
+        </Button>
+        {shareStatus === "ready" && <p className="text-center text-xs text-white/70">Готово ✅</p>}
+        {shareStatus === "error" && shareError && (
+          <p className="text-center text-xs text-red-200">{shareError}</p>
+        )}
       </div>
       )}
+      <div className="pointer-events-none absolute left-[-9999px] top-0" aria-hidden="true">
+        <ShareCard
+          ref={shareRef}
+          title="Послание вашей карты"
+          spreadTitle={spreadTitle}
+          deckTitle={deckTitle}
+          question={questionText}
+          summary={summaryText}
+          cards={shareCards}
+        />
+      </div>
     </div>
   );
 }
