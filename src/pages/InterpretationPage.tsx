@@ -329,7 +329,7 @@ export default function InterpretationPage() {
   }, [reading?.id]);
 
   return (
-    <div className="space-y-5 text-[var(--text-primary)]">
+    <div className="space-y-5 pb-24 text-[var(--text-primary)]">
       <Button
         variant="outline"
         className="group gap-2 border-white/15 bg-[var(--bg-card)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
@@ -418,16 +418,19 @@ export default function InterpretationPage() {
           )}
         </div>
 
-        <Button className="w-full border border-white/15 bg-[var(--bg-card)]/60 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]" onClick={() => alert("Скоро будет реализовано")}>
-          Записать расклад в дневник
-        </Button>
         <Button
-          variant="outline"
-          className="w-full border-white/20 text-white"
+          className="w-full"
           onClick={handleShare}
           disabled={shareStatus === "uploading"}
         >
           {shareStatus === "uploading" ? "Готовим карточку..." : "Поделиться"}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full border-white/20 text-white"
+          onClick={() => alert("Скоро будет реализовано")}
+        >
+          Записать расклад в дневник
         </Button>
         {shareStatus === "ready" && <p className="text-center text-xs text-white/70">Готово ✅</p>}
         {shareStatus === "error" && shareError && (
