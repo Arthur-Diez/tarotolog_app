@@ -33,6 +33,17 @@ export interface TelegramWebApp {
   expand: () => void;
   onEvent?: (event: "themeChanged", handler: () => void) => void;
   offEvent?: (event: "themeChanged", handler: () => void) => void;
+  switchInlineQuery?: (
+    query: string,
+    options?: {
+      choose_chat?: boolean;
+      allow_user_chats?: boolean;
+      allow_bot_chats?: boolean;
+      allow_group_chats?: boolean;
+      allow_channel_chats?: boolean;
+      query?: string;
+    }
+  ) => void;
 }
 
 let cachedWebApp: TelegramWebApp | null = null;
