@@ -347,7 +347,7 @@ export default function InterpretationPage() {
           <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-[var(--bg-card)]/95 p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.7)]">
             <div className="overflow-hidden rounded-[18px] border border-white/10">
               <img
-                src="/share-instruction.png"
+                src="/assets/tarot/rws/share-instruction.png"
                 alt="Инструкция отправки"
                 className="h-auto w-full"
               />
