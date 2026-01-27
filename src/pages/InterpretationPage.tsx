@@ -320,13 +320,7 @@ export default function InterpretationPage() {
       throw new Error("Telegram WebApp не поддерживает отправку.");
       }
 
-      tg.switchInlineQuery(query, {
-        choose_chat: true,
-        allow_user_chats: true,
-        allow_group_chats: true,
-        allow_channel_chats: true,
-        allow_bot_chats: true
-      });
+      tg.switchInlineQuery(query, ["users", "groups", "channels", "bots"] as any);
       setShareStatus("ready");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
