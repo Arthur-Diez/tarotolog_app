@@ -317,15 +317,11 @@ export default function InterpretationPage() {
       const query = `share_reading:${response.share_token}`;
       const tg = window.Telegram?.WebApp;
       if (!tg?.switchInlineQuery) {
-        throw new Error("Telegram WebApp не поддерживает отправку.");
-      }
-      const tg = window.Telegram?.WebApp;
-      if (!tg?.switchInlineQuery) {
       throw new Error("Telegram WebApp не поддерживает отправку.");
       }
 
       // какие чаты разрешить: users / groups / channels / bots
-      tg.switchInlineQuery(query, ["users", "groups", "channels", "bots"]);
+      tg.switchInlineQuery(query, ["users", "groups", "channels", "bots"] as any);
       setShareStatus("ready");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
