@@ -286,6 +286,9 @@ export default function InterpretationPage() {
     reversed: card.reversed
   }));
 
+  const [shareHintOpen, setShareHintOpen] = useState(false);
+  const [pendingShareQuery, setPendingShareQuery] = useState<string | null>(null);
+
   const handleShare = useCallback(async () => {
     if (!reading?.id) {
       setShareError("Не удалось определить расклад для отправки.");
@@ -315,12 +318,8 @@ export default function InterpretationPage() {
 
       const response = await createShare({ reading_id: reading.id, image: blob });
       const query = `share_reading:${response.share_token}`;
-      const tg = window.Telegram?.WebApp;
-      if (!tg?.switchInlineQuery) {
-      throw new Error("Telegram WebApp не поддерживает отправку.");
-      }
-
-      tg.switchInlineQuery(query, ["users", "groups", "channels", "bots"] as any);
+      setPendingShareQuery(query);
+      setShareHintOpen(true);
       setShareStatus("ready");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
@@ -329,8 +328,50 @@ export default function InterpretationPage() {
     }
   }, [reading?.id]);
 
+  const handleShareHintConfirm = useCallback(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!pendingShareQuery || !tg?.switchInlineQuery) {
+      setShareError("Telegram WebApp не поддерживает отправку.");
+      setShareStatus("error");
+      setShareHintOpen(false);
+      return;
+    }
+    tg.switchInlineQuery(pendingShareQuery, ["users", "groups", "channels", "bots"] as any);
+    setShareHintOpen(false);
+  }, [pendingShareQuery]);
+
   return (
     <div className="space-y-5 pb-24 text-[var(--text-primary)]">
+      {shareHintOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-[var(--bg-card)]/95 p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.7)]">
+            <div className="overflow-hidden rounded-[18px] border border-white/10">
+              <img
+                src="/share-instruction.png"
+                alt="Инструкция отправки"
+                className="h-auto w-full"
+              />
+            </div>
+            <p className="mt-4 text-sm text-[var(--text-secondary)]">
+              Перед отправкой нажмите на карточку с раскладом, затем поставьте зелёную галочку ✅.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                className="flex-1 rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm text-[var(--text-secondary)]"
+                onClick={() => setShareHintOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                className="flex-1 rounded-full bg-[var(--accent-pink)] px-4 py-2 text-sm font-semibold text-white"
+                onClick={handleShareHintConfirm}
+              >
+                Понятно
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Button
         variant="outline"
         className="group gap-2 border-white/15 bg-[var(--bg-card)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
