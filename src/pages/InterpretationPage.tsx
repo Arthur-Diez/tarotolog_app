@@ -343,8 +343,8 @@ export default function InterpretationPage() {
   return (
     <div className="space-y-5 pb-24 text-[var(--text-primary)]">
       {shareHintOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-[var(--bg-card)]/95 p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.7)]">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 px-4">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
             <div className="overflow-hidden rounded-[18px] border border-white/10">
               <img
                 src="/assets/tarot/rws/share-instruction.png"
