@@ -148,9 +148,10 @@ export async function initAdsgramController(options: AdsgramInitOptions): Promis
       setLastError("sdk_missing");
       return null;
     }
-    log("init_config", { blockId, debug: options.debug === true });
+    const debugFlag = options.debug === true;
+    log("init_config", { blockId, debug: debugFlag });
     adsgramBlockId = blockId;
-    adsgramController = sdk.init({ blockId, debug: options.debug });
+    adsgramController = sdk.init({ blockId, debug: debugFlag });
     log("initialized_ok", { blockId });
     return adsgramController;
   })().catch((error) => {
