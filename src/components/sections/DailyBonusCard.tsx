@@ -334,12 +334,13 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   }, [cooldownSeconds]);
 
   const actionLabel = useMemo(() => {
+    if (hasSubscription) return "Подписка активна";
     if (reward.status === "loading_start") return "Готовим бонус...";
     if (reward.status === "ad_showing") return "Загрузка рекламы...";
     if (reward.status === "claiming") return "Начисляем награду...";
     if (reward.status === "cooldown") return countdownLabel || "Доступно позже";
     return "Забрать";
-  }, [countdownLabel, reward.status]);
+  }, [countdownLabel, hasSubscription, reward.status]);
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -347,7 +348,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         <div>
           <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
           <p className="text-xs text-[var(--text-tertiary)]">
-            Смотри рекламу — получи +{reward.amount || 0} ⚡
+            {hasSubscription
+              ? "Подписка активна — реклама отключена"
+              : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
@@ -361,6 +364,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           onClick={handleClaim}
           disabled={
             processing ||
+            hasSubscription ||
             reward.status === "loading_start" ||
             reward.status === "ad_showing" ||
             reward.status === "claiming" ||

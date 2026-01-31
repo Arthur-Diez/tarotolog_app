@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import DealtCard from "@/components/tarot/DealtCard";
 import { DeckStack } from "@/components/tarot/DeckStack";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
+import { useAdsgram } from "@/hooks/useAdsgram";
 import { useEnergyBalance } from "@/hooks/useEnergyBalance";
 import { useSpreadScale } from "@/hooks/useSpreadScale";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import {
   ApiError,
   createReading,
@@ -33,6 +35,8 @@ const WAIT_AFTER_DEAL = 150;
 const VIEW_POLL_INTERVAL = 2000;
 const VIEW_POLL_TIMEOUT = 30000;
 const LONG_WAIT_THRESHOLD = 15000;
+const ADSGRAM_INTERSTITIAL_BLOCK_ID =
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -47,6 +51,10 @@ const STATUS_TEXT: Record<BackendReadingStatus, string> = {
 export default function SpreadPlayPage() {
   const { spreadId } = useParams<{ spreadId?: SpreadId }>();
   const schema: SpreadSchema = (spreadId && SPREAD_SCHEMAS[spreadId]) || SpreadOneCard;
+
+  const adsgram = useAdsgram();
+  const { hasSubscription } = useSubscriptionStatus();
+  const interstitialShownRef = useRef(false);
 
   const stage = useSpreadStore((state) => state.stage);
   const cards = useSpreadStore((state) => state.cards);
@@ -382,6 +390,25 @@ export default function SpreadPlayPage() {
     card: cards[index],
     orderNumber: orderMap.get(position.id)
   }));
+
+  useEffect(() => {
+    if (!isViewLoading) {
+      interstitialShownRef.current = false;
+      return;
+    }
+    if (hasSubscription) return;
+    if (interstitialShownRef.current) return;
+
+    interstitialShownRef.current = true;
+    void adsgram
+      .show({ blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID })
+      .then((result) => {
+        console.info("interpretation: interstitial_result", result);
+      })
+      .catch((error) => {
+        console.info("interpretation: interstitial_error", error);
+      });
+  }, [adsgram, hasSubscription, isViewLoading]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
