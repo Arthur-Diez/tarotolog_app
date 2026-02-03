@@ -63,10 +63,10 @@ export const SpreadCross: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4],
   positions: [
-    { id: 1, label: "Суть ситуации", x: -140, y: 0 },
-    { id: 2, label: "Против", x: 0, y: -160 },
-    { id: 3, label: "Поддержка", x: 0, y: 160 },
-    { id: 4, label: "Результат", x: 140, y: 0 }
+    { id: 1, label: "Суть ситуации", x: -140, y: 200 },
+    { id: 2, label: "Против", x: 0, y: 40 },
+    { id: 3, label: "Поддержка", x: 0, y: 360 },
+    { id: 4, label: "Результат", x: 140, y: 200 }
   ]
 };
 
@@ -78,11 +78,11 @@ export const SpreadFiveCards: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4, 5],
   positions: [
-    { id: 1, label: "Прошлое", x: 0, y: -140 },
-    { id: 2, label: "Настоящее", x: -70, y: -90 },
-    { id: 3, label: "Скрытые влияния", x: 70, y: -40 },
-    { id: 4, label: "Совет", x: 150, y: 10 },
-    { id: 5, label: "Результат", x: -150, y: 10 }
+    { id: 1, label: "Прошлое", x: 0, y: 40 },
+    { id: 2, label: "Настоящее", x: -90, y: 160 },
+    { id: 3, label: "Скрытые влияния", x: 90, y: 160 },
+    { id: 4, label: "Совет", x: 180, y: 300 },
+    { id: 5, label: "Результат", x: -180, y: 300 }
   ]
 };
 
