@@ -37,6 +37,8 @@ const VIEW_POLL_TIMEOUT = 30000;
 const LONG_WAIT_THRESHOLD = 15000;
 const ADSGRAM_INTERSTITIAL_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
+const DEALT_CARD_HEIGHT = 240;
+const DEALT_SPACER_MIN = 140;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -391,6 +393,17 @@ export default function SpreadPlayPage() {
     orderNumber: orderMap.get(position.id)
   }));
 
+  const spreadLayoutHeight = useMemo(() => {
+    if (!schema.positions.length) return DEALT_CARD_HEIGHT;
+    const ys = schema.positions.map((position) => position.y);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const height = maxY - minY + DEALT_CARD_HEIGHT;
+    return Math.max(DEALT_CARD_HEIGHT, height);
+  }, [schema.positions]);
+
+  const spreadSpacerHeight = Math.max(DEALT_SPACER_MIN, Math.round(spreadLayoutHeight * scale + 40));
+
   useEffect(() => {
     if (!isViewLoading) {
       interstitialShownRef.current = false;
@@ -501,6 +514,7 @@ export default function SpreadPlayPage() {
             </div>
           </div>
         </div>
+        <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
         {showForm && (
           <div
