@@ -38,7 +38,8 @@ const LONG_WAIT_THRESHOLD = 15000;
 const ADSGRAM_INTERSTITIAL_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
 const DEALT_CARD_HEIGHT = 240;
-const DEALT_SPACER_MIN = 140;
+const DEALT_SPACER_MIN = 90;
+const DEALT_SPACER_MAX_RATIO = 0.22;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -57,6 +58,9 @@ export default function SpreadPlayPage() {
   const adsgram = useAdsgram();
   const { hasSubscription } = useSubscriptionStatus();
   const interstitialShownRef = useRef(false);
+  const [viewportHeight, setViewportHeight] = useState(
+    typeof window !== "undefined" ? window.innerHeight : 740
+  );
 
   const stage = useSpreadStore((state) => state.stage);
   const cards = useSpreadStore((state) => state.cards);
@@ -402,7 +406,19 @@ export default function SpreadPlayPage() {
     return Math.max(DEALT_CARD_HEIGHT, height);
   }, [schema.positions]);
 
-  const spreadSpacerHeight = Math.max(DEALT_SPACER_MIN, Math.round(spreadLayoutHeight * scale + 40));
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => setViewportHeight(window.innerHeight);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const spreadSpacerHeight = useMemo(() => {
+    if (showForm) return 24;
+    const target = Math.round(spreadLayoutHeight * scale + 24);
+    const maxSpacer = Math.max(80, Math.round(viewportHeight * DEALT_SPACER_MAX_RATIO));
+    return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
+  }, [scale, showForm, spreadLayoutHeight, viewportHeight]);
 
   useEffect(() => {
     if (!isViewLoading) {
