@@ -38,8 +38,8 @@ const LONG_WAIT_THRESHOLD = 15000;
 const ADSGRAM_INTERSTITIAL_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
 const DEALT_CARD_HEIGHT = 240;
-const DEALT_SPACER_MIN = 90;
-const DEALT_SPACER_MAX_RATIO = 0.22;
+const DEALT_SPACER_MIN = 64;
+const DEALT_SPACER_MAX_RATIO = 0.16;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -421,7 +421,7 @@ export default function SpreadPlayPage() {
   }, [scale, showForm, spreadLayoutHeight, viewportHeight]);
 
   const formGap = useMemo(() => {
-    return showForm ? "clamp(8px, 2vh, 20px)" : "2rem";
+    return showForm ? "clamp(4px, 1.5vh, 12px)" : "1.5rem";
   }, [showForm]);
 
   useEffect(() => {
@@ -455,7 +455,7 @@ export default function SpreadPlayPage() {
       />
       <div
         ref={scope}
-        className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center px-4 pb-16 pt-6"
+        className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
           perspective: "1200px",
           pointerEvents: isRunning ? "none" : "auto",
@@ -484,7 +484,7 @@ export default function SpreadPlayPage() {
             width: "100%",
             display: "flex",
             justifyContent: "center",
-            marginTop: showForm ? `${12 / scale}px` : `${20 / scale}px`
+            marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`
           }}
         >
           <div
@@ -551,7 +551,7 @@ export default function SpreadPlayPage() {
           <div
             id="questionForm"
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
-            style={{ marginTop: "clamp(-12px, -1vh, -4px)" }}
+            style={{ marginTop: "clamp(-36px, -6vh, -12px)" }}
           >
             <div className="space-y-1">
               <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
