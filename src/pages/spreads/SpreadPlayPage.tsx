@@ -496,7 +496,12 @@ export default function SpreadPlayPage() {
             className="relative flex w-full flex-col items-center"
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
-            <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+            <div
+              className="relative"
+              style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
+            >
+              <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+            </div>
             <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100]">
               <motion.div
                 className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
@@ -544,12 +549,17 @@ export default function SpreadPlayPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
               transition={{ duration: 0.25 }}
-              className="pointer-events-none absolute left-1/2 top-1/2 text-wrap-anywhere text-center text-sm text-white/80 z-[1150]"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-[900] text-wrap-anywhere text-center text-white/80"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 18}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 28}px)`
               }}
             >
-              Нажмите на карту, чтобы открыть послание
+              <span
+                className="inline-block text-sm sm:text-base"
+                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
+              >
+                Нажмите на карту, чтобы открыть послание
+              </span>
             </motion.p>
             <div
               id="questionBubble"
