@@ -110,7 +110,13 @@ export default function SpreadPlayPage() {
     Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
   );
   const deckFitScale = availableWidth / (scale * FAN_WIDTH);
-  const deckBaseScale = deckFitScale >= 1 ? Math.min(1.15, deckFitScale) : deckFitScale;
+  const deckFanScale = availableWidth / FAN_WIDTH;
+  const deckBaseScale =
+    stage === "fan"
+      ? Math.min(1.1, deckFanScale)
+      : deckFitScale >= 1
+        ? Math.min(1.15, deckFitScale)
+        : deckFitScale;
 
   useEffect(() => {
     setSchema(schema);
@@ -591,13 +597,13 @@ export default function SpreadPlayPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
               transition={{ duration: 0.25 }}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-[850] text-wrap-anywhere text-center text-white/85"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
                 transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 28}px)`
               }}
             >
               <span
-                className="inline-block rounded-full bg-black/35 px-3 py-1 text-base sm:text-lg"
+                className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
                 style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
               >
                 Нажмите на карту, чтобы открыть послание
