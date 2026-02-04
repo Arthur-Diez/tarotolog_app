@@ -542,9 +542,9 @@ export default function SpreadPlayPage() {
             <motion.p
               id="flipHint"
               initial={{ opacity: 0, y: 12 }}
-              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 text-wrap-anywhere text-center text-sm ${
-                hintVisible ? "text-white/80" : "text-transparent"
-              }`}
+              animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
+              transition={{ duration: 0.25 }}
+              className="pointer-events-none absolute left-1/2 top-1/2 text-wrap-anywhere text-center text-sm text-white/80 z-[1150]"
               style={{
                 transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 18}px)`
               }}
