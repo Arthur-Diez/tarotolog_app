@@ -93,7 +93,10 @@ export default function SpreadPlayPage() {
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
   const navigate = useNavigate();
-  const scale = useSpreadScale(schema);
+  const showActionButtons = stage === "done";
+  const hintVisible = stage === "await_open";
+  const showForm = stage === "fan";
+  const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
 
   useEffect(() => {
     setSchema(schema);
@@ -118,9 +121,6 @@ export default function SpreadPlayPage() {
 
   const backSrc = useMemo(() => backUrl(schema.deckType), [schema.deckType]);
   const trimmedQuestion = question.trim();
-  const showActionButtons = stage === "done";
-  const hintVisible = stage === "await_open";
-  const showForm = stage === "fan";
 
   const resetQuestionBubble = () => {
     const bubble = questionBubbleRef.current;
