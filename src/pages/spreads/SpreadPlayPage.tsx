@@ -41,7 +41,10 @@ const DEALT_CARD_HEIGHT = 240;
 const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
-const QUESTION_BUBBLE_OFFSET = DEALT_CARD_HEIGHT / 2 + 56;
+const QUESTION_BUBBLE_OFFSET = 16;
+const MAX_CONTAINER_WIDTH = 420;
+const CONTAINER_PADDING = 32;
+const FAN_WIDTH = 420;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -62,6 +65,9 @@ export default function SpreadPlayPage() {
   const interstitialShownRef = useRef(false);
   const [viewportHeight, setViewportHeight] = useState(
     typeof window !== "undefined" ? window.innerHeight : 740
+  );
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : MAX_CONTAINER_WIDTH
   );
 
   const stage = useSpreadStore((state) => state.stage);
@@ -99,11 +105,12 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open";
   const showForm = stage === "fan";
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
-  const deckBaseScale = Math.max(1, 1 / scale);
-  const questionBubbleTransform = useMemo(
-    () => `translate(-50%, -50%) translateY(${QUESTION_BUBBLE_OFFSET}px) scale(${1 / scale})`,
-    [scale]
+  const availableWidth = Math.max(
+    200,
+    Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
   );
+  const deckFitScale = availableWidth / (scale * FAN_WIDTH);
+  const deckBaseScale = deckFitScale >= 1 ? Math.min(1.15, deckFitScale) : deckFitScale;
 
   useEffect(() => {
     setSchema(schema);
@@ -134,7 +141,7 @@ export default function SpreadPlayPage() {
     if (!bubble) return;
     bubble.style.opacity = "";
     bubble.style.filter = "";
-    bubble.style.transform = questionBubbleTransform;
+    bubble.style.transform = "";
   };
 
   const stopActiveAnimation = useCallback(() => {
@@ -214,7 +221,11 @@ export default function SpreadPlayPage() {
     const dy = targetRect.top + targetRect.height / 2 - (bubbleRect.top + bubbleRect.height / 2);
 
     await animateAndTrack([
-      [bubble, { x: dx, y: dy, scale: 0.92 }, { duration: QUESTION_FLY_DURATION, ease: "easeInOut" }],
+      [
+        bubble,
+        { x: dx, y: dy, scale: 0.8, opacity: 0.85 },
+        { duration: QUESTION_FLY_DURATION, ease: "easeInOut" }
+      ],
       [bubble, { opacity: 0, filter: "blur(6px)" }, { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut" }],
       [
         "#questionForm",
@@ -439,7 +450,10 @@ export default function SpreadPlayPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleResize = () => setViewportHeight(window.innerHeight);
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+      setViewportWidth(window.innerWidth);
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -527,10 +541,10 @@ export default function SpreadPlayPage() {
                 className="deck-outer"
                 style={{ transform: `scale(${deckBaseScale})`, transformOrigin: "center top" }}
               >
-                <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-              </div>
+            <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+          </div>
             </div>
-            <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100]">
+            <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
               <motion.div
                 className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
                 initial={{ y: -16, opacity: 0 }}
@@ -543,7 +557,7 @@ export default function SpreadPlayPage() {
                   return (
                     <div
                       key={position.id}
-                      className="absolute flex flex-col items-center"
+                      className="pointer-events-auto absolute flex flex-col items-center"
                       style={{ left: position.x, top: position.y, transform: "translate(-50%, -50%)" }}
                     >
                       {card && faceSrc && (
@@ -589,20 +603,19 @@ export default function SpreadPlayPage() {
                 Нажмите на карту, чтобы открыть послание
               </span>
             </motion.p>
-            <div
-              id="questionBubble"
-              ref={questionBubbleRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 z-[900] max-w-sm -translate-x-1/2 text-wrap-anywhere rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
-                trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
-              }`}
-              style={{
-                transform: questionBubbleTransform,
-                transformOrigin: "center top"
-              }}
-            >
-              {trimmedQuestion || "Введите вопрос, чтобы начать"}
-            </div>
           </div>
+        </div>
+        <div
+          id="questionBubble"
+          ref={questionBubbleRef}
+          className={`pointer-events-none w-full text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
+            trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px` }}
+        >
+          <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+            {trimmedQuestion || "Введите вопрос, чтобы начать"}
+          </span>
         </div>
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
