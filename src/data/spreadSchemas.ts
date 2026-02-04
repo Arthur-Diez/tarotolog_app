@@ -94,13 +94,13 @@ export const SpreadHorseshoe: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4, 5, 6, 7],
   positions: [
-    { id: 1, label: "Прошлое", x: -160, y: -40 },
-    { id: 2, label: "Настоящее", x: -80, y: 0 },
-    { id: 3, label: "Скрытые влияния", x: -20, y: 60 },
-    { id: 4, label: "Препятствия", x: 40, y: 100 },
-    { id: 5, label: "Окружение", x: 100, y: 60 },
-    { id: 6, label: "Совет", x: 140, y: 0 },
-    { id: 7, label: "Результат", x: 180, y: -40 }
+    { id: 1, label: "Прошлое", x: -210, y: 120 },
+    { id: 2, label: "Настоящее", x: -140, y: 70 },
+    { id: 3, label: "Скрытые влияния", x: -70, y: 30 },
+    { id: 4, label: "Препятствия", x: 0, y: 0 },
+    { id: 5, label: "Окружение", x: 70, y: 30 },
+    { id: 6, label: "Совет", x: 140, y: 70 },
+    { id: 7, label: "Результат", x: 210, y: 120 }
   ]
 };
 
