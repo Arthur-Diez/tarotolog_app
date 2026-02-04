@@ -40,6 +40,8 @@ const ADSGRAM_INTERSTITIAL_BLOCK_ID =
 const DEALT_CARD_HEIGHT = 240;
 const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;
+const DECK_RISE_OFFSET = -24;
+const QUESTION_BUBBLE_OFFSET = DEALT_CARD_HEIGHT / 2 + 56;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -97,6 +99,11 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open";
   const showForm = stage === "fan";
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
+  const deckBaseScale = Math.max(1, 1 / scale);
+  const questionBubbleTransform = useMemo(
+    () => `translate(-50%, -50%) translateY(${QUESTION_BUBBLE_OFFSET}px) scale(${1 / scale})`,
+    [scale]
+  );
 
   useEffect(() => {
     setSchema(schema);
@@ -127,7 +134,7 @@ export default function SpreadPlayPage() {
     if (!bubble) return;
     bubble.style.opacity = "";
     bubble.style.filter = "";
-    bubble.style.transform = "";
+    bubble.style.transform = questionBubbleTransform;
   };
 
   const stopActiveAnimation = useCallback(() => {
@@ -165,6 +172,10 @@ export default function SpreadPlayPage() {
     void animateAndTrack("#questionForm", { opacity: 1, y: 0 }, { duration: 0 });
   }, [animateAndTrack]);
 
+  const resetDeckScale = useCallback(() => {
+    void animateAndTrack(".deck-outer", { scale: deckBaseScale }, { duration: 0 });
+  }, [animateAndTrack, deckBaseScale]);
+
   const handleReset = () => {
     cancelTimeline();
     resetStore();
@@ -179,6 +190,7 @@ export default function SpreadPlayPage() {
     resetDealHost();
     resetHint();
     resetQuestionForm();
+    resetDeckScale();
     void animateAndTrack(".deck", { y: 0 }, { duration: 0 });
   };
 
@@ -212,6 +224,12 @@ export default function SpreadPlayPage() {
     ]);
   }, [animateAndTrack]);
 
+  useEffect(() => {
+    if (stage === "fan" || stage === "collecting" || stage === "shuffling") {
+      resetDeckScale();
+    }
+  }, [resetDeckScale, stage]);
+
   const runDealSequence = useCallback(async () => {
     await animateAndTrack([
       [".deck", { y: -32 }, { duration: 0.25, ease: "easeOut" }],
@@ -239,6 +257,14 @@ export default function SpreadPlayPage() {
       setStage("shuffling");
       await wait(SHUFFLE_DURATION * 1000);
       if (!isActive()) return;
+
+      if (deckBaseScale > 1) {
+        await animateAndTrack(
+          ".deck-outer",
+          { scale: 1 },
+          { duration: 0.35, ease: "easeOut" }
+        );
+      }
 
       setStage("dealing");
       await runDealSequence();
@@ -496,11 +522,13 @@ export default function SpreadPlayPage() {
             className="relative flex w-full flex-col items-center"
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
-            <div
-              className="relative"
-              style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
-            >
-              <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+            <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
+              <div
+                className="deck-outer"
+                style={{ transform: `scale(${deckBaseScale})`, transformOrigin: "center top" }}
+              >
+                <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+              </div>
             </div>
             <div className="dealt-layer pointer-events-auto absolute left-1/2 top-1/2 z-[1100]">
               <motion.div
@@ -549,13 +577,13 @@ export default function SpreadPlayPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
               transition={{ duration: 0.25 }}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-[900] text-wrap-anywhere text-center text-white/80"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-[850] text-wrap-anywhere text-center text-white/85"
               style={{
                 transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 28}px)`
               }}
             >
               <span
-                className="inline-block text-sm sm:text-base"
+                className="inline-block rounded-full bg-black/35 px-3 py-1 text-base sm:text-lg"
                 style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
               >
                 Нажмите на карту, чтобы открыть послание
@@ -564,9 +592,13 @@ export default function SpreadPlayPage() {
             <div
               id="questionBubble"
               ref={questionBubbleRef}
-              className={`text-wrap-anywhere pointer-events-none mt-4 max-w-sm rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
+              className={`pointer-events-none absolute left-1/2 top-1/2 z-[900] max-w-sm -translate-x-1/2 text-wrap-anywhere rounded-2xl border border-white/25 bg-white/10 px-4 py-2 text-center text-sm font-medium text-white/90 shadow-lg transition-opacity ${
                 trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
               }`}
+              style={{
+                transform: questionBubbleTransform,
+                transformOrigin: "center top"
+              }}
             >
               {trimmedQuestion || "Введите вопрос, чтобы начать"}
             </div>
