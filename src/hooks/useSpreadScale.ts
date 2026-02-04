@@ -41,8 +41,9 @@ export function useSpreadScale(schema: SpreadSchema, viewportHeight?: number, re
       const availableHeight = Math.max(260, viewportH - reserveHeight);
       const widthScale = layoutWidth > 0 ? availableWidth / layoutWidth : 1;
       const heightScale = layoutHeight > 0 ? availableHeight / layoutHeight : 1;
-      const nextScale = Math.min(1, widthScale, heightScale);
-      setScale(Math.max(MIN_SCALE, nextScale));
+      const fitScale = Math.min(1, widthScale, heightScale);
+      const nextScale = fitScale < MIN_SCALE ? fitScale : Math.max(MIN_SCALE, fitScale);
+      setScale(nextScale);
     };
 
     updateScale();
