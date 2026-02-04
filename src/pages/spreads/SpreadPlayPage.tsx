@@ -503,7 +503,6 @@ export default function SpreadPlayPage() {
         className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
           perspective: "1200px",
-          pointerEvents: isRunning ? "none" : "auto",
           gap: formGap
         }}
       >
@@ -529,7 +528,8 @@ export default function SpreadPlayPage() {
             width: "100%",
             display: "flex",
             justifyContent: "center",
-            marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`
+            marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
+            pointerEvents: isRunning ? "none" : "auto"
           }}
         >
           <div
@@ -611,7 +611,7 @@ export default function SpreadPlayPage() {
           className={`pointer-events-none w-full text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
             trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
           }`}
-          style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px` }}
+          style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, marginBottom: "12px" }}
         >
           <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
             {trimmedQuestion || "Введите вопрос, чтобы начать"}
@@ -623,7 +623,9 @@ export default function SpreadPlayPage() {
           <div
             id="questionForm"
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
-            style={{ marginTop: "clamp(-36px, -6vh, -12px)" }}
+            style={{
+              marginTop: trimmedQuestion ? "clamp(8px, 2vh, 16px)" : "clamp(-36px, -6vh, -12px)"
+            }}
           >
             <div className="space-y-1">
               <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
