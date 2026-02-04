@@ -414,11 +414,15 @@ export default function SpreadPlayPage() {
   }, []);
 
   const spreadSpacerHeight = useMemo(() => {
-    if (showForm) return 24;
+    if (showForm) return 0;
     const target = Math.round(spreadLayoutHeight * scale + 24);
     const maxSpacer = Math.max(80, Math.round(viewportHeight * DEALT_SPACER_MAX_RATIO));
     return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
   }, [scale, showForm, spreadLayoutHeight, viewportHeight]);
+
+  const formGap = useMemo(() => {
+    return showForm ? "clamp(8px, 2vh, 20px)" : "2rem";
+  }, [showForm]);
 
   useEffect(() => {
     if (!isViewLoading) {
@@ -451,11 +455,11 @@ export default function SpreadPlayPage() {
       />
       <div
         ref={scope}
-        className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center px-4 pb-16 pt-8"
+        className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col items-center px-4 pb-16 pt-6"
         style={{
           perspective: "1200px",
           pointerEvents: isRunning ? "none" : "auto",
-          gap: showForm ? "1.25rem" : "2rem"
+          gap: formGap
         }}
       >
         <div className="w-full">
@@ -475,7 +479,14 @@ export default function SpreadPlayPage() {
             {energyError && <p className="mt-1 text-xs text-red-200">{energyError}</p>}
           </div>
         </div>
-        <div style={{ width: "100%", display: "flex", justifyContent: "center", marginTop: `${20 / scale}px` }}>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            marginTop: showForm ? `${12 / scale}px` : `${20 / scale}px`
+          }}
+        >
           <div
             className="relative flex w-full flex-col items-center"
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
@@ -540,7 +551,7 @@ export default function SpreadPlayPage() {
           <div
             id="questionForm"
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
-            style={{ marginTop: "-12px" }}
+            style={{ marginTop: "clamp(-12px, -1vh, -4px)" }}
           >
             <div className="space-y-1">
               <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
