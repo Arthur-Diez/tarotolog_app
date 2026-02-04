@@ -406,6 +406,11 @@ export default function SpreadPlayPage() {
     return Math.max(DEALT_CARD_HEIGHT, height);
   }, [schema.positions]);
 
+  const spreadMaxY = useMemo(() => {
+    if (!schema.positions.length) return 0;
+    return Math.max(...schema.positions.map((position) => position.y));
+  }, [schema.positions]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handleResize = () => setViewportHeight(window.innerHeight);
@@ -534,6 +539,18 @@ export default function SpreadPlayPage() {
                 })}
               </motion.div>
             </div>
+            <motion.p
+              id="flipHint"
+              initial={{ opacity: 0, y: 12 }}
+              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 text-wrap-anywhere text-center text-sm ${
+                hintVisible ? "text-white/80" : "text-transparent"
+              }`}
+              style={{
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 18}px)`
+              }}
+            >
+              Нажмите на карту, чтобы открыть послание
+            </motion.p>
             <div
               id="questionBubble"
               ref={questionBubbleRef}
@@ -572,14 +589,6 @@ export default function SpreadPlayPage() {
             </Button>
           </div>
         )}
-
-        <motion.p
-          id="flipHint"
-          initial={{ opacity: 0, y: 12 }}
-          className={`text-wrap-anywhere text-sm ${hintVisible ? "text-white/80" : "text-transparent"}`}
-        >
-          Нажмите на карту, чтобы открыть послание
-        </motion.p>
 
         {(orderWarning || viewError) && (
           <p className="text-center text-sm text-amber-300">{orderWarning || viewError}</p>
