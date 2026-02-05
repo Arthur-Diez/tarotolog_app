@@ -109,7 +109,8 @@ export default function SpreadPlayPage() {
     useEnergyBalance();
   const navigate = useNavigate();
   const showActionButtons = stage === "done";
-  const hintVisible = stage === "await_open";
+  const hasOpenedAnyCard = cards.some((card) => card.isOpen);
+  const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const availableWidth = Math.max(
@@ -188,6 +189,7 @@ export default function SpreadPlayPage() {
 
   const resetHint = useCallback(() => {
     void animateAndTrack("#flipHint", { opacity: 0, y: 12 }, { duration: 0 });
+    void animateAndTrack("#orderWarningHint", { opacity: 0, y: 8 }, { duration: 0 });
   }, [animateAndTrack]);
 
   const resetQuestionForm = useCallback(() => {
@@ -251,7 +253,7 @@ export default function SpreadPlayPage() {
   }, [animateAndTrack]);
 
   useEffect(() => {
-    if (stage === "fan" || stage === "collecting" || stage === "shuffling") {
+    if (stage === "fan" || stage === "collecting") {
       resetDeckScale();
     }
   }, [resetDeckScale, stage]);
@@ -332,9 +334,10 @@ export default function SpreadPlayPage() {
 
   const handleCardClick = (positionIndex: number) => {
     if (stage !== "await_open" && stage !== "done") return;
-    const { allowed } = checkOpeningAllowed(positionIndex);
+    const { allowed, expected } = checkOpeningAllowed(positionIndex);
     if (!allowed) {
-      setOrderWarning("Открывайте карты по порядку: сначала №1, затем №2, затем №3");
+      const expectedCard = typeof expected === "number" ? `№${expected}` : "карту по порядку";
+      setOrderWarning(`Сначала откройте ${expectedCard}. Дальше можно в любом порядке.`);
       if (!hasOrderWarningShown) {
         markOrderWarningShown();
       }
@@ -461,6 +464,10 @@ export default function SpreadPlayPage() {
   const spreadMaxY = useMemo(() => {
     if (!schema.positions.length) return 0;
     return Math.max(...schema.positions.map((position) => position.y));
+  }, [schema.positions]);
+  const spreadMinY = useMemo(() => {
+    if (!schema.positions.length) return 0;
+    return Math.min(...schema.positions.map((position) => position.y));
   }, [schema.positions]);
 
   useEffect(() => {
@@ -608,7 +615,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 28}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - 34}px)`
               }}
             >
               <span
@@ -616,6 +623,23 @@ export default function SpreadPlayPage() {
                 style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
               >
                 Нажмите на карту, чтобы открыть послание
+              </span>
+            </motion.p>
+            <motion.p
+              id="orderWarningHint"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: orderWarning ? 1 : 0, y: orderWarning ? 0 : 8 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
+              style={{
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 26}px)`
+              }}
+            >
+              <span
+                className="inline-block rounded-full bg-black/55 px-3 py-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
+              >
+                {orderWarning || ""}
               </span>
             </motion.p>
           </div>
@@ -662,9 +686,7 @@ export default function SpreadPlayPage() {
           </div>
         )}
 
-        {(orderWarning || viewError) && (
-          <p className="text-center text-sm text-amber-300">{orderWarning || viewError}</p>
-        )}
+        {viewError && <p className="text-center text-sm text-amber-300">{viewError}</p>}
 
         {showActionButtons && (
           <div className="w-full space-y-3">
