@@ -44,7 +44,11 @@ const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 16;
 const MAX_CONTAINER_WIDTH = 420;
 const CONTAINER_PADDING = 32;
-const FAN_WIDTH = 420;
+const MIN_AVAILABLE_WIDTH = 200;
+const FAN_TARGET_WIDTH = 420;
+const FAN_STAGE_MAX_SCALE = 1.2;
+const DEAL_STAGE_MAX_SCALE = 1.15;
+const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -106,16 +110,17 @@ export default function SpreadPlayPage() {
   const showForm = stage === "fan";
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const availableWidth = Math.max(
-    200,
+    MIN_AVAILABLE_WIDTH,
     Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
   );
-  const deckFitScale = availableWidth / (scale * FAN_WIDTH);
-  const deckFanScale = availableWidth / FAN_WIDTH;
+  const deckFitScale = availableWidth / (scale * FAN_TARGET_WIDTH);
+  const deckFanScale = availableWidth / FAN_TARGET_WIDTH;
   const deckBaseScale =
     stage === "fan"
-      ? Math.min(1.1, deckFanScale)
+      // Keep fan size consistent across all spreads by compensating schema scale.
+      ? Math.min(FAN_STAGE_MAX_SCALE, deckFanScale / Math.max(scale, SCALE_EPSILON))
       : deckFitScale >= 1
-        ? Math.min(1.15, deckFitScale)
+        ? Math.min(DEAL_STAGE_MAX_SCALE, deckFitScale)
         : deckFitScale;
 
   useEffect(() => {
