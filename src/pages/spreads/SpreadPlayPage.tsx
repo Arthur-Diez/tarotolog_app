@@ -46,11 +46,14 @@ const MAX_CONTAINER_WIDTH = 420;
 const CONTAINER_PADDING = 32;
 const MIN_AVAILABLE_WIDTH = 200;
 const FAN_TARGET_WIDTH = 420;
-const FAN_STAGE_MAX_SCALE = 1.2;
+const FAN_TARGET_FILL = 0.96;
+const FAN_STAGE_MIN_SCALE = 0.7;
+const FAN_STAGE_MAX_SCALE = 3;
 const DEAL_STAGE_MAX_SCALE = 1.15;
 const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const STATUS_TEXT: Record<BackendReadingStatus, string> = {
   pending: "Готовим расклад",
@@ -113,15 +116,16 @@ export default function SpreadPlayPage() {
     MIN_AVAILABLE_WIDTH,
     Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
   );
-  const deckFitScale = availableWidth / (scale * FAN_TARGET_WIDTH);
-  const deckFanScale = availableWidth / FAN_TARGET_WIDTH;
+  const normalizedScale = Math.max(scale, SCALE_EPSILON);
+  const fanVisualScale = (availableWidth * FAN_TARGET_FILL) / FAN_TARGET_WIDTH;
+  const fanOuterScale = fanVisualScale / normalizedScale;
+  const deckFitScale = availableWidth / (normalizedScale * FAN_TARGET_WIDTH);
+  const dealOuterScale = deckFitScale >= 1 ? Math.min(DEAL_STAGE_MAX_SCALE, deckFitScale) : deckFitScale;
   const deckBaseScale =
     stage === "fan"
-      // Keep fan size consistent across all spreads by compensating schema scale.
-      ? Math.min(FAN_STAGE_MAX_SCALE, deckFanScale / Math.max(scale, SCALE_EPSILON))
-      : deckFitScale >= 1
-        ? Math.min(DEAL_STAGE_MAX_SCALE, deckFitScale)
-        : deckFitScale;
+      // Fan size is standardized across spreads by targeting fixed visible width.
+      ? clamp(fanOuterScale, FAN_STAGE_MIN_SCALE, FAN_STAGE_MAX_SCALE)
+      : dealOuterScale;
 
   useEffect(() => {
     setSchema(schema);
