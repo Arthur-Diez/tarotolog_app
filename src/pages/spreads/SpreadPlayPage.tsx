@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { AnimationPlaybackControls } from "framer-motion";
 import { motion, useAnimate } from "framer-motion";
@@ -107,7 +107,10 @@ export default function SpreadPlayPage() {
   const [isLongWait, setIsLongWait] = useState(false);
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
+  const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
+  const spreadAreaRef = useRef<HTMLDivElement | null>(null);
+  const dealtLayerRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
@@ -502,10 +505,28 @@ export default function SpreadPlayPage() {
     return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
   }, [scale, showForm, showActionButtons, spreadLayoutHeight, viewportHeight]);
 
-  const actionButtonsOffset = useMemo(() => {
-    if (!cards.length) return 0;
-    return Math.max(0, (spreadMaxY + DEALT_CARD_HEIGHT / 2 + ACTION_BUTTONS_GAP) * scale);
-  }, [cards.length, scale, spreadMaxY]);
+  useLayoutEffect(() => {
+    if (!showActionButtons) {
+      if (actionButtonsOffsetPx !== 0) setActionButtonsOffsetPx(0);
+      return;
+    }
+    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    const dealtRect = dealtLayerRef.current?.getBoundingClientRect();
+    if (!spreadRect || !dealtRect) return;
+    const desiredTop = dealtRect.bottom + ACTION_BUTTONS_GAP;
+    const nextOffset = Math.max(0, desiredTop - spreadRect.bottom);
+    if (Math.abs(nextOffset - actionButtonsOffsetPx) > 1) {
+      setActionButtonsOffsetPx(nextOffset);
+    }
+  }, [
+    actionButtonsOffsetPx,
+    showActionButtons,
+    scale,
+    cards.length,
+    spreadMaxY,
+    viewportHeight,
+    viewportWidth
+  ]);
 
   const formGap = useMemo(() => {
     return showForm ? "clamp(4px, 1.5vh, 12px)" : "1.5rem";
@@ -566,6 +587,7 @@ export default function SpreadPlayPage() {
           </div>
         </div>
         <div
+          ref={spreadAreaRef}
           style={{
             width: "100%",
             display: "flex",
@@ -586,7 +608,10 @@ export default function SpreadPlayPage() {
             <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           </div>
             </div>
-            <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
+            <div
+              ref={dealtLayerRef}
+              className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]"
+            >
               <motion.div
                 className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
                 initial={{ y: -16, opacity: 0 }}
@@ -677,7 +702,7 @@ export default function SpreadPlayPage() {
           </div>
         </div>
         {showActionButtons && (
-          <div className="w-full space-y-3" style={{ marginTop: `${actionButtonsOffset}px` }}>
+          <div className="w-full space-y-3" style={{ marginTop: `${actionButtonsOffsetPx}px` }}>
             <Button
               variant="outline"
               className="w-full"
