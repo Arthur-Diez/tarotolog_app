@@ -42,6 +42,8 @@ const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 16;
+const FLIP_HINT_GAP = 40;
+const ORDER_WARNING_GAP = 26;
 const MAX_CONTAINER_WIDTH = 420;
 const CONTAINER_PADDING = 32;
 const MIN_AVAILABLE_WIDTH = 200;
@@ -123,7 +125,7 @@ export default function SpreadPlayPage() {
   const deckFitScale = availableWidth / (normalizedScale * FAN_TARGET_WIDTH);
   const dealOuterScale = deckFitScale >= 1 ? Math.min(DEAL_STAGE_MAX_SCALE, deckFitScale) : deckFitScale;
   const deckBaseScale =
-    stage === "fan"
+    stage === "fan" || stage === "collecting" || stage === "shuffling"
       // Fan size is standardized across spreads by targeting fixed visible width.
       ? clamp(fanOuterScale, FAN_STAGE_MIN_SCALE, FAN_STAGE_MAX_SCALE)
       : dealOuterScale;
@@ -253,7 +255,7 @@ export default function SpreadPlayPage() {
   }, [animateAndTrack]);
 
   useEffect(() => {
-    if (stage === "fan" || stage === "collecting") {
+    if (stage === "fan" || stage === "collecting" || stage === "shuffling") {
       resetDeckScale();
     }
   }, [resetDeckScale, stage]);
@@ -615,7 +617,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - 34}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
               }}
             >
               <span
@@ -632,7 +634,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + 26}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
               }}
             >
               <span
