@@ -669,6 +669,22 @@ export default function SpreadPlayPage() {
             </motion.p>
           </div>
         </div>
+        {showActionButtons && (
+          <div className="w-full space-y-3">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={isViewLoading}
+              onClick={handleInterpretationRequest}
+            >
+              {isViewLoading ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
+            </Button>
+            {statusLabel && <p className="text-center text-sm text-white/70">Статус расклада: {statusLabel}</p>}
+            <Button variant="ghost" className="w-full text-white/70" onClick={handleReset}>
+              Начать заново
+            </Button>
+          </div>
+        )}
         <div
           id="questionBubble"
           ref={questionBubbleRef}
@@ -713,22 +729,6 @@ export default function SpreadPlayPage() {
 
         {viewError && <p className="text-center text-sm text-amber-300">{viewError}</p>}
 
-        {showActionButtons && (
-          <div className="w-full space-y-3">
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={isViewLoading}
-              onClick={handleInterpretationRequest}
-            >
-              {isViewLoading ? "Загружаем интерпретацию..." : "Получить интерпретацию расклада"}
-            </Button>
-            {statusLabel && <p className="text-center text-sm text-white/70">Статус расклада: {statusLabel}</p>}
-            <Button variant="ghost" className="w-full text-white/70" onClick={handleReset}>
-              Начать заново
-            </Button>
-          </div>
-        )}
       </div>
       {isViewLoading && (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6 backdrop-blur">
