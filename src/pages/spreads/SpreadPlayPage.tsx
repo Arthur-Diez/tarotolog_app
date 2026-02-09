@@ -44,6 +44,7 @@ const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 16;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
+const ACTION_BUTTONS_GAP = 24;
 const MAX_CONTAINER_WIDTH = 420;
 const CONTAINER_PADDING = 32;
 const MIN_AVAILABLE_WIDTH = 200;
@@ -500,6 +501,11 @@ export default function SpreadPlayPage() {
     return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
   }, [scale, showForm, spreadLayoutHeight, viewportHeight]);
 
+  const actionButtonsOffset = useMemo(() => {
+    if (!cards.length) return 0;
+    return Math.max(0, (spreadMaxY + DEALT_CARD_HEIGHT / 2 + ACTION_BUTTONS_GAP) * scale);
+  }, [cards.length, scale, spreadMaxY]);
+
   const formGap = useMemo(() => {
     return showForm ? "clamp(4px, 1.5vh, 12px)" : "1.5rem";
   }, [showForm]);
@@ -670,7 +676,7 @@ export default function SpreadPlayPage() {
           </div>
         </div>
         {showActionButtons && (
-          <div className="w-full space-y-3">
+          <div className="w-full space-y-3" style={{ marginTop: `${actionButtonsOffset}px` }}>
             <Button
               variant="outline"
               className="w-full"
