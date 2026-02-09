@@ -110,7 +110,7 @@ export default function SpreadPlayPage() {
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
-  const dealtLayerRef = useRef<HTMLDivElement | null>(null);
+  const spreadBoundsRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
@@ -478,6 +478,14 @@ export default function SpreadPlayPage() {
     const height = maxY - minY + DEALT_CARD_HEIGHT;
     return Math.max(DEALT_CARD_HEIGHT, height);
   }, [schema.positions]);
+  const spreadLayoutWidth = useMemo(() => {
+    if (!schema.positions.length) return DEALT_CARD_HEIGHT;
+    const xs = schema.positions.map((position) => position.x);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const width = maxX - minX + DEALT_CARD_HEIGHT;
+    return Math.max(DEALT_CARD_HEIGHT, width);
+  }, [schema.positions]);
 
   const spreadMaxY = useMemo(() => {
     if (!schema.positions.length) return 0;
@@ -511,9 +519,9 @@ export default function SpreadPlayPage() {
       return;
     }
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
-    const dealtRect = dealtLayerRef.current?.getBoundingClientRect();
-    if (!spreadRect || !dealtRect) return;
-    const desiredTop = dealtRect.bottom + ACTION_BUTTONS_GAP;
+    const boundsRect = spreadBoundsRef.current?.getBoundingClientRect();
+    if (!spreadRect || !boundsRect) return;
+    const desiredTop = boundsRect.bottom + ACTION_BUTTONS_GAP;
     const nextOffset = Math.max(0, desiredTop - spreadRect.bottom);
     if (Math.abs(nextOffset - actionButtonsOffsetPx) > 1) {
       setActionButtonsOffsetPx(nextOffset);
@@ -608,10 +616,17 @@ export default function SpreadPlayPage() {
             <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
           </div>
             </div>
-            <div
-              ref={dealtLayerRef}
-              className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]"
-            >
+            <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
+              <div
+                ref={spreadBoundsRef}
+                aria-hidden="true"
+                className="absolute left-1/2 top-1/2"
+                style={{
+                  width: `${spreadLayoutWidth}px`,
+                  height: `${spreadLayoutHeight}px`,
+                  transform: "translate(-50%, -50%)"
+                }}
+              />
               <motion.div
                 className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
                 initial={{ y: -16, opacity: 0 }}
