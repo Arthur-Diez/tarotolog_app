@@ -32,6 +32,7 @@ interface SpreadStoreState {
   stage: SpreadStage;
   cards: SpreadCardState[];
   hasOrderWarningShown: boolean;
+  highlightEnabled: boolean;
   expectedNextCardIndex: number | null;
   readingId?: string | null;
   backendStatus?: BackendReadingStatus | null;
@@ -43,6 +44,7 @@ interface SpreadStoreState {
   openCard: (positionIndex: number) => void;
   checkOpeningAllowed: (positionIndex: number) => { allowed: boolean; expected: number | null };
   markOrderWarningShown: () => void;
+  disableHighlight: () => void;
   reset: () => void;
   setBackendMeta: (meta: { readingId?: string | null; backendStatus?: BackendReadingStatus | null }) => void;
   setReadingResult: (result: SpreadReadingResult | null) => void;
@@ -54,6 +56,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
   stage: "fan",
   cards: [],
   hasOrderWarningShown: false,
+  highlightEnabled: true,
   expectedNextCardIndex: SpreadOneCard.openOrder[0] ?? null,
   readingId: undefined,
   backendStatus: undefined,
@@ -65,6 +68,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
       stage: "fan",
       cards: [],
       hasOrderWarningShown: false,
+      highlightEnabled: true,
       expectedNextCardIndex: schema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,
@@ -86,6 +90,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
       stage: "fan",
       cards,
       hasOrderWarningShown: false,
+      highlightEnabled: true,
       expectedNextCardIndex: schema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,
@@ -119,6 +124,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
     return { allowed: expected === positionIndex, expected };
   },
   markOrderWarningShown: () => set({ hasOrderWarningShown: true }),
+  disableHighlight: () => set({ highlightEnabled: false }),
   reset: () => {
     const currentSchema = get().schema;
     set({
@@ -126,6 +132,7 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
       stage: "fan",
       cards: [],
       hasOrderWarningShown: false,
+      highlightEnabled: true,
       expectedNextCardIndex: currentSchema.openOrder[0] ?? null,
       readingId: undefined,
       backendStatus: undefined,

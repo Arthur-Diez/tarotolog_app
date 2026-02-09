@@ -86,8 +86,11 @@ export default function SpreadPlayPage() {
   const start = useSpreadStore((state) => state.startSpread);
   const openCard = useSpreadStore((state) => state.openCard);
   const hasOrderWarningShown = useSpreadStore((state) => state.hasOrderWarningShown);
+  const highlightEnabled = useSpreadStore((state) => state.highlightEnabled);
+  const expectedNextCardIndex = useSpreadStore((state) => state.expectedNextCardIndex);
   const checkOpeningAllowed = useSpreadStore((state) => state.checkOpeningAllowed);
   const markOrderWarningShown = useSpreadStore((state) => state.markOrderWarningShown);
+  const disableHighlight = useSpreadStore((state) => state.disableHighlight);
   const resetStore = useSpreadStore((state) => state.reset);
   const setStage = useSpreadStore((state) => state.setStage);
   const setSchema = useSpreadStore((state) => state.setSchema);
@@ -345,6 +348,14 @@ export default function SpreadPlayPage() {
       }
       return;
     }
+    if (
+      highlightEnabled &&
+      hasOrderWarningShown &&
+      typeof expected === "number" &&
+      positionIndex !== expected
+    ) {
+      disableHighlight();
+    }
     setOrderWarning(null);
     openCard(positionIndex);
   };
@@ -576,8 +587,15 @@ export default function SpreadPlayPage() {
               >
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
-                  const showOrderLabel =
-                    !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
+                    const showOrderLabel =
+                      !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
+                    const shouldHighlight =
+                      stage === "await_open" &&
+                      schema.openingRules === "in-order" &&
+                      highlightEnabled &&
+                      !card?.isOpen &&
+                      typeof expectedNextCardIndex === "number" &&
+                      expectedNextCardIndex === position.id;
                   return (
                     <div
                       key={position.id}
@@ -600,6 +618,11 @@ export default function SpreadPlayPage() {
                             faceSrc={faceSrc}
                             isOpen={card.isOpen}
                             reversed={card.reversed}
+                            className={
+                              shouldHighlight
+                                ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
+                                : ""
+                            }
                             onClick={() => handleCardClick(position.id)}
                           />
                         </div>
