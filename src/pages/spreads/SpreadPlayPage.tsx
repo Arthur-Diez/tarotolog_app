@@ -118,6 +118,7 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
+  const showQuestionBubble = showForm;
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const availableWidth = Math.max(
     MIN_AVAILABLE_WIDTH,
@@ -495,11 +496,11 @@ export default function SpreadPlayPage() {
   }, []);
 
   const spreadSpacerHeight = useMemo(() => {
-    if (showForm) return 0;
+    if (showForm || showActionButtons) return 0;
     const target = Math.round(spreadLayoutHeight * scale + 24);
     const maxSpacer = Math.max(80, Math.round(viewportHeight * DEALT_SPACER_MAX_RATIO));
     return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
-  }, [scale, showForm, spreadLayoutHeight, viewportHeight]);
+  }, [scale, showForm, showActionButtons, spreadLayoutHeight, viewportHeight]);
 
   const actionButtonsOffset = useMemo(() => {
     if (!cards.length) return 0;
@@ -691,18 +692,20 @@ export default function SpreadPlayPage() {
             </Button>
           </div>
         )}
-        <div
-          id="questionBubble"
-          ref={questionBubbleRef}
-          className={`pointer-events-none w-full text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
-            trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, marginBottom: "12px" }}
-        >
-          <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
-            {trimmedQuestion || "Введите вопрос, чтобы начать"}
-          </span>
-        </div>
+        {showQuestionBubble && (
+          <div
+            id="questionBubble"
+            ref={questionBubbleRef}
+            className={`pointer-events-none w-full text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
+              trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, marginBottom: "12px" }}
+          >
+            <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+              {trimmedQuestion || "Введите вопрос, чтобы начать"}
+            </span>
+          </div>
+        )}
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
         {showForm && (
