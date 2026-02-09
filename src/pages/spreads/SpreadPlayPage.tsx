@@ -110,7 +110,6 @@ export default function SpreadPlayPage() {
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
-  const spreadBoundsRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
@@ -478,14 +477,6 @@ export default function SpreadPlayPage() {
     const height = maxY - minY + DEALT_CARD_HEIGHT;
     return Math.max(DEALT_CARD_HEIGHT, height);
   }, [schema.positions]);
-  const spreadLayoutWidth = useMemo(() => {
-    if (!schema.positions.length) return DEALT_CARD_HEIGHT;
-    const xs = schema.positions.map((position) => position.x);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const width = maxX - minX + DEALT_CARD_HEIGHT;
-    return Math.max(DEALT_CARD_HEIGHT, width);
-  }, [schema.positions]);
 
   const spreadMaxY = useMemo(() => {
     if (!schema.positions.length) return 0;
@@ -513,28 +504,38 @@ export default function SpreadPlayPage() {
     return Math.min(Math.max(target, DEALT_SPACER_MIN), maxSpacer);
   }, [scale, showForm, showActionButtons, spreadLayoutHeight, viewportHeight]);
 
-  useLayoutEffect(() => {
+  const updateActionButtonsOffset = useCallback(() => {
     if (!showActionButtons) {
       if (actionButtonsOffsetPx !== 0) setActionButtonsOffsetPx(0);
       return;
     }
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
-    const boundsRect = spreadBoundsRef.current?.getBoundingClientRect();
-    if (!spreadRect || !boundsRect) return;
-    const desiredTop = boundsRect.bottom + ACTION_BUTTONS_GAP;
+    const slots = spreadAreaRef.current?.querySelectorAll<HTMLElement>(".spread-card-slot");
+    if (!spreadRect || !slots || slots.length === 0) return;
+    let maxBottom = 0;
+    slots.forEach((slot) => {
+      const rect = slot.getBoundingClientRect();
+      if (rect.bottom > maxBottom) {
+        maxBottom = rect.bottom;
+      }
+    });
+    const desiredTop = maxBottom + ACTION_BUTTONS_GAP;
     const nextOffset = Math.max(0, desiredTop - spreadRect.bottom);
     if (Math.abs(nextOffset - actionButtonsOffsetPx) > 1) {
       setActionButtonsOffsetPx(nextOffset);
     }
-  }, [
-    actionButtonsOffsetPx,
-    showActionButtons,
-    scale,
-    cards.length,
-    spreadMaxY,
-    viewportHeight,
-    viewportWidth
-  ]);
+  }, [actionButtonsOffsetPx, showActionButtons]);
+
+  useLayoutEffect(() => {
+    updateActionButtonsOffset();
+    const target = spreadAreaRef.current;
+    if (!target) return;
+    const observer = new ResizeObserver(() => {
+      updateActionButtonsOffset();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [updateActionButtonsOffset]);
 
   const formGap = useMemo(() => {
     return showForm ? "clamp(4px, 1.5vh, 12px)" : "1.5rem";
@@ -617,16 +618,6 @@ export default function SpreadPlayPage() {
           </div>
             </div>
             <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
-              <div
-                ref={spreadBoundsRef}
-                aria-hidden="true"
-                className="absolute left-1/2 top-1/2"
-                style={{
-                  width: `${spreadLayoutWidth}px`,
-                  height: `${spreadLayoutHeight}px`,
-                  transform: "translate(-50%, -50%)"
-                }}
-              />
               <motion.div
                 className="deal-host absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2"
                 initial={{ y: -16, opacity: 0 }}
@@ -646,7 +637,7 @@ export default function SpreadPlayPage() {
                   return (
                     <div
                       key={position.id}
-                      className="pointer-events-auto absolute flex flex-col items-center"
+                      className="spread-card-slot pointer-events-auto absolute flex flex-col items-center"
                       style={{ left: position.x, top: position.y, transform: "translate(-50%, -50%)" }}
                     >
                       {card && faceSrc && (
