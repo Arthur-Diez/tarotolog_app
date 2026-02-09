@@ -510,11 +510,14 @@ export default function SpreadPlayPage() {
       return;
     }
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    if (!spreadRect) return;
+    const cards = spreadAreaRef.current?.querySelectorAll<HTMLElement>(".dealt-card");
     const slots = spreadAreaRef.current?.querySelectorAll<HTMLElement>(".spread-card-slot");
-    if (!spreadRect || !slots || slots.length === 0) return;
+    const nodes = cards && cards.length > 0 ? cards : slots;
+    if (!nodes || nodes.length === 0) return;
     let maxBottom = 0;
-    slots.forEach((slot) => {
-      const rect = slot.getBoundingClientRect();
+    nodes.forEach((node) => {
+      const rect = node.getBoundingClientRect();
       if (rect.bottom > maxBottom) {
         maxBottom = rect.bottom;
       }
