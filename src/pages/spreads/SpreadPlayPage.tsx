@@ -43,6 +43,7 @@ const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 0;
 const QUESTION_BUBBLE_HEIGHT = 64;
+const QUESTION_BUBBLE_CENTER_BIAS = -12;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
 const ACTION_BUTTONS_GAP = 24;
@@ -238,6 +239,11 @@ export default function SpreadPlayPage() {
     }
   }, [stage, trimmedQuestion]);
 
+  const centerPointScaled = useMemo(() => {
+    if (!centerPoint) return null;
+    return { x: centerPoint.x / Math.max(scale, 0.001), y: centerPoint.y / Math.max(scale, 0.001) };
+  }, [centerPoint, scale]);
+
   useLayoutEffect(() => {
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
     const centerRect = fanCenterRef.current?.getBoundingClientRect();
@@ -256,7 +262,7 @@ export default function SpreadPlayPage() {
     const formRect = questionFormRef.current?.getBoundingClientRect();
     const slotRect = questionBubbleSlotRef.current?.getBoundingClientRect();
     if (!spreadRect || !formRect || !slotRect) return;
-    const targetY = (spreadRect.bottom + formRect.top) / 2;
+    const targetY = (spreadRect.bottom + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
     const slotCenter = slotRect.top + slotRect.height / 2;
     const nextTranslate = targetY - slotCenter;
     if (Math.abs(nextTranslate - bubbleTranslateY) > 1) {
@@ -717,7 +723,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
-                left: centerPoint ? `${centerPoint.x}px` : "50%",
+                left: centerPointScaled ? `${centerPointScaled.x}px` : "50%",
                 transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
               }}
             >
@@ -735,7 +741,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
               style={{
-                left: centerPoint ? `${centerPoint.x}px` : "50%",
+                left: centerPointScaled ? `${centerPointScaled.x}px` : "50%",
                 transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
               }}
             >
