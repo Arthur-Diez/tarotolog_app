@@ -24,6 +24,7 @@ import { mapCardNameToCode } from "@/lib/cardCode";
 import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 import type { SpreadId } from "@/data/rws_spreads";
+import { DECKS } from "@/data/decks";
 
 const DEAL_OFFSET = 96;
 const COLLECT_DURATION = 2.8;
@@ -58,6 +59,13 @@ const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const normalizeLocale = (value: string | null | undefined): string => {
+  if (!value) return "ru";
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return "ru";
+  const short = normalized.split(/[-_]/)[0];
+  return short || "ru";
+};
 
 const STATUS_TEXT: Record<BackendReadingStatus, string> = {
   pending: "Готовим расклад",
@@ -407,24 +415,35 @@ export default function SpreadPlayPage() {
     try {
       if (!ensuredReadingId) {
         const snapshot = useSpreadStore.getState();
+        const deckTitle = DECKS.find((deck) => deck.id === snapshot.schema.deckType)?.title ?? snapshot.schema.deckType;
+        const interfaceLocale = normalizeLocale(
+          window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
+        );
         const cardsPayload = snapshot.cards.map((card) => {
           const code = mapCardNameToCode(card.name);
           if (!code) {
             throw new Error("Не удалось определить код карты. Попробуйте заново.");
           }
+          const positionLabel = snapshot.schema.positions.find(
+            (position) => position.id === card.positionIndex
+          )?.label;
           return {
             position_index: card.positionIndex,
             card_code: code,
-            reversed: card.reversed
+            reversed: card.reversed,
+            position_label: positionLabel,
+            card_name: card.name
           };
         });
 
         const response = await createReading({
           type: "tarot",
           spread_id: snapshot.schema.id,
+          spread_title: snapshot.schema.name,
           deck_id: snapshot.schema.deckType,
+          deck_title: deckTitle,
           question: snapshot.question.trim(),
-          locale: "ru",
+          locale: interfaceLocale,
           cards: cardsPayload
         });
         ensuredReadingId = response.id;
