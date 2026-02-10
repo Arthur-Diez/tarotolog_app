@@ -231,7 +231,7 @@ function SpreadCardOneCard({ spread, expanded, onToggle, onSelect, canSelect }: 
             <p>✓ Новичкам</p>
             <p>✓ Когда нужен быстрый ответ</p>
           </div>
-          <Button type="button" className="w-full">
+          <Button type="button" className="w-full" onClick={onSelect} disabled={!canSelect}>
             ✨ Сделать расклад
           </Button>
         </div>

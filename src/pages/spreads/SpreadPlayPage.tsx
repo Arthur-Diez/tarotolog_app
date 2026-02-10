@@ -41,7 +41,8 @@ const DEALT_CARD_HEIGHT = 240;
 const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
-const QUESTION_BUBBLE_OFFSET = 16;
+const QUESTION_BUBBLE_OFFSET = 8;
+const QUESTION_BUBBLE_HEIGHT = 40;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
 const ACTION_BUTTONS_GAP = 24;
@@ -327,6 +328,11 @@ export default function SpreadPlayPage() {
       }
       return;
     }
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    (document.activeElement as HTMLElement | null)?.blur?.();
 
     cancelTimeline();
     setViewError(null);
@@ -728,16 +734,20 @@ export default function SpreadPlayPage() {
         )}
         {showQuestionBubble && (
           <div
-            id="questionBubble"
-            ref={questionBubbleRef}
-            className={`pointer-events-none w-full text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
-              trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
-            }`}
-            style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, marginBottom: "12px" }}
+            className="relative w-full"
+            style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, height: `${QUESTION_BUBBLE_HEIGHT}px` }}
           >
-            <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
-              {trimmedQuestion || "Введите вопрос, чтобы начать"}
-            </span>
+            <div
+              id="questionBubble"
+              ref={questionBubbleRef}
+              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
+                trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+                {trimmedQuestion || "Введите вопрос, чтобы начать"}
+              </span>
+            </div>
           </div>
         )}
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
@@ -747,7 +757,7 @@ export default function SpreadPlayPage() {
             id="questionForm"
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
             style={{
-              marginTop: trimmedQuestion ? "clamp(8px, 2vh, 16px)" : "clamp(-36px, -6vh, -12px)"
+              marginTop: "clamp(-18px, -4vh, -6px)"
             }}
           >
             <div className="space-y-1">
