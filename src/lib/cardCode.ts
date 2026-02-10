@@ -73,20 +73,31 @@ const EN_MINOR_SUITS: Record<string, string> = {
   WANDS: "WANDS",
   CUPS: "CUPS",
   SWORDS: "SWORDS",
-  PENTACLES: "PENTACLES"
+  PENTACLES: "PENTACLES",
+  PENTACLE: "PENTACLES"
 };
 
 const EN_MINOR_RANKS: Record<string, string> = {
   ACE: "ACE",
+  "1": "ACE",
   TWO: "TWO",
+  "2": "TWO",
   THREE: "THREE",
+  "3": "THREE",
   FOUR: "FOUR",
+  "4": "FOUR",
   FIVE: "FIVE",
+  "5": "FIVE",
   SIX: "SIX",
+  "6": "SIX",
   SEVEN: "SEVEN",
+  "7": "SEVEN",
   EIGHT: "EIGHT",
+  "8": "EIGHT",
   NINE: "NINE",
+  "9": "NINE",
   TEN: "TEN",
+  "10": "TEN",
   PAGE: "PAGE",
   KNIGHT: "KNIGHT",
   QUEEN: "QUEEN",
@@ -122,6 +133,9 @@ function normalizeEnglishCardName(value: string): string {
   return value
     .trim()
     .toUpperCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^\w\s]/g, " ")
     .replace(/^THE\s+/, "")
     .replace(/\s+/g, " ");
 }
@@ -135,7 +149,7 @@ function mapEnglishCardNameToCode(name: string): string | null {
   }
 
   const minorMatch = normalized.match(
-    /^(ACE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)\s+(?:OF\s+)?(WANDS|CUPS|SWORDS|PENTACLES)$/
+    /^(ACE|[1-9]|10|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)\s+(?:OF\s+)?(WANDS|CUPS|SWORDS|PENTACLES|PENTACLE)$/
   );
   if (!minorMatch) {
     return null;
