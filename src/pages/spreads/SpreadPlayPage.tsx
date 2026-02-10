@@ -170,7 +170,8 @@ export default function SpreadPlayPage() {
     if (!bubble) return;
     bubble.style.opacity = "";
     bubble.style.filter = "";
-    bubble.style.transform = "";
+    // Keep anchor centering stable after imperative framer transforms.
+    bubble.style.transform = "translate(-50%, -50%)";
   };
 
   const stopActiveAnimation = useCallback(() => {
@@ -718,11 +719,7 @@ export default function SpreadPlayPage() {
             </div>
           </div>
           <div className="pointer-events-none absolute inset-0 z-[1250]">
-            <motion.p
-              id="flipHint"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
-              transition={{ duration: 0.25 }}
+            <div
               className="absolute text-wrap-anywhere text-center text-white/85"
               style={{
                 left: "50%",
@@ -732,10 +729,17 @@ export default function SpreadPlayPage() {
                 transform: "translate(-50%, -50%)"
               }}
             >
-              <span className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-                Нажмите на карту, чтобы открыть послание
-              </span>
-            </motion.p>
+              <motion.p
+                id="flipHint"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
+                transition={{ duration: 0.25 }}
+              >
+                <span className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+                  Нажмите на карту, чтобы открыть послание
+                </span>
+              </motion.p>
+            </div>
             <motion.p
               id="orderWarningHint"
               initial={{ opacity: 0, y: 8 }}
