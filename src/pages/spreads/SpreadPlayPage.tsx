@@ -109,7 +109,11 @@ export default function SpreadPlayPage() {
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
+  const [bubbleTranslateY, setBubbleTranslateY] = useState(0);
+  const [centerPoint, setCenterPoint] = useState<{ x: number; y: number } | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
+  const questionBubbleSlotRef = useRef<HTMLDivElement | null>(null);
+  const questionFormRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
@@ -233,6 +237,32 @@ export default function SpreadPlayPage() {
       resetQuestionBubble();
     }
   }, [stage, trimmedQuestion]);
+
+  useLayoutEffect(() => {
+    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    const centerRect = fanCenterRef.current?.getBoundingClientRect();
+    if (!spreadRect || !centerRect) return;
+    const x = centerRect.left + centerRect.width / 2 - spreadRect.left;
+    const y = centerRect.top + centerRect.height / 2 - spreadRect.top;
+    setCenterPoint({ x, y });
+  }, [scale, viewportHeight, viewportWidth, deckKey]);
+
+  useLayoutEffect(() => {
+    if (!showForm) {
+      if (bubbleTranslateY !== 0) setBubbleTranslateY(0);
+      return;
+    }
+    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    const formRect = questionFormRef.current?.getBoundingClientRect();
+    const slotRect = questionBubbleSlotRef.current?.getBoundingClientRect();
+    if (!spreadRect || !formRect || !slotRect) return;
+    const targetY = (spreadRect.bottom + formRect.top) / 2;
+    const slotCenter = slotRect.top + slotRect.height / 2;
+    const nextTranslate = targetY - slotCenter;
+    if (Math.abs(nextTranslate - bubbleTranslateY) > 1) {
+      setBubbleTranslateY(nextTranslate);
+    }
+  }, [bubbleTranslateY, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -687,6 +717,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
+                left: centerPoint ? `${centerPoint.x}px` : "50%",
                 transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
               }}
             >
@@ -704,6 +735,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
               style={{
+                left: centerPoint ? `${centerPoint.x}px` : "50%",
                 transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
               }}
             >
@@ -734,20 +766,22 @@ export default function SpreadPlayPage() {
         )}
         {showQuestionBubble && (
           <div
+            ref={questionBubbleSlotRef}
             className="relative w-full"
             style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, height: `${QUESTION_BUBBLE_HEIGHT}px` }}
           >
             <div
               id="questionBubble"
               ref={questionBubbleRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
                 trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
               }`}
+              style={{
+                left: centerPoint ? `${centerPoint.x}px` : "50%",
+                transform: `translate(-50%, -50%) translateY(${bubbleTranslateY}px)`
+              }}
             >
-              <span
-                className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg"
-                style={{ transform: "translateY(-6px)" }}
-              >
+              <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
                 {trimmedQuestion || "Введите вопрос, чтобы начать"}
               </span>
             </div>
@@ -758,6 +792,7 @@ export default function SpreadPlayPage() {
         {showForm && (
           <div
             id="questionForm"
+            ref={questionFormRef}
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
             style={{
               marginTop: "clamp(-10px, -2vh, -4px)"
