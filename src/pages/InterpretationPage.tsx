@@ -137,13 +137,14 @@ function normalizeOutput(payload: unknown): NormalizedOutput {
               : typeof cObj.position_index === "number"
               ? cObj.position_index
               : 0;
-          const cardCode =
+          const rawCard =
             typeof cObj.card === "string"
               ? cObj.card
               : typeof cObj.card_code === "string"
               ? cObj.card_code
               : null;
-          if (!cardCode) return null;
+          if (!rawCard) return null;
+          const cardCode = rawCard.startsWith("RWS_") ? rawCard : mapCardNameToCode(rawCard) ?? rawCard;
           const reversed = Boolean(cObj.reversed);
           return { position, card_code: cardCode, reversed };
         })
