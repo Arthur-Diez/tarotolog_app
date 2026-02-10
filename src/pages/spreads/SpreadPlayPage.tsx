@@ -725,7 +725,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="absolute text-wrap-anywhere text-center text-white/85"
               style={{
-                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                left: "50%",
                 top: spreadCenterPx
                   ? `${spreadCenterPx.y + (spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP) * scale}px`
                   : "50%",
@@ -762,7 +762,7 @@ export default function SpreadPlayPage() {
                   trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
                 }`}
                 style={{
-                  left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                  left: "50%",
                   top: `${bubbleTopInSpread}px`,
                   transform: "translate(-50%, -50%)"
                 }}
