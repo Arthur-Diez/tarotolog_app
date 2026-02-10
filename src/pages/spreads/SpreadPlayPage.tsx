@@ -170,8 +170,7 @@ export default function SpreadPlayPage() {
     if (!bubble) return;
     bubble.style.opacity = "";
     bubble.style.filter = "";
-    // Keep anchor centering stable after imperative framer transforms.
-    bubble.style.transform = "translate(-50%, -50%)";
+    bubble.style.transform = "";
   };
 
   const stopActiveAnimation = useCallback(() => {
@@ -761,7 +760,6 @@ export default function SpreadPlayPage() {
             {showQuestionBubble && (
               <div
                 id="questionBubble"
-                ref={questionBubbleRef}
                 className={`absolute text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
                   trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
                 }`}
@@ -771,9 +769,11 @@ export default function SpreadPlayPage() {
                   transform: "translate(-50%, -50%)"
                 }}
               >
-                <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
-                  {trimmedQuestion || "Введите вопрос, чтобы начать"}
-                </span>
+                <div ref={questionBubbleRef} className="inline-block">
+                  <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+                    {trimmedQuestion || "Введите вопрос, чтобы начать"}
+                  </span>
+                </div>
               </div>
             )}
           </div>
