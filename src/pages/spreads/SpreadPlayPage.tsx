@@ -110,7 +110,8 @@ export default function SpreadPlayPage() {
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
-  const [bubbleTranslateY, setBubbleTranslateY] = useState(0);
+  const [bubbleTopPx, setBubbleTopPx] = useState(0);
+  const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const questionBubbleSlotRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
@@ -239,21 +240,24 @@ export default function SpreadPlayPage() {
   }, [stage, trimmedQuestion]);
 
   useLayoutEffect(() => {
+    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    if (!spreadRect) return;
+    setSpreadCenterPx({ x: spreadRect.width / 2, y: spreadRect.height / 2 });
+  }, [scale, viewportHeight, viewportWidth, deckKey]);
+
+  useLayoutEffect(() => {
     if (!showForm) {
-      if (bubbleTranslateY !== 0) setBubbleTranslateY(0);
       return;
     }
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
     const formRect = questionFormRef.current?.getBoundingClientRect();
-    const slotRect = questionBubbleSlotRef.current?.getBoundingClientRect();
-    if (!spreadRect || !formRect || !slotRect) return;
+    if (!spreadRect || !formRect) return;
     const targetY = (spreadRect.bottom + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
-    const slotCenter = slotRect.top + slotRect.height / 2;
-    const nextTranslate = targetY - slotCenter;
-    if (Math.abs(nextTranslate - bubbleTranslateY) > 1) {
-      setBubbleTranslateY(nextTranslate);
+    const nextTop = targetY - spreadRect.top;
+    if (Math.abs(nextTop - bubbleTopPx) > 1) {
+      setBubbleTopPx(nextTop);
     }
-  }, [bubbleTranslateY, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopPx, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -627,6 +631,7 @@ export default function SpreadPlayPage() {
         </div>
         <div
           ref={spreadAreaRef}
+          className="relative"
           style={{
             width: "100%",
             display: "flex",
@@ -701,20 +706,23 @@ export default function SpreadPlayPage() {
                 })}
               </motion.div>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 z-[1250]">
             <motion.p
               id="flipHint"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: hintVisible ? 1 : 0, y: hintVisible ? 0 : 12 }}
               transition={{ duration: 0.25 }}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
+              className="absolute text-wrap-anywhere text-center text-white/85"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
+                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                top: spreadCenterPx
+                  ? `${spreadCenterPx.y + (spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP) * scale}px`
+                  : "50%",
+                transform: "translate(-50%, -50%)"
               }}
             >
-              <span
-                className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center" }}
-              >
+              <span className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
                 Нажмите на карту, чтобы открыть послание
               </span>
             </motion.p>
@@ -723,15 +731,16 @@ export default function SpreadPlayPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: orderWarning ? 1 : 0, y: orderWarning ? 0 : 8 }}
               transition={{ duration: 0.2 }}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
+              className="absolute text-center text-amber-200"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
+                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                top: spreadCenterPx
+                  ? `${spreadCenterPx.y + (spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP) * scale}px`
+                  : "50%",
+                transform: "translate(-50%, -50%)"
               }}
             >
-              <span
-                className="inline-block rounded-full bg-black/55 px-3 py-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center" }}
-              >
+              <span className="inline-block rounded-full bg-black/55 px-3 py-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
                 {orderWarning || ""}
               </span>
             </motion.p>
@@ -762,12 +771,13 @@ export default function SpreadPlayPage() {
             <div
               id="questionBubble"
               ref={questionBubbleRef}
-              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
+              className={`pointer-events-none absolute text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
                 trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
               }`}
               style={{
-                left: "50%",
-                transform: `translate(-50%, -50%) translateY(${bubbleTranslateY}px)`
+                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                top: `${bubbleTopPx}px`,
+                transform: "translate(-50%, -50%)"
               }}
             >
               <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
