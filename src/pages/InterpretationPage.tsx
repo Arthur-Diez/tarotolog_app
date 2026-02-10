@@ -9,7 +9,7 @@ import { createShare, getReading, type ReadingResponse, type ViewReadingResponse
 import { DECKS } from "@/data/decks";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
-import { mapCardNameToCode } from "@/lib/cardCode";
+import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { faceUrl } from "@/lib/cardAsset";
 import ShareCard from "@/components/sections/ShareCard";
@@ -83,7 +83,9 @@ function extractInputMeta(payload: unknown): ReadingInputMeta {
               ? cObj.card
               : null;
           if (!cardCode) return null;
-          return { position, card_code: cardCode, reversed: Boolean(cObj.reversed) };
+          const normalizedCode = mapCardValueToCode(cardCode);
+          if (!normalizedCode) return null;
+          return { position, card_code: normalizedCode, reversed: Boolean(cObj.reversed) };
         })
         .filter(Boolean) as Array<{ position: number; card_code: string; reversed: boolean }>)
     : [];
@@ -144,7 +146,8 @@ function normalizeOutput(payload: unknown): NormalizedOutput {
               ? cObj.card_code
               : null;
           if (!rawCard) return null;
-          const cardCode = rawCard.startsWith("RWS_") ? rawCard : mapCardNameToCode(rawCard) ?? rawCard;
+          const cardCode = mapCardValueToCode(rawCard);
+          if (!cardCode) return null;
           const reversed = Boolean(cObj.reversed);
           return { position, card_code: cardCode, reversed };
         })

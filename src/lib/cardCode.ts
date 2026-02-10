@@ -68,3 +68,90 @@ export function mapCardNameToCode(name: string): string | null {
 
   return `RWS_${rankCode}_OF_${suitCode}`;
 }
+
+const EN_MINOR_SUITS: Record<string, string> = {
+  WANDS: "WANDS",
+  CUPS: "CUPS",
+  SWORDS: "SWORDS",
+  PENTACLES: "PENTACLES"
+};
+
+const EN_MINOR_RANKS: Record<string, string> = {
+  ACE: "ACE",
+  TWO: "TWO",
+  THREE: "THREE",
+  FOUR: "FOUR",
+  FIVE: "FIVE",
+  SIX: "SIX",
+  SEVEN: "SEVEN",
+  EIGHT: "EIGHT",
+  NINE: "NINE",
+  TEN: "TEN",
+  PAGE: "PAGE",
+  KNIGHT: "KNIGHT",
+  QUEEN: "QUEEN",
+  KING: "KING"
+};
+
+const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
+  FOOL: "RWS_THE_FOOL",
+  MAGICIAN: "RWS_THE_MAGICIAN",
+  "HIGH PRIESTESS": "RWS_THE_HIGH_PRIESTESS",
+  EMPRESS: "RWS_THE_EMPRESS",
+  EMPEROR: "RWS_THE_EMPEROR",
+  HIEROPHANT: "RWS_THE_HIEROPHANT",
+  LOVERS: "RWS_THE_LOVERS",
+  CHARIOT: "RWS_THE_CHARIOT",
+  STRENGTH: "RWS_STRENGTH",
+  HERMIT: "RWS_THE_HERMIT",
+  "WHEEL OF FORTUNE": "RWS_WHEEL_OF_FORTUNE",
+  JUSTICE: "RWS_JUSTICE",
+  "HANGED MAN": "RWS_THE_HANGED_MAN",
+  DEATH: "RWS_DEATH",
+  TEMPERANCE: "RWS_TEMPERANCE",
+  DEVIL: "RWS_THE_DEVIL",
+  TOWER: "RWS_THE_TOWER",
+  STAR: "RWS_THE_STAR",
+  MOON: "RWS_THE_MOON",
+  SUN: "RWS_THE_SUN",
+  JUDGEMENT: "RWS_JUDGEMENT",
+  WORLD: "RWS_THE_WORLD"
+};
+
+function normalizeEnglishCardName(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/^THE\s+/, "")
+    .replace(/\s+/g, " ");
+}
+
+function mapEnglishCardNameToCode(name: string): string | null {
+  const normalized = normalizeEnglishCardName(name);
+
+  const major = EN_MAJOR_ARCANA_MAP[normalized];
+  if (major) {
+    return major;
+  }
+
+  const minorMatch = normalized.match(
+    /^(ACE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)\s+(?:OF\s+)?(WANDS|CUPS|SWORDS|PENTACLES)$/
+  );
+  if (!minorMatch) {
+    return null;
+  }
+  const [, rankRaw, suitRaw] = minorMatch;
+  const rank = EN_MINOR_RANKS[rankRaw];
+  const suit = EN_MINOR_SUITS[suitRaw];
+  if (!rank || !suit) {
+    return null;
+  }
+  return `RWS_${rank}_OF_${suit}`;
+}
+
+export function mapCardValueToCode(value: string): string | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  if (raw.startsWith("RWS_")) return raw;
+  return mapCardNameToCode(raw) ?? mapEnglishCardNameToCode(raw);
+}
