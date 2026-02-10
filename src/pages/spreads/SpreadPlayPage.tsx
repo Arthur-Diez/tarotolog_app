@@ -43,7 +43,7 @@ const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 0;
 const QUESTION_BUBBLE_HEIGHT = 64;
-const QUESTION_BUBBLE_CENTER_BIAS = -18;
+const QUESTION_BUBBLE_CENTER_BIAS = -24;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
 const ACTION_BUTTONS_GAP = 24;
@@ -111,7 +111,6 @@ export default function SpreadPlayPage() {
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTranslateY, setBubbleTranslateY] = useState(0);
-  const [centerOffsetX, setCenterOffsetX] = useState(0);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const questionBubbleSlotRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
@@ -238,15 +237,6 @@ export default function SpreadPlayPage() {
       resetQuestionBubble();
     }
   }, [stage, trimmedQuestion]);
-
-  useLayoutEffect(() => {
-    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
-    const centerRect = fanCenterRef.current?.getBoundingClientRect();
-    if (!spreadRect || !centerRect) return;
-    const x = centerRect.left + centerRect.width / 2 - spreadRect.left;
-    const offset = x - spreadRect.width / 2;
-    setCenterOffsetX(offset / Math.max(scale, 0.001));
-  }, [scale, viewportHeight, viewportWidth, deckKey]);
 
   useLayoutEffect(() => {
     if (!showForm) {
@@ -718,7 +708,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
-                transform: `translate(-50%, -50%) translateX(${centerOffsetX}px) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
               }}
             >
               <span
@@ -735,7 +725,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
               style={{
-                transform: `translate(-50%, -50%) translateX(${centerOffsetX}px) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
               }}
             >
               <span
@@ -777,7 +767,7 @@ export default function SpreadPlayPage() {
               }`}
               style={{
                 left: "50%",
-                transform: `translate(-50%, -50%) translateX(${centerOffsetX}px) translateY(${bubbleTranslateY}px)`
+                transform: `translate(-50%, -50%) translateY(${bubbleTranslateY}px)`
               }}
             >
               <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
