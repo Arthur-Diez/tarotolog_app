@@ -43,7 +43,6 @@ const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
 const QUESTION_BUBBLE_OFFSET = 0;
 const QUESTION_BUBBLE_HEIGHT = 64;
-const QUESTION_BUBBLE_CENTER_BIAS = -24;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
 const ACTION_BUTTONS_GAP = 24;
@@ -111,7 +110,6 @@ export default function SpreadPlayPage() {
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
-  const [bubbleCenterX, setBubbleCenterX] = useState<number | null>(null);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
@@ -255,20 +253,12 @@ export default function SpreadPlayPage() {
     const deckRect = deckEl?.getBoundingClientRect();
     if (!spreadRect || !formRect) return;
     const baseY = deckRect ? deckRect.bottom : spreadRect.bottom;
-    const targetY = (baseY + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
+    const targetY = (baseY + formRect.top) / 2;
     const nextTop = targetY - spreadRect.top;
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-    if (deckRect) {
-      const nextCenterX = deckRect.left + deckRect.width / 2 - spreadRect.left;
-      if (!bubbleCenterX || Math.abs(nextCenterX - bubbleCenterX) > 1) {
-        setBubbleCenterX(nextCenterX);
-      }
-    } else if (bubbleCenterX !== null) {
-      setBubbleCenterX(null);
-    }
-  }, [bubbleCenterX, bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -735,7 +725,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="absolute text-wrap-anywhere text-center text-white/85"
               style={{
-                left: spreadCenterPx ? `${spreadCenterPx.x + spreadCenterOffsetX * scale}px` : "50%",
+                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
                 top: spreadCenterPx
                   ? `${spreadCenterPx.y + (spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP) * scale}px`
                   : "50%",
@@ -772,7 +762,7 @@ export default function SpreadPlayPage() {
                   trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
                 }`}
                 style={{
-                  left: bubbleCenterX !== null ? `${bubbleCenterX}px` : spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                  left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
                   top: `${bubbleTopInSpread}px`,
                   transform: "translate(-50%, -50%)"
                 }}
