@@ -41,8 +41,8 @@ const DEALT_CARD_HEIGHT = 240;
 const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;
 const DECK_RISE_OFFSET = -24;
-const QUESTION_BUBBLE_OFFSET = 8;
-const QUESTION_BUBBLE_HEIGHT = 40;
+const QUESTION_BUBBLE_OFFSET = 6;
+const QUESTION_BUBBLE_HEIGHT = 56;
 const FLIP_HINT_GAP = 40;
 const ORDER_WARNING_GAP = 26;
 const ACTION_BUTTONS_GAP = 24;
@@ -687,12 +687,11 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1250] text-wrap-anywhere text-center text-white/85"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP}px) scale(${1 / scale})`
               }}
             >
               <span
                 className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
               >
                 Нажмите на карту, чтобы открыть послание
               </span>
@@ -704,12 +703,11 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="pointer-events-none absolute left-1/2 top-1/2 z-[1240] text-center text-amber-200"
               style={{
-                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px)`
+                transform: `translate(-50%, -50%) translateY(${spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP}px) scale(${1 / scale})`
               }}
             >
               <span
                 className="inline-block rounded-full bg-black/55 px-3 py-1 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                style={{ transform: `scale(${1 / scale})`, transformOrigin: "center top" }}
               >
                 {orderWarning || ""}
               </span>
@@ -740,11 +738,11 @@ export default function SpreadPlayPage() {
             <div
               id="questionBubble"
               ref={questionBubbleRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium text-white/90 transition-opacity ${
+              className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
                 trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
               }`}
             >
-              <span className="inline-block rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+              <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
                 {trimmedQuestion || "Введите вопрос, чтобы начать"}
               </span>
             </div>
@@ -757,7 +755,7 @@ export default function SpreadPlayPage() {
             id="questionForm"
             className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
             style={{
-              marginTop: "clamp(-18px, -4vh, -6px)"
+              marginTop: "clamp(-10px, -2vh, -4px)"
             }}
           >
             <div className="space-y-1">
