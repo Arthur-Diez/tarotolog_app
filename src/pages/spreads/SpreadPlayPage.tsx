@@ -110,10 +110,9 @@ export default function SpreadPlayPage() {
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
-  const [bubbleTopPx, setBubbleTopPx] = useState(0);
+  const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
-  const questionBubbleSlotRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
@@ -254,10 +253,10 @@ export default function SpreadPlayPage() {
     if (!spreadRect || !formRect) return;
     const targetY = (spreadRect.bottom + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
     const nextTop = targetY - spreadRect.top;
-    if (Math.abs(nextTop - bubbleTopPx) > 1) {
-      setBubbleTopPx(nextTop);
+    if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
+      setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopPx, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -744,6 +743,24 @@ export default function SpreadPlayPage() {
                 {orderWarning || ""}
               </span>
             </motion.p>
+            {showQuestionBubble && (
+              <div
+                id="questionBubble"
+                ref={questionBubbleRef}
+                className={`absolute text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
+                  trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
+                }`}
+                style={{
+                  left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                  top: `${bubbleTopInSpread}px`,
+                  transform: "translate(-50%, -50%)"
+                }}
+              >
+                <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
+                  {trimmedQuestion || "Введите вопрос, чтобы начать"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         {showActionButtons && (
@@ -762,30 +779,7 @@ export default function SpreadPlayPage() {
             </Button>
           </div>
         )}
-        {showQuestionBubble && (
-          <div
-            ref={questionBubbleSlotRef}
-            className="relative w-full"
-            style={{ marginTop: `${QUESTION_BUBBLE_OFFSET}px`, height: `${QUESTION_BUBBLE_HEIGHT}px` }}
-          >
-            <div
-              id="questionBubble"
-              ref={questionBubbleRef}
-              className={`pointer-events-none absolute text-wrap-anywhere text-center text-sm font-medium leading-snug text-white/90 transition-opacity ${
-                trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
-              }`}
-              style={{
-                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
-                top: `${bubbleTopPx}px`,
-                transform: "translate(-50%, -50%)"
-              }}
-            >
-              <span className="inline-block max-w-[260px] rounded-2xl border border-white/25 bg-white/10 px-4 py-2 shadow-lg">
-                {trimmedQuestion || "Введите вопрос, чтобы начать"}
-              </span>
-            </div>
-          </div>
-        )}
+        {showQuestionBubble && null}
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
         {showForm && (
