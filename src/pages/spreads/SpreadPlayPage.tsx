@@ -111,6 +111,7 @@ export default function SpreadPlayPage() {
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
+  const [bubbleCenterX, setBubbleCenterX] = useState<number | null>(null);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
@@ -250,13 +251,24 @@ export default function SpreadPlayPage() {
     }
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
     const formRect = questionFormRef.current?.getBoundingClientRect();
+    const deckEl = spreadAreaRef.current?.querySelector<HTMLElement>(".deck");
+    const deckRect = deckEl?.getBoundingClientRect();
     if (!spreadRect || !formRect) return;
-    const targetY = (spreadRect.bottom + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
+    const baseY = deckRect ? deckRect.bottom : spreadRect.bottom;
+    const targetY = (baseY + formRect.top) / 2 + QUESTION_BUBBLE_CENTER_BIAS;
     const nextTop = targetY - spreadRect.top;
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+    if (deckRect) {
+      const nextCenterX = deckRect.left + deckRect.width / 2 - spreadRect.left;
+      if (!bubbleCenterX || Math.abs(nextCenterX - bubbleCenterX) > 1) {
+        setBubbleCenterX(nextCenterX);
+      }
+    } else if (bubbleCenterX !== null) {
+      setBubbleCenterX(null);
+    }
+  }, [bubbleCenterX, bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -516,6 +528,15 @@ export default function SpreadPlayPage() {
     if (!schema.positions.length) return 0;
     return Math.min(...schema.positions.map((position) => position.y));
   }, [schema.positions]);
+  const spreadMaxX = useMemo(() => {
+    if (!schema.positions.length) return 0;
+    return Math.max(...schema.positions.map((position) => position.x));
+  }, [schema.positions]);
+  const spreadMinX = useMemo(() => {
+    if (!schema.positions.length) return 0;
+    return Math.min(...schema.positions.map((position) => position.x));
+  }, [schema.positions]);
+  const spreadCenterOffsetX = useMemo(() => (spreadMinX + spreadMaxX) / 2, [spreadMinX, spreadMaxX]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -714,7 +735,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.25 }}
               className="absolute text-wrap-anywhere text-center text-white/85"
               style={{
-                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                left: spreadCenterPx ? `${spreadCenterPx.x + spreadCenterOffsetX * scale}px` : "50%",
                 top: spreadCenterPx
                   ? `${spreadCenterPx.y + (spreadMinY - DEALT_CARD_HEIGHT / 2 - FLIP_HINT_GAP) * scale}px`
                   : "50%",
@@ -732,7 +753,7 @@ export default function SpreadPlayPage() {
               transition={{ duration: 0.2 }}
               className="absolute text-center text-amber-200"
               style={{
-                left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                left: spreadCenterPx ? `${spreadCenterPx.x + spreadCenterOffsetX * scale}px` : "50%",
                 top: spreadCenterPx
                   ? `${spreadCenterPx.y + (spreadMaxY + DEALT_CARD_HEIGHT / 2 + ORDER_WARNING_GAP) * scale}px`
                   : "50%",
@@ -751,7 +772,7 @@ export default function SpreadPlayPage() {
                   trimmedQuestion && showForm ? "opacity-100" : "opacity-0"
                 }`}
                 style={{
-                  left: spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
+                  left: bubbleCenterX !== null ? `${bubbleCenterX}px` : spreadCenterPx ? `${spreadCenterPx.x}px` : "50%",
                   top: `${bubbleTopInSpread}px`,
                   transform: "translate(-50%, -50%)"
                 }}
