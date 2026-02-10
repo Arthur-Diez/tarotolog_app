@@ -15,15 +15,15 @@
     "framer-motion": "^10.16.4",
     "html-to-image": "^1.11.11",
     "lucide-react": "^0.323.0",
-    "react-router-dom": "^6.26.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^6.26.0",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@types/node": "^22.5.4",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
-    "@types/node": "^22.5.4",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.33",
