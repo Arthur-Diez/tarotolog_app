@@ -127,12 +127,12 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Шесть карт от основания к вершине: прошлое, настоящее, внешнее, внутреннее, вызов и итог.",
     cardsCount: 6,
     positions: [
-      { index: 1, x: 50, y: 30, rotate: 0, label: "Прошлое" },
-      { index: 2, x: 40, y: 50, rotate: 0, label: "Настоящее" },
-      { index: 3, x: 60, y: 50, rotate: 0, label: "Внешние факторы" },
-      { index: 4, x: 30, y: 70, rotate: 0, label: "Внутренние процессы" },
-      { index: 5, x: 50, y: 70, rotate: 0, label: "Вызовы" },
-      { index: 6, x: 70, y: 70, rotate: 0, label: "Результат" }
+      { index: 1, x: 50, y: 32, rotate: 0, label: "Прошлое" },
+      { index: 2, x: 40, y: 52, rotate: 0, label: "Настоящее" },
+      { index: 3, x: 60, y: 52, rotate: 0, label: "Внешние факторы" },
+      { index: 4, x: 30, y: 72, rotate: 0, label: "Внутренние процессы" },
+      { index: 5, x: 50, y: 72, rotate: 0, label: "Вызовы" },
+      { index: 6, x: 70, y: 72, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6]
   },
