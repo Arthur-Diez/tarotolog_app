@@ -690,6 +690,7 @@ export default function SpreadPlayPage() {
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                     const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
+                    const isWheelOfYear = schema.id === "wheel_of_year";
                     const lockCelticObstacleClick =
                       isCelticCrossObstacle &&
                       stage === "await_open" &&
@@ -733,9 +734,12 @@ export default function SpreadPlayPage() {
                               isOpen={card.isOpen}
                               reversed={card.reversed}
                               className={
-                                shouldHighlight
-                                  ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
-                                  : ""
+                                [
+                                  shouldHighlight
+                                    ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
+                                    : "",
+                                  isWheelOfYear ? "h-48 w-28" : ""
+                                ].join(" ")
                               }
                               onClick={() => handleCardClick(position.id)}
                             />

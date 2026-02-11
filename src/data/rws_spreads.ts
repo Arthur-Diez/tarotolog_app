@@ -144,14 +144,14 @@ export const RWS_SPREADS: SpreadDef[] = [
     positions: [
       { index: 1, x: 44, y: 55, rotate: 0, label: "Ситуация" },
       { index: 2, x: 44, y: 55, rotate: 90, label: "Препятствие" },
-      { index: 3, x: 44, y: 35, rotate: 0, label: "Далекое прошлое" },
-      { index: 4, x: 44, y: 75, rotate: 0, label: "Недавнее прошлое" },
-      { index: 5, x: 62, y: 55, rotate: 0, label: "Сознательное" },
-      { index: 6, x: 26, y: 55, rotate: 0, label: "Бессознательное" },
-      { index: 7, x: 80, y: 85, rotate: 0, label: "Ваша позиция" },
-      { index: 8, x: 80, y: 65, rotate: 0, label: "Окружение" },
-      { index: 9, x: 80, y: 45, rotate: 0, label: "Надежды и страхи" },
-      { index: 10, x: 80, y: 25, rotate: 0, label: "Результат" }
+      { index: 3, x: 44, y: 45, rotate: 0, label: "Далекое прошлое" },
+      { index: 4, x: 44, y: 85, rotate: 0, label: "Недавнее прошлое" },
+      { index: 5, x: 62, y: 65, rotate: 0, label: "Сознательное" },
+      { index: 6, x: 26, y: 65, rotate: 0, label: "Бессознательное" },
+      { index: 7, x: 80, y: 95, rotate: 0, label: "Ваша позиция" },
+      { index: 8, x: 80, y: 75, rotate: 0, label: "Окружение" },
+      { index: 9, x: 80, y: 55, rotate: 0, label: "Надежды и страхи" },
+      { index: 10, x: 80, y: 35, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
@@ -161,18 +161,18 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Годовой расклад из 12 карт — каждый месяц как отдельный этап.",
     cardsCount: 12,
     positions: [
-      { index: 1, x: 18, y: 55, rotate: 0, label: "Общая тема года" },
-      { index: 2, x: 24, y: 67, rotate: 0, label: "Внешние обстоятельства" },
-      { index: 3, x: 38, y: 75, rotate: 0, label: "Работа / реализация" },
-      { index: 4, x: 50, y: 80, rotate: 0, label: "Финансы" },
-      { index: 5, x: 62, y: 75, rotate: 0, label: "Отношения" },
-      { index: 6, x: 76, y: 67, rotate: 0, label: "Семья" },
-      { index: 7, x: 82, y: 55, rotate: 0, label: "Внутреннее состояние" },
-      { index: 8, x: 76, y: 43, rotate: 0, label: "Кармический урок" },
-      { index: 9, x: 62, y: 35, rotate: 0, label: "Возможность" },
+      { index: 1, x: 10, y: 58, rotate: 0, label: "Общая тема года" },
+      { index: 2, x: 15, y: 72, rotate: 0, label: "Внешние обстоятельства" },
+      { index: 3, x: 30, y: 82, rotate: 0, label: "Работа / реализация" },
+      { index: 4, x: 50, y: 86, rotate: 0, label: "Финансы" },
+      { index: 5, x: 70, y: 82, rotate: 0, label: "Отношения" },
+      { index: 6, x: 85, y: 72, rotate: 0, label: "Семья" },
+      { index: 7, x: 90, y: 58, rotate: 0, label: "Внутреннее состояние" },
+      { index: 8, x: 85, y: 44, rotate: 0, label: "Кармический урок" },
+      { index: 9, x: 70, y: 34, rotate: 0, label: "Возможность" },
       { index: 10, x: 50, y: 30, rotate: 0, label: "Риск" },
-      { index: 11, x: 38, y: 35, rotate: 0, label: "Поддержка" },
-      { index: 12, x: 24, y: 43, rotate: 0, label: "Главный итог" }
+      { index: 11, x: 30, y: 34, rotate: 0, label: "Поддержка" },
+      { index: 12, x: 15, y: 44, rotate: 0, label: "Главный итог" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   }
