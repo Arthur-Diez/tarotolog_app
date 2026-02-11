@@ -689,6 +689,7 @@ export default function SpreadPlayPage() {
               >
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
+                    const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
                     const showOrderLabel =
                       !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
                     const shouldHighlight =
@@ -715,18 +716,20 @@ export default function SpreadPlayPage() {
                               №{orderNumber}
                             </motion.div>
                           )}
-                          <DealtCard
-                            backSrc={backSrc}
-                            faceSrc={faceSrc}
-                            isOpen={card.isOpen}
-                            reversed={card.reversed}
-                            className={
-                              shouldHighlight
-                                ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
-                                : ""
-                            }
-                            onClick={() => handleCardClick(position.id)}
-                          />
+                          <div style={isCelticCrossObstacle ? { transform: "rotate(90deg)", transformOrigin: "center center" } : undefined}>
+                            <DealtCard
+                              backSrc={backSrc}
+                              faceSrc={faceSrc}
+                              isOpen={card.isOpen}
+                              reversed={card.reversed}
+                              className={
+                                shouldHighlight
+                                  ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
+                                  : ""
+                              }
+                              onClick={() => handleCardClick(position.id)}
+                            />
+                          </div>
                         </div>
                       )}
                       {card?.isOpen && <p className="mt-2 text-xs text-white/70">{position.label}</p>}

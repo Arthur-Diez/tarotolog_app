@@ -144,14 +144,14 @@ export const RWS_SPREADS: SpreadDef[] = [
     positions: [
       { index: 1, x: 50, y: 55, rotate: 0, label: "Ситуация" },
       { index: 2, x: 50, y: 55, rotate: 90, label: "Препятствие" },
-      { index: 3, x: 50, y: 40, rotate: 0, label: "Далекое прошлое" },
-      { index: 4, x: 50, y: 70, rotate: 0, label: "Недавнее прошлое" },
-      { index: 5, x: 70, y: 55, rotate: 0, label: "Сознательное" },
-      { index: 6, x: 30, y: 55, rotate: 0, label: "Бессознательное" },
-      { index: 7, x: 80, y: 45, rotate: 0, label: "Ваша позиция" },
-      { index: 8, x: 80, y: 60, rotate: 0, label: "Окружение" },
-      { index: 9, x: 80, y: 75, rotate: 0, label: "Надежды и страхи" },
-      { index: 10, x: 80, y: 90, rotate: 0, label: "Результат" }
+      { index: 3, x: 50, y: 35, rotate: 0, label: "Далекое прошлое" },
+      { index: 4, x: 50, y: 75, rotate: 0, label: "Недавнее прошлое" },
+      { index: 5, x: 68, y: 55, rotate: 0, label: "Сознательное" },
+      { index: 6, x: 32, y: 55, rotate: 0, label: "Бессознательное" },
+      { index: 7, x: 88, y: 85, rotate: 0, label: "Ваша позиция" },
+      { index: 8, x: 88, y: 65, rotate: 0, label: "Окружение" },
+      { index: 9, x: 88, y: 45, rotate: 0, label: "Надежды и страхи" },
+      { index: 10, x: 88, y: 25, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
