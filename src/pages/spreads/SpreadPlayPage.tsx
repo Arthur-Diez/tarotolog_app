@@ -690,6 +690,11 @@ export default function SpreadPlayPage() {
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                     const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
+                    const lockCelticObstacleClick =
+                      isCelticCrossObstacle &&
+                      stage === "await_open" &&
+                      !card?.isOpen &&
+                      expectedNextCardIndex === 1;
                     const showOrderLabel =
                       !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
                     const shouldHighlight =
@@ -703,7 +708,12 @@ export default function SpreadPlayPage() {
                     <div
                       key={position.id}
                       className="spread-card-slot pointer-events-auto absolute flex flex-col items-center"
-                      style={{ left: position.x, top: position.y, transform: "translate(-50%, -50%)" }}
+                      style={{
+                        left: position.x,
+                        top: position.y,
+                        transform: "translate(-50%, -50%)",
+                        pointerEvents: lockCelticObstacleClick ? "none" : "auto"
+                      }}
                     >
                       {card && faceSrc && (
                         <div className="relative">
