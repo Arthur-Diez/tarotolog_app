@@ -336,10 +336,21 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
 
   if (!spread) return <SpreadPreviewOneCard />;
 
-  const minX = Math.min(...spread.positions.map((position) => position.x));
-  const maxX = Math.max(...spread.positions.map((position) => position.x));
-  const minY = Math.min(...spread.positions.map((position) => position.y));
-  const maxY = Math.max(...spread.positions.map((position) => position.y));
+  const previewPositions =
+    spread.id === "five_cards"
+      ? [
+          { ...spread.positions[0], x: 50, y: 25 },
+          { ...spread.positions[1], x: 38, y: 47 },
+          { ...spread.positions[2], x: 62, y: 47 },
+          { ...spread.positions[3], x: 68, y: 69 },
+          { ...spread.positions[4], x: 32, y: 69 }
+        ]
+      : spread.positions;
+
+  const minX = Math.min(...previewPositions.map((position) => position.x));
+  const maxX = Math.max(...previewPositions.map((position) => position.x));
+  const minY = Math.min(...previewPositions.map((position) => position.y));
+  const maxY = Math.max(...previewPositions.map((position) => position.y));
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
   const spanX = Math.max(1, maxX - minX);
@@ -347,13 +358,14 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
   const fitScale = Math.min(1, 74 / spanX, 70 / spanY);
 
   const cardsCount = spread.cardsCount;
+  const customSize = spread.id === "five_cards" ? 48 : null;
   const cardSize =
-    cardsCount <= 1 ? 86 : cardsCount <= 3 ? 64 : cardsCount <= 5 ? 56 : cardsCount <= 7 ? 48 : cardsCount <= 10 ? 44 : 38;
+    customSize ?? (cardsCount <= 1 ? 86 : cardsCount <= 3 ? 64 : cardsCount <= 5 ? 56 : cardsCount <= 7 ? 48 : cardsCount <= 10 ? 44 : 38);
 
   return (
     <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.35)] blur-2xl" />
-      {spread.positions.map((position, idx) => {
+      {previewPositions.map((position, idx) => {
         const normalizedX = (position.x - centerX) * fitScale + 50;
         const normalizedY = (position.y - centerY) * fitScale + 50;
         const left = Math.min(90, Math.max(10, normalizedX));
