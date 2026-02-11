@@ -336,6 +336,16 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
 
   if (!spread) return <SpreadPreviewOneCard />;
 
+  const minX = Math.min(...spread.positions.map((position) => position.x));
+  const maxX = Math.max(...spread.positions.map((position) => position.x));
+  const minY = Math.min(...spread.positions.map((position) => position.y));
+  const maxY = Math.max(...spread.positions.map((position) => position.y));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(1, maxY - minY);
+  const fitScale = Math.min(1, 74 / spanX, 70 / spanY);
+
   const cardsCount = spread.cardsCount;
   const cardSize =
     cardsCount <= 1 ? 86 : cardsCount <= 3 ? 64 : cardsCount <= 5 ? 56 : cardsCount <= 7 ? 48 : cardsCount <= 10 ? 44 : 38;
@@ -344,23 +354,28 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.35)] blur-2xl" />
       {spread.positions.map((position, idx) => {
-        const left = Math.min(92, Math.max(8, position.x));
-        const top = Math.min(92, Math.max(8, position.y));
+        const normalizedX = (position.x - centerX) * fitScale + 50;
+        const normalizedY = (position.y - centerY) * fitScale + 50;
+        const left = Math.min(90, Math.max(10, normalizedX));
+        const top = Math.min(90, Math.max(10, normalizedY));
         return (
-          <motion.div
+          <div
             key={`preview-${spread.id}-${position.index}`}
-            className="absolute"
+            className="absolute -translate-x-1/2 -translate-y-1/2"
             style={{
               left: `${left}%`,
               top: `${top}%`,
-              zIndex: position.z ?? idx + 1,
-              transform: `translate(-50%, -50%) rotate(${position.rotate ?? 0}deg)`
+              zIndex: position.z ?? idx + 1
             }}
-            animate={{ y: [0, -2, 0] }}
-            transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", delay: idx * 0.08 }}
           >
-            <CardBack size={cardSize} />
-          </motion.div>
+            <motion.div
+              style={{ rotate: position.rotate ?? 0 }}
+              animate={{ y: [0, -2, 0] }}
+              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", delay: idx * 0.08 }}
+            >
+              <CardBack size={cardSize} />
+            </motion.div>
+          </div>
         );
       })}
     </div>
