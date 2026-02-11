@@ -244,7 +244,8 @@ export default function InterpretationPage() {
   }, [fetchReading, id, initialReading]);
 
   const output = useMemo(() => normalizeOutput(reading?.output_payload), [reading?.output_payload]);
-  const cards = output.cards.length > 0 ? output.cards : inputMeta?.cards ?? [];
+  // Source of truth for drawn cards is input_payload; model output can vary in formatting.
+  const cards = inputMeta?.cards?.length ? inputMeta.cards : output.cards;
   const questionText = inputMeta?.question ?? "Вопрос не указан";
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
