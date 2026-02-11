@@ -142,16 +142,16 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Главный расклад Таро: ситуация, препятствия, прошлое, будущее, сознательное и бессознательное.",
     cardsCount: 10,
     positions: [
-      { index: 1, x: 46, y: 55, rotate: 0, label: "Ситуация" },
-      { index: 2, x: 46, y: 55, rotate: 90, label: "Препятствие" },
-      { index: 3, x: 46, y: 35, rotate: 0, label: "Далекое прошлое" },
-      { index: 4, x: 46, y: 75, rotate: 0, label: "Недавнее прошлое" },
-      { index: 5, x: 64, y: 55, rotate: 0, label: "Сознательное" },
-      { index: 6, x: 28, y: 55, rotate: 0, label: "Бессознательное" },
-      { index: 7, x: 82, y: 85, rotate: 0, label: "Ваша позиция" },
-      { index: 8, x: 82, y: 65, rotate: 0, label: "Окружение" },
-      { index: 9, x: 82, y: 45, rotate: 0, label: "Надежды и страхи" },
-      { index: 10, x: 82, y: 25, rotate: 0, label: "Результат" }
+      { index: 1, x: 44, y: 55, rotate: 0, label: "Ситуация" },
+      { index: 2, x: 44, y: 55, rotate: 90, label: "Препятствие" },
+      { index: 3, x: 44, y: 35, rotate: 0, label: "Далекое прошлое" },
+      { index: 4, x: 44, y: 75, rotate: 0, label: "Недавнее прошлое" },
+      { index: 5, x: 62, y: 55, rotate: 0, label: "Сознательное" },
+      { index: 6, x: 26, y: 55, rotate: 0, label: "Бессознательное" },
+      { index: 7, x: 80, y: 85, rotate: 0, label: "Ваша позиция" },
+      { index: 8, x: 80, y: 65, rotate: 0, label: "Окружение" },
+      { index: 9, x: 80, y: 45, rotate: 0, label: "Надежды и страхи" },
+      { index: 10, x: 80, y: 25, rotate: 0, label: "Результат" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   },
@@ -161,18 +161,18 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Годовой расклад из 12 карт — каждый месяц как отдельный этап.",
     cardsCount: 12,
     positions: [
-      { index: 1, x: 30, y: 45, rotate: 0, label: "Январь" },
-      { index: 2, x: 35, y: 35, rotate: 0, label: "Февраль" },
-      { index: 3, x: 50, y: 30, rotate: 0, label: "Март" },
-      { index: 4, x: 65, y: 35, rotate: 0, label: "Апрель" },
-      { index: 5, x: 70, y: 45, rotate: 0, label: "Май" },
-      { index: 6, x: 70, y: 60, rotate: 0, label: "Июнь" },
-      { index: 7, x: 50, y: 70, rotate: 0, label: "Июль" },
-      { index: 8, x: 30, y: 60, rotate: 0, label: "Август" },
-      { index: 9, x: 45, y: 45, rotate: 0, label: "Сентябрь" },
-      { index: 10, x: 55, y: 45, rotate: 0, label: "Октябрь" },
-      { index: 11, x: 45, y: 55, rotate: 0, label: "Ноябрь" },
-      { index: 12, x: 55, y: 55, rotate: 0, label: "Декабрь" }
+      { index: 1, x: 18, y: 55, rotate: 0, label: "Общая тема года" },
+      { index: 2, x: 24, y: 67, rotate: 0, label: "Внешние обстоятельства" },
+      { index: 3, x: 38, y: 75, rotate: 0, label: "Работа / реализация" },
+      { index: 4, x: 50, y: 80, rotate: 0, label: "Финансы" },
+      { index: 5, x: 62, y: 75, rotate: 0, label: "Отношения" },
+      { index: 6, x: 76, y: 67, rotate: 0, label: "Семья" },
+      { index: 7, x: 82, y: 55, rotate: 0, label: "Внутреннее состояние" },
+      { index: 8, x: 76, y: 43, rotate: 0, label: "Кармический урок" },
+      { index: 9, x: 62, y: 35, rotate: 0, label: "Возможность" },
+      { index: 10, x: 50, y: 30, rotate: 0, label: "Риск" },
+      { index: 11, x: 38, y: 35, rotate: 0, label: "Поддержка" },
+      { index: 12, x: 24, y: 43, rotate: 0, label: "Главный итог" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   }
