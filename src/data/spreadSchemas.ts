@@ -130,12 +130,12 @@ export const SpreadPyramid: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4, 5, 6],
   positions: [
-    { id: 1, label: "Прошлое", x: 0, y: 120 },
-    { id: 2, label: "Настоящее", x: -70, y: 60 },
-    { id: 3, label: "Внешние факторы", x: 70, y: 60 },
-    { id: 4, label: "Внутренние процессы", x: -40, y: 0 },
-    { id: 5, label: "Вызовы", x: 40, y: 0 },
-    { id: 6, label: "Результат", x: 0, y: -80 }
+    { id: 1, label: "Прошлое", x: 0, y: -120 },
+    { id: 2, label: "Настоящее", x: -90, y: 0 },
+    { id: 3, label: "Внешние факторы", x: 90, y: 0 },
+    { id: 4, label: "Внутренние процессы", x: -180, y: 120 },
+    { id: 5, label: "Вызовы", x: 0, y: 120 },
+    { id: 6, label: "Результат", x: 180, y: 120 }
   ]
 };
 
