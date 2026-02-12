@@ -183,6 +183,136 @@ export const SpreadWheelOfYear: SpreadSchema = {
   ]
 };
 
+export const SpreadWeAndPerspective: SpreadSchema = {
+  id: "we_and_perspective",
+  name: "Мы и перспектива",
+  cardCount: 3,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3],
+  positions: [
+    { id: 1, label: "Вы", x: -120, y: 180 },
+    { id: 2, label: "Партнёр", x: 0, y: 180 },
+    { id: 3, label: "Перспектива", x: 120, y: 180 }
+  ]
+};
+
+export const SpreadRelationshipAnalysis: SpreadSchema = {
+  id: "relationship_analysis",
+  name: "Анализ отношений",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Ваши чувства", x: 0, y: 40 },
+    { id: 2, label: "Его/её чувства", x: -140, y: 180 },
+    { id: 3, label: "Проблема (центр)", x: 0, y: 180 },
+    { id: 4, label: "Потенциал", x: 140, y: 180 },
+    { id: 5, label: "Итог", x: 0, y: 320 }
+  ]
+};
+
+export const SpreadNewPerson: SpreadSchema = {
+  id: "new_person",
+  name: "Новый человек",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Кто он/она", x: -180, y: 160 },
+    { id: 2, label: "Намерения", x: -60, y: 160 },
+    { id: 3, label: "Что принесёт", x: 60, y: 160 },
+    { id: 4, label: "Риски", x: 180, y: 160 },
+    { id: 5, label: "Перспектива", x: 0, y: 300 }
+  ]
+};
+
+export const SpreadLoveTriangle: SpreadSchema = {
+  id: "love_triangle",
+  name: "Любовный треугольник",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Вы", x: 0, y: 20 },
+    { id: 2, label: "Партнёр", x: -140, y: 150 },
+    { id: 3, label: "Третий человек", x: 140, y: 150 },
+    { id: 4, label: "Его чувства к вам", x: -90, y: 280 },
+    { id: 5, label: "Его чувства к третьему", x: 90, y: 280 },
+    { id: 6, label: "Скрытая динамика", x: 0, y: 400 },
+    { id: 7, label: "Итог", x: 0, y: 510 }
+  ]
+};
+
+export const SpreadFutureRelationships: SpreadSchema = {
+  id: "future_relationships",
+  name: "Будущее отношений",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Текущее состояние", x: -220, y: 210 },
+    { id: 2, label: "Ближайшее будущее", x: -110, y: 165 },
+    { id: 3, label: "Основной урок", x: 0, y: 140 },
+    { id: 4, label: "Что укрепит", x: 110, y: 165 },
+    { id: 5, label: "Долгосрочный итог", x: 220, y: 210 }
+  ]
+};
+
+export const SpreadConflictReason: SpreadSchema = {
+  id: "conflict_reason",
+  name: "Причина конфликта",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Корень проблемы", x: 0, y: 40 },
+    { id: 2, label: "Ваша роль", x: -140, y: 180 },
+    { id: 3, label: "Что мешает (центр)", x: 0, y: 180 },
+    { id: 4, label: "Его/её роль", x: 140, y: 180 },
+    { id: 5, label: "Решение", x: 0, y: 320 }
+  ]
+};
+
+export const SpreadWillHeReturn: SpreadSchema = {
+  id: "will_he_return",
+  name: "Вернётся ли человек?",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Его чувства", x: -220, y: 190 },
+    { id: 2, label: "Намерения", x: -110, y: 190 },
+    { id: 3, label: "Есть ли шанс", x: 0, y: 190 },
+    { id: 4, label: "Что влияет", x: 110, y: 190 },
+    { id: 5, label: "Итог", x: 220, y: 190 }
+  ]
+};
+
+export const SpreadKarmicConnection: SpreadSchema = {
+  id: "karmic_connection",
+  name: "Кармическая связь",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Тип связи (центр)", x: 0, y: 230 },
+    { id: 2, label: "Урок для вас", x: 0, y: 80 },
+    { id: 3, label: "Урок для партнёра", x: -140, y: 150 },
+    { id: 4, label: "Плюсы", x: 140, y: 150 },
+    { id: 5, label: "Минусы", x: -180, y: 250 },
+    { id: 6, label: "Риски", x: 180, y: 250 },
+    { id: 7, label: "Предназначение связи", x: 0, y: 380 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -193,5 +323,13 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   star: SpreadStar,
   pyramid: SpreadPyramid,
   celtic_cross: SpreadCelticCross,
-  wheel_of_year: SpreadWheelOfYear
+  wheel_of_year: SpreadWheelOfYear,
+  we_and_perspective: SpreadWeAndPerspective,
+  relationship_analysis: SpreadRelationshipAnalysis,
+  new_person: SpreadNewPerson,
+  love_triangle: SpreadLoveTriangle,
+  future_relationships: SpreadFutureRelationships,
+  conflict_reason: SpreadConflictReason,
+  will_he_return: SpreadWillHeReturn,
+  karmic_connection: SpreadKarmicConnection
 };

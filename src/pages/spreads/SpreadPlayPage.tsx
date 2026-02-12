@@ -847,7 +847,7 @@ export default function SpreadPlayPage() {
               <p className="text-wrap-anywhere text-sm text-white/70">
                 {schema.id === "one_card"
                   ? "Сформулируйте запрос и получите энергию дня."
-                  : "Три карты покажут факторы ДА/НЕТ и итог."}
+                  : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
               </p>
             </div>
             <textarea

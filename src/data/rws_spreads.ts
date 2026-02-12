@@ -9,7 +9,14 @@ export type SpreadId =
   | "pyramid"
   | "celtic_cross"
   | "wheel_of_year"
-  | "celtic_cross";
+  | "we_and_perspective"
+  | "relationship_analysis"
+  | "new_person"
+  | "love_triangle"
+  | "future_relationships"
+  | "conflict_reason"
+  | "will_he_return"
+  | "karmic_connection";
 
 export interface SpreadPosition {
   index: number;
@@ -175,6 +182,120 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 12, x: 15, y: 44, rotate: 0, label: "Главный итог" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  },
+  {
+    id: "we_and_perspective",
+    title: "Мы и перспектива",
+    description: "Три карты о вас, партнере и перспективах связи.",
+    cardsCount: 3,
+    positions: [
+      { index: 1, x: 30, y: 50, rotate: 0, label: "Вы" },
+      { index: 2, x: 50, y: 50, rotate: 0, label: "Партнёр" },
+      { index: 3, x: 70, y: 50, rotate: 0, label: "Перспектива" }
+    ],
+    openOrder: [1, 2, 3]
+  },
+  {
+    id: "relationship_analysis",
+    title: "Анализ отношений",
+    description: "Пятикарточный крест: чувства, проблема в центре, потенциал и итог.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 50, y: 28, rotate: 0, label: "Ваши чувства" },
+      { index: 2, x: 30, y: 50, rotate: 0, label: "Его/её чувства" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Проблема (центр)" },
+      { index: 4, x: 70, y: 50, rotate: 0, label: "Потенциал" },
+      { index: 5, x: 50, y: 72, rotate: 0, label: "Итог" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "new_person",
+    title: "Новый человек",
+    description: "Четыре карты линии и итог ниже: кто он и к чему ведёт связь.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 20, y: 42, rotate: 0, label: "Кто он/она" },
+      { index: 2, x: 40, y: 42, rotate: 0, label: "Намерения" },
+      { index: 3, x: 60, y: 42, rotate: 0, label: "Что принесёт" },
+      { index: 4, x: 80, y: 42, rotate: 0, label: "Риски" },
+      { index: 5, x: 50, y: 68, rotate: 0, label: "Перспектива" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "love_triangle",
+    title: "Любовный треугольник",
+    description: "Семь карт о ролях участников, чувствах, скрытой динамике и результате.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 50, y: 18, rotate: 0, label: "Вы" },
+      { index: 2, x: 28, y: 34, rotate: 0, label: "Партнёр" },
+      { index: 3, x: 72, y: 34, rotate: 0, label: "Третий человек" },
+      { index: 4, x: 38, y: 52, rotate: 0, label: "Его чувства к вам" },
+      { index: 5, x: 62, y: 52, rotate: 0, label: "Его чувства к третьему" },
+      { index: 6, x: 50, y: 68, rotate: 0, label: "Скрытая динамика" },
+      { index: 7, x: 50, y: 84, rotate: 0, label: "Итог" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "future_relationships",
+    title: "Будущее отношений",
+    description: "Пять карт в дуге: состояние, ближайшее будущее, урок, укрепление и итог.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 16, y: 56, rotate: 0, label: "Текущее состояние" },
+      { index: 2, x: 33, y: 48, rotate: 0, label: "Ближайшее будущее" },
+      { index: 3, x: 50, y: 44, rotate: 0, label: "Основной урок" },
+      { index: 4, x: 67, y: 48, rotate: 0, label: "Что укрепит" },
+      { index: 5, x: 84, y: 56, rotate: 0, label: "Долгосрочный итог" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "conflict_reason",
+    title: "Причина конфликта",
+    description: "Вертикальный анализ из 5 карт: корень, роли сторон, узел и решение.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 50, y: 28, rotate: 0, label: "Корень проблемы" },
+      { index: 2, x: 30, y: 50, rotate: 0, label: "Ваша роль" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Что мешает (центр)" },
+      { index: 4, x: 70, y: 50, rotate: 0, label: "Его/её роль" },
+      { index: 5, x: 50, y: 72, rotate: 0, label: "Решение" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "will_he_return",
+    title: "Вернётся ли человек?",
+    description: "Путь из 5 карт от чувств и намерений к итогу.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 16, y: 50, rotate: 0, label: "Его чувства" },
+      { index: 2, x: 33, y: 50, rotate: 0, label: "Намерения" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Есть ли шанс" },
+      { index: 4, x: 67, y: 50, rotate: 0, label: "Что влияет" },
+      { index: 5, x: 84, y: 50, rotate: 0, label: "Итог" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "karmic_connection",
+    title: "Кармическая связь",
+    description: "Семь карт по кругу с центром: тип связи, уроки, плюсы, риски и предназначение.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 50, y: 52, rotate: 0, label: "Тип связи (центр)" },
+      { index: 2, x: 50, y: 22, rotate: 0, label: "Урок для вас" },
+      { index: 3, x: 34, y: 38, rotate: 0, label: "Урок для партнёра" },
+      { index: 4, x: 66, y: 38, rotate: 0, label: "Плюсы" },
+      { index: 5, x: 26, y: 52, rotate: 0, label: "Минусы" },
+      { index: 6, x: 74, y: 52, rotate: 0, label: "Риски" },
+      { index: 7, x: 50, y: 72, rotate: 0, label: "Предназначение связи" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
   }
 ];
 
