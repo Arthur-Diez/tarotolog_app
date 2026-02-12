@@ -209,11 +209,11 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Глубокий разбор пары.",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 50, y: 28, rotate: 0, label: "Ваши чувства" },
+      { index: 1, x: 50, y: 24, rotate: 0, label: "Ваши чувства" },
       { index: 2, x: 30, y: 50, rotate: 0, label: "Его/её чувства" },
       { index: 3, x: 50, y: 50, rotate: 0, label: "Проблема (центр)" },
       { index: 4, x: 70, y: 50, rotate: 0, label: "Потенциал" },
-      { index: 5, x: 50, y: 72, rotate: 0, label: "Итог" }
+      { index: 5, x: 50, y: 76, rotate: 0, label: "Итог" }
     ],
     openOrder: [1, 2, 3, 4, 5]
   },
@@ -237,13 +237,13 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Три стороны ситуации.",
     cardsCount: 7,
     positions: [
-      { index: 1, x: 50, y: 18, rotate: 0, label: "Вы" },
-      { index: 2, x: 28, y: 34, rotate: 0, label: "Партнёр" },
-      { index: 3, x: 72, y: 34, rotate: 0, label: "Третий человек" },
-      { index: 4, x: 38, y: 52, rotate: 0, label: "Его чувства к вам" },
-      { index: 5, x: 62, y: 52, rotate: 0, label: "Его чувства к третьему" },
-      { index: 6, x: 50, y: 68, rotate: 0, label: "Скрытая динамика" },
-      { index: 7, x: 50, y: 84, rotate: 0, label: "Итог" }
+      { index: 1, x: 50, y: 14, rotate: 0, label: "Вы" },
+      { index: 2, x: 30, y: 34, rotate: 0, label: "Партнёр" },
+      { index: 3, x: 70, y: 34, rotate: 0, label: "Третий человек" },
+      { index: 4, x: 38, y: 56, rotate: 0, label: "Его чувства к вам" },
+      { index: 5, x: 62, y: 56, rotate: 0, label: "Его чувства к третьему" },
+      { index: 6, x: 50, y: 74, rotate: 0, label: "Скрытая динамика" },
+      { index: 7, x: 50, y: 86, rotate: 0, label: "Итог" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
   },
@@ -267,11 +267,11 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Корень проблемы в паре.",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 50, y: 28, rotate: 0, label: "Корень проблемы" },
+      { index: 1, x: 50, y: 24, rotate: 0, label: "Корень проблемы" },
       { index: 2, x: 30, y: 50, rotate: 0, label: "Ваша роль" },
       { index: 3, x: 50, y: 50, rotate: 0, label: "Что мешает (центр)" },
       { index: 4, x: 70, y: 50, rotate: 0, label: "Его/её роль" },
-      { index: 5, x: 50, y: 72, rotate: 0, label: "Решение" }
+      { index: 5, x: 50, y: 76, rotate: 0, label: "Решение" }
     ],
     openOrder: [1, 2, 3, 4, 5]
   },
@@ -296,12 +296,12 @@ export const RWS_SPREADS: SpreadDef[] = [
     cardsCount: 7,
     positions: [
       { index: 1, x: 50, y: 52, rotate: 0, label: "Тип связи (центр)" },
-      { index: 2, x: 50, y: 22, rotate: 0, label: "Урок для вас" },
-      { index: 3, x: 34, y: 38, rotate: 0, label: "Урок для партнёра" },
-      { index: 4, x: 66, y: 38, rotate: 0, label: "Плюсы" },
-      { index: 5, x: 26, y: 52, rotate: 0, label: "Минусы" },
-      { index: 6, x: 74, y: 52, rotate: 0, label: "Риски" },
-      { index: 7, x: 50, y: 72, rotate: 0, label: "Предназначение связи" }
+      { index: 2, x: 50, y: 16, rotate: 0, label: "Урок для вас" },
+      { index: 3, x: 33, y: 33, rotate: 0, label: "Урок для партнёра" },
+      { index: 4, x: 67, y: 33, rotate: 0, label: "Плюсы" },
+      { index: 5, x: 27, y: 71, rotate: 0, label: "Минусы" },
+      { index: 6, x: 73, y: 71, rotate: 0, label: "Риски" },
+      { index: 7, x: 50, y: 86, rotate: 0, label: "Предназначение связи" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
   },
@@ -323,11 +323,11 @@ export const RWS_SPREADS: SpreadDef[] = [
     description: "Рациональное решение без эмоций.",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 50, y: 24, rotate: 0, label: "Текущая позиция (где вы сейчас)" },
-      { index: 2, x: 30, y: 46, rotate: 0, label: "Плюсы смены" },
-      { index: 3, x: 70, y: 46, rotate: 0, label: "Минусы / риски смены" },
-      { index: 4, x: 30, y: 70, rotate: 0, label: "Возможности (если решитесь)" },
-      { index: 5, x: 70, y: 70, rotate: 0, label: "Итог / наиболее вероятный исход" }
+      { index: 1, x: 50, y: 20, rotate: 0, label: "Текущая позиция (где вы сейчас)" },
+      { index: 2, x: 30, y: 44, rotate: 0, label: "Плюсы смены" },
+      { index: 3, x: 70, y: 44, rotate: 0, label: "Минусы / риски смены" },
+      { index: 4, x: 30, y: 74, rotate: 0, label: "Возможности (если решитесь)" },
+      { index: 5, x: 70, y: 74, rotate: 0, label: "Итог / наиболее вероятный исход" }
     ],
     openOrder: [1, 2, 3, 4, 5]
   },
@@ -409,12 +409,12 @@ export const RWS_SPREADS: SpreadDef[] = [
     cardsCount: 7,
     positions: [
       { index: 1, x: 50, y: 52, rotate: 0, label: "Главный потенциал (ядро)" },
-      { index: 2, x: 50, y: 24, rotate: 0, label: "Талант" },
-      { index: 3, x: 36, y: 38, rotate: 0, label: "Скрытый ресурс" },
-      { index: 4, x: 64, y: 38, rotate: 0, label: "Препятствие" },
-      { index: 5, x: 26, y: 52, rotate: 0, label: "Направление развития" },
-      { index: 6, x: 74, y: 52, rotate: 0, label: "Поддержка / что усилит" },
-      { index: 7, x: 50, y: 72, rotate: 0, label: "Итог (к чему ведёт путь)" }
+      { index: 2, x: 50, y: 16, rotate: 0, label: "Талант" },
+      { index: 3, x: 33, y: 33, rotate: 0, label: "Скрытый ресурс" },
+      { index: 4, x: 67, y: 33, rotate: 0, label: "Препятствие" },
+      { index: 5, x: 27, y: 71, rotate: 0, label: "Направление развития" },
+      { index: 6, x: 73, y: 71, rotate: 0, label: "Поддержка / что усилит" },
+      { index: 7, x: 50, y: 86, rotate: 0, label: "Итог (к чему ведёт путь)" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
   }

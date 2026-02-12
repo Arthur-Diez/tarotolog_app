@@ -484,16 +484,79 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
 
   if (!spread) return <SpreadPreviewOneCard />;
 
-  const previewPositions =
-    spread.id === "five_cards"
-      ? [
-          { ...spread.positions[0], x: 50, y: 25 },
-          { ...spread.positions[1], x: 38, y: 47 },
-          { ...spread.positions[2], x: 62, y: 47 },
-          { ...spread.positions[3], x: 68, y: 69 },
-          { ...spread.positions[4], x: 32, y: 69 }
-        ]
-      : spread.positions;
+  const previewOverrides: Partial<Record<string, Array<{ x: number; y: number }>>> = {
+    five_cards: [
+      { x: 50, y: 22 },
+      { x: 38, y: 48 },
+      { x: 62, y: 48 },
+      { x: 68, y: 76 },
+      { x: 32, y: 76 }
+    ],
+    relationship_analysis: [
+      { x: 50, y: 20 },
+      { x: 30, y: 50 },
+      { x: 50, y: 50 },
+      { x: 70, y: 50 },
+      { x: 50, y: 80 }
+    ],
+    conflict_reason: [
+      { x: 50, y: 20 },
+      { x: 30, y: 50 },
+      { x: 50, y: 50 },
+      { x: 70, y: 50 },
+      { x: 50, y: 80 }
+    ],
+    change_job: [
+      { x: 50, y: 18 },
+      { x: 30, y: 46 },
+      { x: 70, y: 46 },
+      { x: 30, y: 78 },
+      { x: 70, y: 78 }
+    ],
+    team_work: [
+      { x: 50, y: 50 },
+      { x: 50, y: 20 },
+      { x: 30, y: 50 },
+      { x: 70, y: 50 },
+      { x: 50, y: 80 }
+    ],
+    love_triangle: [
+      { x: 50, y: 14 },
+      { x: 30, y: 34 },
+      { x: 70, y: 34 },
+      { x: 38, y: 58 },
+      { x: 62, y: 58 },
+      { x: 50, y: 76 },
+      { x: 50, y: 88 }
+    ],
+    karmic_connection: [
+      { x: 50, y: 52 },
+      { x: 50, y: 14 },
+      { x: 33, y: 33 },
+      { x: 67, y: 33 },
+      { x: 27, y: 71 },
+      { x: 73, y: 71 },
+      { x: 50, y: 88 }
+    ],
+    vocation_profession: [
+      { x: 50, y: 52 },
+      { x: 50, y: 14 },
+      { x: 33, y: 33 },
+      { x: 67, y: 33 },
+      { x: 27, y: 71 },
+      { x: 73, y: 71 },
+      { x: 50, y: 88 }
+    ]
+  };
+
+  const override = previewOverrides[spread.id];
+  const previewPositions = override
+    ? spread.positions.map((position, index) => ({
+        ...position,
+        x: override[index]?.x ?? position.x,
+        y: override[index]?.y ?? position.y
+      }))
+    : spread.positions;
 
   const minX = Math.min(...previewPositions.map((position) => position.x));
   const maxX = Math.max(...previewPositions.map((position) => position.x));
@@ -506,7 +569,17 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
   const fitScale = Math.min(1, 74 / spanX, 70 / spanY);
 
   const cardsCount = spread.cardsCount;
-  const customSize = spread.id === "five_cards" ? 48 : null;
+  const customSizeById: Partial<Record<string, number>> = {
+    five_cards: 46,
+    relationship_analysis: 42,
+    conflict_reason: 42,
+    change_job: 40,
+    team_work: 42,
+    love_triangle: 36,
+    karmic_connection: 36,
+    vocation_profession: 36
+  };
+  const customSize = customSizeById[spread.id] ?? null;
   const cardSize =
     customSize ?? (cardsCount <= 1 ? 86 : cardsCount <= 3 ? 64 : cardsCount <= 5 ? 56 : cardsCount <= 7 ? 48 : cardsCount <= 10 ? 44 : 38);
 
