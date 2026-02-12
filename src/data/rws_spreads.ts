@@ -16,7 +16,15 @@ export type SpreadId =
   | "future_relationships"
   | "conflict_reason"
   | "will_he_return"
-  | "karmic_connection";
+  | "karmic_connection"
+  | "work_current_situation"
+  | "change_job"
+  | "career_growth"
+  | "financial_flow"
+  | "new_project"
+  | "finances_period"
+  | "team_work"
+  | "vocation_profession";
 
 export interface SpreadPosition {
   index: number;
@@ -186,7 +194,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "we_and_perspective",
     title: "Мы и перспектива",
-    description: "Три карты о вас, партнере и перспективах связи.",
+    description: "Вы, партнёр и вектор связи.",
     cardsCount: 3,
     positions: [
       { index: 1, x: 30, y: 50, rotate: 0, label: "Вы" },
@@ -198,7 +206,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "relationship_analysis",
     title: "Анализ отношений",
-    description: "Пятикарточный крест: чувства, проблема в центре, потенциал и итог.",
+    description: "Глубокий разбор пары.",
     cardsCount: 5,
     positions: [
       { index: 1, x: 50, y: 28, rotate: 0, label: "Ваши чувства" },
@@ -212,7 +220,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "new_person",
     title: "Новый человек",
-    description: "Четыре карты линии и итог ниже: кто он и к чему ведёт связь.",
+    description: "Кто он и что принесёт.",
     cardsCount: 5,
     positions: [
       { index: 1, x: 20, y: 42, rotate: 0, label: "Кто он/она" },
@@ -226,7 +234,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "love_triangle",
     title: "Любовный треугольник",
-    description: "Семь карт о ролях участников, чувствах, скрытой динамике и результате.",
+    description: "Три стороны ситуации.",
     cardsCount: 7,
     positions: [
       { index: 1, x: 50, y: 18, rotate: 0, label: "Вы" },
@@ -242,7 +250,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "future_relationships",
     title: "Будущее отношений",
-    description: "Пять карт в дуге: состояние, ближайшее будущее, урок, укрепление и итог.",
+    description: "Прогноз развития союза.",
     cardsCount: 5,
     positions: [
       { index: 1, x: 16, y: 56, rotate: 0, label: "Текущее состояние" },
@@ -256,7 +264,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "conflict_reason",
     title: "Причина конфликта",
-    description: "Вертикальный анализ из 5 карт: корень, роли сторон, узел и решение.",
+    description: "Корень проблемы в паре.",
     cardsCount: 5,
     positions: [
       { index: 1, x: 50, y: 28, rotate: 0, label: "Корень проблемы" },
@@ -270,7 +278,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "will_he_return",
     title: "Вернётся ли человек?",
-    description: "Путь из 5 карт от чувств и намерений к итогу.",
+    description: "Шанс на восстановление связи.",
     cardsCount: 5,
     positions: [
       { index: 1, x: 16, y: 50, rotate: 0, label: "Его чувства" },
@@ -284,7 +292,7 @@ export const RWS_SPREADS: SpreadDef[] = [
   {
     id: "karmic_connection",
     title: "Кармическая связь",
-    description: "Семь карт по кругу с центром: тип связи, уроки, плюсы, риски и предназначение.",
+    description: "Глубинная природа отношений.",
     cardsCount: 7,
     positions: [
       { index: 1, x: 50, y: 52, rotate: 0, label: "Тип связи (центр)" },
@@ -294,6 +302,119 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 5, x: 26, y: 52, rotate: 0, label: "Минусы" },
       { index: 6, x: 74, y: 52, rotate: 0, label: "Риски" },
       { index: 7, x: 50, y: 72, rotate: 0, label: "Предназначение связи" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "work_current_situation",
+    title: "Текущая рабочая ситуация",
+    description: "Быстрый срез того, что происходит.",
+    cardsCount: 3,
+    positions: [
+      { index: 1, x: 24, y: 50, rotate: 0, label: "Текущее состояние" },
+      { index: 2, x: 50, y: 50, rotate: 0, label: "Скрытый фактор" },
+      { index: 3, x: 76, y: 50, rotate: 0, label: "Ближайшее развитие" }
+    ],
+    openOrder: [1, 2, 3]
+  },
+  {
+    id: "change_job",
+    title: "Стоит ли менять работу?",
+    description: "Рациональное решение без эмоций.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 50, y: 24, rotate: 0, label: "Текущая позиция (где вы сейчас)" },
+      { index: 2, x: 30, y: 46, rotate: 0, label: "Плюсы смены" },
+      { index: 3, x: 70, y: 46, rotate: 0, label: "Минусы / риски смены" },
+      { index: 4, x: 30, y: 70, rotate: 0, label: "Возможности (если решитесь)" },
+      { index: 5, x: 70, y: 70, rotate: 0, label: "Итог / наиболее вероятный исход" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "career_growth",
+    title: "Карьерный рост",
+    description: "Путь вверх: блоки и ресурсы.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 20, y: 20, rotate: 0, label: "Потенциал роста" },
+      { index: 2, x: 35, y: 36, rotate: 0, label: "Что мешает" },
+      { index: 3, x: 50, y: 52, rotate: 0, label: "Что поможет" },
+      { index: 4, x: 65, y: 68, rotate: 0, label: "Возможности/шанс" },
+      { index: 5, x: 80, y: 84, rotate: 0, label: "Итог роста (к чему ведёт)" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "financial_flow",
+    title: "Финансовый поток",
+    description: "Диагностика денег и утечек.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 16, y: 50, rotate: 0, label: "Источник дохода" },
+      { index: 2, x: 33, y: 50, rotate: 0, label: "Где “утечка” / блок" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Скрытый фактор" },
+      { index: 4, x: 67, y: 50, rotate: 0, label: "Точка роста" },
+      { index: 5, x: 84, y: 50, rotate: 0, label: "Итог потока" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "new_project",
+    title: "Новый проект",
+    description: "Проверка идеи перед запуском.",
+    cardsCount: 6,
+    positions: [
+      { index: 1, x: 38, y: 24, rotate: 0, label: "Идея / потенциал" },
+      { index: 2, x: 62, y: 24, rotate: 0, label: "Рынок / спрос" },
+      { index: 3, x: 24, y: 50, rotate: 0, label: "Ресурсы (что есть)" },
+      { index: 4, x: 50, y: 50, rotate: 0, label: "Риски (что может сорвать)" },
+      { index: 5, x: 76, y: 50, rotate: 0, label: "Конкуренция / внешнее давление" },
+      { index: 6, x: 50, y: 76, rotate: 0, label: "Перспектива (итог)" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    id: "finances_period",
+    title: "Финансы на период",
+    description: "Куда пойдут деньги в ближайшее время.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 16, y: 50, rotate: 0, label: "Тенденция периода" },
+      { index: 2, x: 33, y: 50, rotate: 0, label: "Возможность" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Риск" },
+      { index: 4, x: 67, y: 50, rotate: 0, label: "Совет (что делать)" },
+      { index: 5, x: 84, y: 50, rotate: 0, label: "Итог периода" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "team_work",
+    title: "Работа в коллективе",
+    description: "Вы в системе: роли и влияние.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 50, y: 50, rotate: 0, label: "Вы (ваша роль)" },
+      { index: 2, x: 50, y: 24, rotate: 0, label: "Руководство / влияние сверху" },
+      { index: 3, x: 30, y: 50, rotate: 0, label: "Коллеги / окружение" },
+      { index: 4, x: 70, y: 50, rotate: 0, label: "Скрытые процессы" },
+      { index: 5, x: 50, y: 76, rotate: 0, label: "Итог / как будет развиваться" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "vocation_profession",
+    title: "Предназначение и профессия",
+    description: "Глубокий разбор сильных сторон.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 50, y: 52, rotate: 0, label: "Главный потенциал (ядро)" },
+      { index: 2, x: 50, y: 24, rotate: 0, label: "Талант" },
+      { index: 3, x: 36, y: 38, rotate: 0, label: "Скрытый ресурс" },
+      { index: 4, x: 64, y: 38, rotate: 0, label: "Препятствие" },
+      { index: 5, x: 26, y: 52, rotate: 0, label: "Направление развития" },
+      { index: 6, x: 74, y: 52, rotate: 0, label: "Поддержка / что усилит" },
+      { index: 7, x: 50, y: 72, rotate: 0, label: "Итог (к чему ведёт путь)" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
   }

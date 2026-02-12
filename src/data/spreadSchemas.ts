@@ -313,6 +313,135 @@ export const SpreadKarmicConnection: SpreadSchema = {
   ]
 };
 
+export const SpreadWorkCurrentSituation: SpreadSchema = {
+  id: "work_current_situation",
+  name: "Текущая рабочая ситуация",
+  cardCount: 3,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3],
+  positions: [
+    { id: 1, label: "Текущее состояние", x: -120, y: 190 },
+    { id: 2, label: "Скрытый фактор", x: 0, y: 190 },
+    { id: 3, label: "Ближайшее развитие", x: 120, y: 190 }
+  ]
+};
+
+export const SpreadChangeJob: SpreadSchema = {
+  id: "change_job",
+  name: "Стоит ли менять работу?",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Текущая позиция (где вы сейчас)", x: 0, y: 40 },
+    { id: 2, label: "Плюсы смены", x: -140, y: 180 },
+    { id: 3, label: "Минусы / риски смены", x: 140, y: 180 },
+    { id: 4, label: "Возможности (если решитесь)", x: -140, y: 320 },
+    { id: 5, label: "Итог / наиболее вероятный исход", x: 140, y: 320 }
+  ]
+};
+
+export const SpreadCareerGrowth: SpreadSchema = {
+  id: "career_growth",
+  name: "Карьерный рост",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Потенциал роста", x: -220, y: 40 },
+    { id: 2, label: "Что мешает", x: -110, y: 140 },
+    { id: 3, label: "Что поможет", x: 0, y: 240 },
+    { id: 4, label: "Возможности/шанс", x: 110, y: 340 },
+    { id: 5, label: "Итог роста (к чему ведёт)", x: 220, y: 440 }
+  ]
+};
+
+export const SpreadFinancialFlow: SpreadSchema = {
+  id: "financial_flow",
+  name: "Финансовый поток",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Источник дохода", x: -220, y: 190 },
+    { id: 2, label: "Где “утечка” / блок", x: -110, y: 190 },
+    { id: 3, label: "Скрытый фактор", x: 0, y: 190 },
+    { id: 4, label: "Точка роста", x: 110, y: 190 },
+    { id: 5, label: "Итог потока", x: 220, y: 190 }
+  ]
+};
+
+export const SpreadNewProject: SpreadSchema = {
+  id: "new_project",
+  name: "Новый проект",
+  cardCount: 6,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6],
+  positions: [
+    { id: 1, label: "Идея / потенциал", x: -100, y: 40 },
+    { id: 2, label: "Рынок / спрос", x: 100, y: 40 },
+    { id: 3, label: "Ресурсы (что есть)", x: -180, y: 180 },
+    { id: 4, label: "Риски (что может сорвать)", x: 0, y: 180 },
+    { id: 5, label: "Конкуренция / внешнее давление", x: 180, y: 180 },
+    { id: 6, label: "Перспектива (итог)", x: 0, y: 320 }
+  ]
+};
+
+export const SpreadFinancesPeriod: SpreadSchema = {
+  id: "finances_period",
+  name: "Финансы на период",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Тенденция периода", x: -220, y: 190 },
+    { id: 2, label: "Возможность", x: -110, y: 190 },
+    { id: 3, label: "Риск", x: 0, y: 190 },
+    { id: 4, label: "Совет (что делать)", x: 110, y: 190 },
+    { id: 5, label: "Итог периода", x: 220, y: 190 }
+  ]
+};
+
+export const SpreadTeamWork: SpreadSchema = {
+  id: "team_work",
+  name: "Работа в коллективе",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Вы (ваша роль)", x: 0, y: 180 },
+    { id: 2, label: "Руководство / влияние сверху", x: 0, y: 40 },
+    { id: 3, label: "Коллеги / окружение", x: -140, y: 180 },
+    { id: 4, label: "Скрытые процессы", x: 140, y: 180 },
+    { id: 5, label: "Итог / как будет развиваться", x: 0, y: 320 }
+  ]
+};
+
+export const SpreadVocationProfession: SpreadSchema = {
+  id: "vocation_profession",
+  name: "Предназначение и профессия",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Главный потенциал (ядро)", x: 0, y: 230 },
+    { id: 2, label: "Талант", x: 0, y: 80 },
+    { id: 3, label: "Скрытый ресурс", x: -140, y: 150 },
+    { id: 4, label: "Препятствие", x: 140, y: 150 },
+    { id: 5, label: "Направление развития", x: -180, y: 250 },
+    { id: 6, label: "Поддержка / что усилит", x: 180, y: 250 },
+    { id: 7, label: "Итог (к чему ведёт путь)", x: 0, y: 380 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -331,5 +460,13 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   future_relationships: SpreadFutureRelationships,
   conflict_reason: SpreadConflictReason,
   will_he_return: SpreadWillHeReturn,
-  karmic_connection: SpreadKarmicConnection
+  karmic_connection: SpreadKarmicConnection,
+  work_current_situation: SpreadWorkCurrentSituation,
+  change_job: SpreadChangeJob,
+  career_growth: SpreadCareerGrowth,
+  financial_flow: SpreadFinancialFlow,
+  new_project: SpreadNewProject,
+  finances_period: SpreadFinancesPeriod,
+  team_work: SpreadTeamWork,
+  vocation_profession: SpreadVocationProfession
 };
