@@ -216,35 +216,35 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[14%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[-9px] top-[-8px] opacity-80" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[-3px] top-[-3px] opacity-90" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[3px] top-[2px]" />
+      <div className="absolute left-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[-1px] top-[4px] opacity-75" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[3px] top-[0px]" />
         <FaceCard
           name={RWS_FLOW_FACE_CARDS[3]}
           size={52}
-          className="deck-left-draw-card absolute left-[6px] top-[6px]"
+          className="deck-left-draw-card absolute left-[3px] top-[0px]"
           style={{ animationPlayState: playState }}
         />
       </div>
 
-      <div className="absolute right-[14%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[-8px] top-[-7px] opacity-75" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[-3px] top-[-2px] opacity-85" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[2px] top-[3px] opacity-95" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[6px] top-[7px]" />
+      <div className="absolute right-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[-1px] top-[4px] opacity-75" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[3px] top-[0px] opacity-95" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[5px] top-[-2px]" />
       </div>
 
-      <div className="absolute left-1/2 top-1/2 z-[3]">
+      <div className="absolute left-1/2 top-1/2 z-[3] h-[84px] w-[56px]">
         {[0, 1, 2].map((idx) => {
           const customVars = {
-            "--deck-from-x": `${-66 + idx * 66}px`,
-            "--deck-from-y": "-42px",
-            "--deck-to-x": `${102 + idx * 4}px`,
-            "--deck-to-y": `${-42 + idx * 2}px`,
-            "--deck-stack-x": "168px",
-            "--deck-stack-y": `${-20 + idx * 11}px`,
-            animationDelay: `${idx * 1.65}s`,
+            "--flow-start-x": "-108px",
+            "--flow-mid-x": "0px",
+            "--flow-end-x": "108px",
+            "--flow-stack-x": "128px",
+            "--flow-y": "-42px",
+            "--flow-stack-y": `${-38 + idx * 3}px`,
+            animationDelay: `${-idx * 2.9}s`,
             animationPlayState: playState
           } as CSSProperties;
 
@@ -253,7 +253,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
               key={`rws-flow-${idx}`}
               name={RWS_FLOW_FACE_CARDS[idx]}
               size={54}
-              className="deck-flow-card absolute"
+              className="deck-flow-card absolute left-0 top-0"
               style={customVars}
             />
           );
