@@ -21,14 +21,14 @@ interface DeckContent {
 }
 
 const RWS_FLOW_FACE_CARDS = [
-  "Шут (0)",
-  "Маг (1)",
-  "Верховная Жрица (2)",
-  "Императрица (3)",
-  "Император (4)",
-  "Влюбленные (6)",
-  "Сила (8)",
-  "Колесо Фортуны (10)"
+  "Король Жезлов",
+  "Семерка Кубков",
+  "Туз Жезлов",
+  "Восьмерка Кубков",
+  "Шестерка Жезлов",
+  "Семерка Жезлов",
+  "Восьмерка Жезлов",
+  "Шестерка Кубков"
 ];
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
@@ -126,10 +126,21 @@ interface DeckCardProps {
 
 function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect }: DeckCardProps) {
   return (
-    <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
+    <Card
+      className="cursor-pointer rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)] transition active:opacity-95"
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-2xl font-semibold leading-tight text-[var(--text-primary)]">{deck.title}</h2>
+          <h2 className="text-2xl font-semibold leading-tight text-[var(--text-primary)]">{deck.title}</h2>
           <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">{content.positioning}</p>
         </div>
         <Button
@@ -137,7 +148,10 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
           variant="outline"
           size="sm"
           className="shrink-0 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
-          onClick={onToggle}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
           aria-expanded={expanded}
           aria-controls={`deck-desc-${deck.id}`}
         >
@@ -190,7 +204,7 @@ function FaceCard({ name, size = 56, className = "", style }: { name: string; si
       className={`rounded-[10px] object-cover shadow-[0_14px_24px_rgba(0,0,0,0.4)] ${className}`}
       style={{ width: `${size}px`, height: `${Math.round(size * 1.5)}px`, ...style }}
       draggable={false}
-      loading="lazy"
+      loading="eager"
     />
   );
 }
@@ -202,7 +216,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[14%] top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-[14%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[-9px] top-[-8px] opacity-80" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[-3px] top-[-3px] opacity-90" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[3px] top-[2px]" />
@@ -214,14 +228,14 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
         />
       </div>
 
-      <div className="absolute right-[14%] top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute right-[14%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[-8px] top-[-7px] opacity-75" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[-3px] top-[-2px] opacity-85" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[2px] top-[3px] opacity-95" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[6px] top-[7px]" />
       </div>
 
-      <div className="absolute left-1/2 top-1/2">
+      <div className="absolute left-1/2 top-1/2 z-[3]">
         {[0, 1, 2].map((idx) => {
           const customVars = {
             "--deck-from-x": `${-66 + idx * 66}px`,
