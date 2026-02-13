@@ -166,12 +166,15 @@ const matchesSpreadQuery = (spreadId: string, query: string): boolean => {
 };
 
 export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
-  const [expandedSpread, setExpandedSpread] = useState<string | null>(null);
+  const [expandedSpreads, setExpandedSpreads] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
   const toggleSpread = (spreadId: string) => {
-    setExpandedSpread((prev) => (prev === spreadId ? null : spreadId));
+    setExpandedSpreads((prev) => ({
+      ...prev,
+      [spreadId]: !prev[spreadId]
+    }));
     navigator.vibrate?.(10);
   };
 
@@ -248,7 +251,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                   <SpreadCard
                     key={spread.id}
                     spread={spread}
-                    expanded={expandedSpread === spread.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
                     onToggle={() => toggleSpread(spread.id)}
                     onSelect={() => handleSelectSpread(spread.id)}
                     canSelect={isRwsSpreadAvailable(spread.id)}
@@ -269,7 +272,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             <SpreadCard
               key={spread.id}
               spread={spread}
-              expanded={expandedSpread === spread.id}
+              expanded={Boolean(expandedSpreads[spread.id])}
               onToggle={() => toggleSpread(spread.id)}
               onSelect={() => handleSelectSpread(spread.id)}
               canSelect={false}
@@ -836,6 +839,18 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 30, y: 52 },
       { x: 70, y: 52 },
       { x: 50, y: 88 }
+    ],
+    celtic_cross: [
+      { x: 42, y: 50 },
+      { x: 42, y: 50 },
+      { x: 42, y: 28 },
+      { x: 42, y: 72 },
+      { x: 60, y: 50 },
+      { x: 24, y: 50 },
+      { x: 78, y: 83 },
+      { x: 78, y: 61 },
+      { x: 78, y: 39 },
+      { x: 78, y: 17 }
     ]
   };
 
@@ -869,6 +884,7 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     karmic_connection: 36,
     vocation_profession: 36,
     inner_resource: 36,
+    celtic_cross: 36,
     inner_conflict: 40,
     shadow_side: 34,
     hero_path: 34,
