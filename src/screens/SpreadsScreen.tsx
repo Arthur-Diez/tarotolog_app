@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -16,9 +16,158 @@ interface SpreadsScreenProps {
 }
 
 const isRwsSpreadAvailable = (spreadId: string) => spreadId in RWS_SPREADS_MAP;
+type SpreadCategory = "popular" | "relationships" | "work_finance" | "self_growth" | "premium";
+
+interface SpreadMeta {
+  category: SpreadCategory;
+  tags: string[];
+  energyCost: number;
+  popularityScore: number;
+  keywords: string[];
+}
+
+interface SpreadBlock {
+  id: SpreadCategory;
+  title: string;
+  badge?: string;
+  spreadIds: string[];
+}
+
+const RWS_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "popular",
+    title: "Популярные / Быстрые",
+    badge: "🔥 Популярное",
+    spreadIds: ["one_card", "yes_no", "three_cards", "cross", "five_cards"]
+  },
+  {
+    id: "relationships",
+    title: "Отношения",
+    spreadIds: [
+      "we_and_perspective",
+      "relationship_analysis",
+      "new_person",
+      "love_triangle",
+      "future_relationships",
+      "conflict_reason",
+      "will_he_return",
+      "karmic_connection"
+    ]
+  },
+  {
+    id: "work_finance",
+    title: "Работа и Финансы",
+    spreadIds: [
+      "work_current_situation",
+      "change_job",
+      "career_growth",
+      "financial_flow",
+      "new_project",
+      "finances_period",
+      "team_work",
+      "vocation_profession"
+    ]
+  },
+  {
+    id: "self_growth",
+    title: "Саморазвитие",
+    spreadIds: ["inner_resource", "inner_conflict", "shadow_side", "hero_path", "balance_wheel", "reset_reload", "soul_purpose"]
+  },
+  {
+    id: "premium",
+    title: "Глубокие / Стратегические",
+    badge: "👑 Премиум",
+    spreadIds: ["celtic_cross", "wheel_of_year", "pyramid", "horseshoe", "star"]
+  }
+];
+
+const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: 5, popularityScore: 95, keywords: ["быстро", "карта дня"] },
+  yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: 10, popularityScore: 92, keywords: ["да", "нет"] },
+  three_cards: { category: "popular", tags: ["прошлое", "настоящее", "будущее"], energyCost: 12, popularityScore: 90, keywords: ["динамика"] },
+  cross: { category: "popular", tags: ["ситуация", "препятствие", "результат"], energyCost: 14, popularityScore: 88, keywords: ["структура"] },
+  five_cards: { category: "popular", tags: ["слои", "совет", "итог"], energyCost: 16, popularityScore: 82, keywords: ["углублённый"] },
+  we_and_perspective: { category: "relationships", tags: ["любовь", "партнёр", "перспектива"], energyCost: 14, popularityScore: 87, keywords: ["отношения"] },
+  relationship_analysis: { category: "relationships", tags: ["чувства", "проблема", "потенциал"], energyCost: 18, popularityScore: 86, keywords: ["пара"] },
+  new_person: { category: "relationships", tags: ["новое", "намерения", "риски"], energyCost: 16, popularityScore: 84, keywords: ["знакомство"] },
+  love_triangle: { category: "relationships", tags: ["треугольник", "чувства", "выбор"], energyCost: 22, popularityScore: 83, keywords: ["третьи лица"] },
+  future_relationships: { category: "relationships", tags: ["будущее", "урок", "итог"], energyCost: 17, popularityScore: 85, keywords: ["прогноз"] },
+  conflict_reason: { category: "relationships", tags: ["конфликт", "роли", "решение"], energyCost: 18, popularityScore: 80, keywords: ["кризис"] },
+  will_he_return: { category: "relationships", tags: ["возврат", "чувства", "шанс"], energyCost: 17, popularityScore: 89, keywords: ["после расставания"] },
+  karmic_connection: { category: "relationships", tags: ["карма", "уроки", "предназначение"], energyCost: 22, popularityScore: 78, keywords: ["судьба"] },
+  work_current_situation: { category: "work_finance", tags: ["работа", "фактор", "прогноз"], energyCost: 12, popularityScore: 82, keywords: ["карьера"] },
+  change_job: { category: "work_finance", tags: ["работа", "плюсы", "риски"], energyCost: 16, popularityScore: 86, keywords: ["смена"] },
+  career_growth: { category: "work_finance", tags: ["рост", "ресурс", "шанс"], energyCost: 18, popularityScore: 84, keywords: ["повышение"] },
+  financial_flow: { category: "work_finance", tags: ["деньги", "утечки", "рост"], energyCost: 16, popularityScore: 88, keywords: ["доход"] },
+  new_project: { category: "work_finance", tags: ["проект", "риски", "перспектива"], energyCost: 20, popularityScore: 81, keywords: ["бизнес"] },
+  finances_period: { category: "work_finance", tags: ["деньги", "период", "совет"], energyCost: 16, popularityScore: 85, keywords: ["планирование"] },
+  team_work: { category: "work_finance", tags: ["команда", "руководство", "итог"], energyCost: 17, popularityScore: 79, keywords: ["коллектив"] },
+  vocation_profession: { category: "work_finance", tags: ["предназначение", "талант", "путь"], energyCost: 22, popularityScore: 83, keywords: ["профессия", "рост"] },
+  inner_resource: { category: "self_growth", tags: ["энергия", "блок", "восстановление"], energyCost: 15, popularityScore: 82, keywords: ["выгорание"] },
+  inner_conflict: { category: "self_growth", tags: ["выбор", "страх", "решение"], energyCost: 16, popularityScore: 80, keywords: ["кризис"] },
+  shadow_side: { category: "self_growth", tags: ["тень", "подавление", "интеграция"], energyCost: 22, popularityScore: 76, keywords: ["психология"] },
+  hero_path: { category: "self_growth", tags: ["путь", "урок", "уровень"], energyCost: 20, popularityScore: 77, keywords: ["трансформация"] },
+  balance_wheel: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: 21, popularityScore: 81, keywords: ["системность"] },
+  reset_reload: { category: "self_growth", tags: ["перезагрузка", "ресурс", "итог"], energyCost: 18, popularityScore: 83, keywords: ["перемены"] },
+  soul_purpose: { category: "self_growth", tags: ["миссия", "дар", "путь"], energyCost: 23, popularityScore: 74, keywords: ["смысл"] },
+  celtic_cross: { category: "premium", tags: ["глубокий", "анализ", "прогноз"], energyCost: 28, popularityScore: 93, keywords: ["классика"] },
+  wheel_of_year: { category: "premium", tags: ["год", "цикл", "стратегия"], energyCost: 30, popularityScore: 90, keywords: ["12 карт"] },
+  pyramid: { category: "premium", tags: ["уровни", "развитие", "итог"], energyCost: 24, popularityScore: 79, keywords: ["система"] },
+  horseshoe: { category: "premium", tags: ["траектория", "окружение", "итог"], energyCost: 24, popularityScore: 75, keywords: ["подкова"] },
+  star: { category: "premium", tags: ["энергия", "чакры", "гармония"], energyCost: 26, popularityScore: 73, keywords: ["диагностика"] }
+};
+
+const getSpreadMeta = (spreadId: string, cardsCount: number): SpreadMeta => {
+  const fallback: SpreadMeta = {
+    category: "popular",
+    tags: ["расклад", "анализ", "итог"],
+    energyCost: Math.max(8, Math.round(cardsCount * 3)),
+    popularityScore: 50,
+    keywords: []
+  };
+  return RWS_SPREAD_META[spreadId] ?? fallback;
+};
+
+const CATEGORY_LABELS: Record<SpreadCategory, string[]> = {
+  popular: ["популярные", "быстрые", "fast", "popular"],
+  relationships: ["отношения", "любовь", "relationship", "love"],
+  work_finance: ["работа", "финансы", "деньги", "career", "finance"],
+  self_growth: ["саморазвитие", "ресурс", "психология", "self", "growth"],
+  premium: ["премиум", "глубокие", "стратегия", "premium"]
+};
+
+const matchesSpreadQuery = (spreadId: string, query: string): boolean => {
+  const spread = RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
+  if (!spread) return false;
+  const meta = getSpreadMeta(spreadId, spread.cardsCount);
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  const cardsMatch = normalized.match(/(\d+)\s*карт(?:а|ы)?/);
+  if (cardsMatch && Number(cardsMatch[1]) !== spread.cardsCount) {
+    return false;
+  }
+
+  const categoryAliases = CATEGORY_LABELS[meta.category] ?? [];
+  const haystack = [
+    spread.title,
+    spread.description,
+    meta.category,
+    ...categoryAliases,
+    String(spread.cardsCount),
+    ...meta.tags,
+    ...meta.keywords
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  return words.every((word) => haystack.includes(word));
+};
 
 export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   const [expandedSpread, setExpandedSpread] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
   const toggleSpread = (spreadId: string) => {
@@ -35,6 +184,27 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     alert("Этот расклад будет доступен позже");
   };
 
+  const rwsBlocks = useMemo(() => {
+    if (deck.id !== "rws") return [];
+    return RWS_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP]?.title ?? spreadId,
+          description: RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
+  const nonRwsSpreads = useMemo(() => {
+    if (deck.id === "rws") return [];
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return deck.spreads;
+    return deck.spreads.filter((spread) => `${spread.title} ${spread.description}`.toLowerCase().includes(normalized));
+  }, [deck.id, deck.spreads, query]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -50,30 +220,68 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
           {deck.subtitle ? <p className="text-xs text-[var(--text-secondary)]">{deck.subtitle}</p> : null}
         </div>
       </div>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Поиск: любовь, деньги, кризис, 3 карты..."
+          className="h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] pl-10 pr-4 text-sm text-[var(--text-primary)] shadow-[0_0_24px_rgba(140,90,255,0.2)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
+        />
+      </div>
 
-      <div className="space-y-3">
-        {deck.spreads.map((spread) => (
-          spread.id === "one_card" ? (
-            <SpreadCardOneCard
-              key={spread.id}
-              spread={spread}
-              expanded={expandedSpread === spread.id}
-              onToggle={() => toggleSpread(spread.id)}
-              onSelect={() => handleSelectSpread(spread.id)}
-              canSelect={deck.id === "rws" && isRwsSpreadAvailable(spread.id)}
-            />
-          ) : (
+      {deck.id === "rws" ? (
+        <div className="space-y-6">
+          {rwsBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    expanded={expandedSpread === spread.id}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isRwsSpreadAvailable(spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {rwsBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по названию, теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {nonRwsSpreads.map((spread) => (
             <SpreadCard
               key={spread.id}
               spread={spread}
               expanded={expandedSpread === spread.id}
               onToggle={() => toggleSpread(spread.id)}
               onSelect={() => handleSelectSpread(spread.id)}
-              canSelect={deck.id === "rws" && isRwsSpreadAvailable(spread.id)}
+              canSelect={false}
             />
-          )
-        ))}
-      </div>
+          ))}
+          {nonRwsSpreads.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Уточните запрос.
+            </Card>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -447,24 +655,43 @@ const RWS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+function extractCardsCount(spread: DeckSpread): number {
+  const mapped = RWS_SPREADS_MAP[spread.id as keyof typeof RWS_SPREADS_MAP];
+  if (mapped) return mapped.cardsCount;
+  const match = spread.description.match(/(\d+)\s*карт(?:а|ы)?/i);
+  if (match) return Number(match[1]);
+  return 3;
+}
+
 function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
   const details = RWS_SPREAD_DETAILS[spread.id];
   const isRwsDetailed = Boolean(details);
+  const cardsCount = extractCardsCount(spread);
+  const meta = getSpreadMeta(spread.id, cardsCount);
+  const energyText = `⚡ -${meta.energyCost}`;
+  const subtitle = isRwsDetailed ? details.subtitle : spread.description;
+  const metaLine = isRwsDetailed
+    ? details.metaLine
+    : `${cardsCount} карт · ${meta.tags.slice(0, 2).join(" · ")}`;
+  const title = isRwsDetailed ? details.header : spread.title;
 
   return (
     <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">{isRwsDetailed ? details.header : spread.title}</h3>
-          <p className="text-xs text-[var(--text-secondary)]">{isRwsDetailed ? details.subtitle : "Энергия · фокус · совет"}</p>
-          {isRwsDetailed && <p className="text-xs text-[var(--text-secondary)]">{details.metaLine}</p>}
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <h3 className="truncate text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
+          <p className="truncate text-sm text-[var(--text-secondary)]">{subtitle}</p>
+          <p className="truncate text-sm text-[var(--text-secondary)]">{metaLine}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2">
+          <span className="inline-flex h-9 min-w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white/95 shadow-[0_0_18px_rgba(140,90,255,0.22)]">
+            {energyText}
+          </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
+            className="h-9 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`spread-desc-${spread.id}`}
@@ -478,7 +705,7 @@ function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadC
             type="button"
             size="sm"
             variant="primary"
-            className="text-xs text-white"
+            className="h-9 text-xs text-white"
             onClick={onSelect}
             disabled={!canSelect}
           >
@@ -602,6 +829,13 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 27, y: 71 },
       { x: 73, y: 71 },
       { x: 50, y: 88 }
+    ],
+    inner_resource: [
+      { x: 50, y: 52 },
+      { x: 50, y: 16 },
+      { x: 30, y: 52 },
+      { x: 70, y: 52 },
+      { x: 50, y: 88 }
     ]
   };
 
@@ -634,7 +868,7 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     love_triangle: 36,
     karmic_connection: 36,
     vocation_profession: 36,
-    inner_resource: 40,
+    inner_resource: 36,
     inner_conflict: 40,
     shadow_side: 34,
     hero_path: 34,
@@ -675,73 +909,5 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
         );
       })}
     </div>
-  );
-}
-
-function SpreadCardOneCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
-  return (
-    <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">Одна карта</h3>
-          <p className="text-xs text-[var(--text-secondary)]">Карта дня</p>
-          <p className="text-xs text-[var(--text-secondary)]">1 карта · Энергия · фокус · совет</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
-            onClick={onToggle}
-            aria-expanded={expanded}
-            aria-controls={`spread-desc-${spread.id}`}
-          >
-            Подробнее
-            <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.25 }}>
-              <ChevronDown className="h-4 w-4" />
-            </motion.span>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            className="text-xs text-white"
-            onClick={onSelect}
-            disabled={!canSelect}
-          >
-            Выбрать
-          </Button>
-        </div>
-      </div>
-      <Expander isOpen={expanded} ariaId={`spread-desc-${spread.id}`}>
-        <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
-          <SpreadPreviewOneCard />
-          <div>
-            <h4 className="text-base font-semibold text-[var(--text-primary)]">Одна карта</h4>
-            <p className="text-xs text-[var(--text-secondary)]">Послание дня и энергия момента</p>
-          </div>
-          <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-            <p>Для чего подходит</p>
-            <p>🔮 Понять энергию дня</p>
-            <p>⚡ Получить совет или предупреждение</p>
-            <p>🌙 Увидеть шанс или урок</p>
-          </div>
-          <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-            <p>Как работает</p>
-            <p>🃏 1 карта = 1 ключевое послание</p>
-            <p>Фокус на теме дня и внимании</p>
-          </div>
-          <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-            <p>Кому подойдёт</p>
-            <p>✓ Новичкам</p>
-            <p>✓ Когда нужен быстрый ответ</p>
-          </div>
-          <Button type="button" className="w-full" onClick={onSelect} disabled={!canSelect}>
-            ✨ Сделать расклад
-          </Button>
-        </div>
-      </Expander>
-    </Card>
   );
 }

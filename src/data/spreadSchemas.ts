@@ -450,11 +450,11 @@ export const SpreadInnerResource: SpreadSchema = {
   openingRules: "in-order",
   openOrder: [1, 2, 3, 4, 5],
   positions: [
-    { id: 1, label: "Главный источник силы", x: 0, y: 240 },
-    { id: 2, label: "Что усиливает", x: 0, y: 20 },
-    { id: 3, label: "Что истощает", x: -170, y: 240 },
-    { id: 4, label: "Скрытый резерв", x: 170, y: 240 },
-    { id: 5, label: "Способ восстановления", x: 0, y: 460 }
+    { id: 1, label: "Главный источник силы", x: 0, y: 260 },
+    { id: 2, label: "Что усиливает", x: 0, y: -10 },
+    { id: 3, label: "Что истощает", x: -170, y: 260 },
+    { id: 4, label: "Скрытый резерв", x: 170, y: 260 },
+    { id: 5, label: "Способ восстановления", x: 0, y: 530 }
   ]
 };
 

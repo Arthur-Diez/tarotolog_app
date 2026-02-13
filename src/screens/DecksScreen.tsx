@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -13,19 +13,6 @@ interface DecksScreenProps {
 
 export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   const [expandedDeck, setExpandedDeck] = useState<DeckId | null>(null);
-  const [query, setQuery] = useState("");
-
-  const filteredDecks = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return DECKS;
-    }
-
-    return DECKS.filter((deck) => {
-      const haystack = `${deck.title} ${deck.subtitle ?? ""}`.toLowerCase();
-      return haystack.includes(normalizedQuery);
-    });
-  }, [query]);
 
   const toggleDeck = (deckId: DeckId) => {
     setExpandedDeck((prev) => (prev === deckId ? null : deckId));
@@ -43,20 +30,10 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
         <p className="text-sm text-[var(--text-secondary)]">
           Выберите колоду и исследуйте расклады под ваш запрос.
         </p>
-        <div className="pt-1">
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Поиск по колодам"
-            className="h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
-          />
-          {/* TODO: sorting dropdown (популярные, последние) */}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {filteredDecks.map((deck) => (
+        {DECKS.map((deck) => (
           <DeckCard
             key={deck.id}
             deck={deck}
