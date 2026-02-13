@@ -217,34 +217,34 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
       <div className="absolute left-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[-1px] top-[4px] opacity-75" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[0px] top-[4px] opacity-75" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[3px] top-[0px]" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[2px] top-[0px]" />
         <FaceCard
           name={RWS_FLOW_FACE_CARDS[3]}
           size={52}
-          className="deck-left-draw-card absolute left-[3px] top-[0px]"
+          className="deck-left-draw-card absolute left-[2px] top-[0px]"
           style={{ animationPlayState: playState }}
         />
       </div>
 
       <div className="absolute right-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[-1px] top-[4px] opacity-75" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[0px] top-[4px] opacity-75" />
         <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[3px] top-[0px] opacity-95" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[5px] top-[-2px]" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[2px] top-[0px] opacity-95" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[3px] top-[-2px]" />
       </div>
 
       <div className="absolute left-1/2 top-1/2 z-[3] h-[84px] w-[56px]">
         {[0, 1, 2].map((idx) => {
           const customVars = {
-            "--flow-start-x": "-108px",
+            "--flow-start-x": "-124px",
             "--flow-mid-x": "0px",
-            "--flow-end-x": "108px",
-            "--flow-stack-x": "128px",
+            "--flow-end-x": "112px",
+            "--flow-stack-x": "114px",
             "--flow-y": "-42px",
-            "--flow-stack-y": `${-38 + idx * 3}px`,
-            animationDelay: `${-idx * 2.9}s`,
+            "--flow-stack-y": `${-41 + idx * 2}px`,
+            animationDelay: `${-idx * 12}s`,
             animationPlayState: playState
           } as CSSProperties;
 
