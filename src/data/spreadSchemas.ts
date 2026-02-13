@@ -442,6 +442,128 @@ export const SpreadVocationProfession: SpreadSchema = {
   ]
 };
 
+export const SpreadInnerResource: SpreadSchema = {
+  id: "inner_resource",
+  name: "Внутренний ресурс",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Главный источник силы", x: 0, y: 240 },
+    { id: 2, label: "Что усиливает", x: 0, y: 20 },
+    { id: 3, label: "Что истощает", x: -170, y: 240 },
+    { id: 4, label: "Скрытый резерв", x: 170, y: 240 },
+    { id: 5, label: "Способ восстановления", x: 0, y: 460 }
+  ]
+};
+
+export const SpreadInnerConflict: SpreadSchema = {
+  id: "inner_conflict",
+  name: "Внутренний конфликт",
+  cardCount: 5,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5],
+  positions: [
+    { id: 1, label: "Сознательная позиция", x: -170, y: 60 },
+    { id: 2, label: "Подсознательное желание", x: 170, y: 60 },
+    { id: 3, label: "Суть конфликта", x: 0, y: 240 },
+    { id: 4, label: "Страх", x: -170, y: 430 },
+    { id: 5, label: "Решение", x: 170, y: 430 }
+  ]
+};
+
+export const SpreadShadowSide: SpreadSchema = {
+  id: "shadow_side",
+  name: "Теневая сторона",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Осознанная личность", x: 0, y: 20 },
+    { id: 2, label: "Маска и поведение", x: -170, y: 180 },
+    { id: 3, label: "Маска и поведение", x: 170, y: 180 },
+    { id: 4, label: "Подавленные эмоции", x: -170, y: 420 },
+    { id: 5, label: "Подавленные эмоции", x: 170, y: 420 },
+    { id: 6, label: "Глубинный страх", x: 0, y: 560 },
+    { id: 7, label: "Путь интеграции", x: 0, y: 700 }
+  ]
+};
+
+export const SpreadHeroPath: SpreadSchema = {
+  id: "hero_path",
+  name: "Путь героя",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Начало этапа", x: -220, y: 60 },
+    { id: 2, label: "Вызов", x: -70, y: 60 },
+    { id: 3, label: "Страх", x: 80, y: 60 },
+    { id: 4, label: "Переломный момент", x: 240, y: 430 },
+    { id: 5, label: "Урок", x: 90, y: 430 },
+    { id: 6, label: "Трансформация", x: -60, y: 430 },
+    { id: 7, label: "Новый уровень", x: -210, y: 430 }
+  ]
+};
+
+export const SpreadBalanceWheel: SpreadSchema = {
+  id: "balance_wheel",
+  name: "Колесо баланса",
+  cardCount: 8,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7, 8],
+  positions: [
+    { id: 1, label: "Здоровье", x: 0, y: 20 },
+    { id: 2, label: "Отношения", x: -170, y: 170 },
+    { id: 3, label: "Работа", x: 170, y: 170 },
+    { id: 4, label: "Финансы", x: -230, y: 330 },
+    { id: 5, label: "Развитие", x: 230, y: 330 },
+    { id: 6, label: "Отдых", x: -170, y: 500 },
+    { id: 7, label: "Эмоции", x: 170, y: 500 },
+    { id: 8, label: "Духовность", x: 0, y: 660 }
+  ]
+};
+
+export const SpreadResetReload: SpreadSchema = {
+  id: "reset_reload",
+  name: "Перезагрузка",
+  cardCount: 6,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6],
+  positions: [
+    { id: 1, label: "Что завершить", x: -220, y: 80 },
+    { id: 2, label: "Что отпустить", x: 0, y: 80 },
+    { id: 3, label: "Главный урок", x: 220, y: 80 },
+    { id: 4, label: "Новый фокус", x: -220, y: 420 },
+    { id: 5, label: "Ресурс", x: 0, y: 420 },
+    { id: 6, label: "Итог", x: 220, y: 420 }
+  ]
+};
+
+export const SpreadSoulPurpose: SpreadSchema = {
+  id: "soul_purpose",
+  name: "Предназначение души",
+  cardCount: 7,
+  deckType: "rws",
+  openingRules: "in-order",
+  openOrder: [1, 2, 3, 4, 5, 6, 7],
+  positions: [
+    { id: 1, label: "Суть души", x: 0, y: 300 },
+    { id: 2, label: "Дар", x: 0, y: 40 },
+    { id: 3, label: "Талант", x: -170, y: 170 },
+    { id: 4, label: "Кармический урок", x: 170, y: 170 },
+    { id: 5, label: "Препятствие", x: -170, y: 430 },
+    { id: 6, label: "Поддержка", x: 170, y: 430 },
+    { id: 7, label: "Итог пути", x: 0, y: 620 }
+  ]
+};
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -468,5 +590,12 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   new_project: SpreadNewProject,
   finances_period: SpreadFinancesPeriod,
   team_work: SpreadTeamWork,
-  vocation_profession: SpreadVocationProfession
+  vocation_profession: SpreadVocationProfession,
+  inner_resource: SpreadInnerResource,
+  inner_conflict: SpreadInnerConflict,
+  shadow_side: SpreadShadowSide,
+  hero_path: SpreadHeroPath,
+  balance_wheel: SpreadBalanceWheel,
+  reset_reload: SpreadResetReload,
+  soul_purpose: SpreadSoulPurpose
 };

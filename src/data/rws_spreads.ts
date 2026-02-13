@@ -24,7 +24,14 @@ export type SpreadId =
   | "new_project"
   | "finances_period"
   | "team_work"
-  | "vocation_profession";
+  | "vocation_profession"
+  | "inner_resource"
+  | "inner_conflict"
+  | "shadow_side"
+  | "hero_path"
+  | "balance_wheel"
+  | "reset_reload"
+  | "soul_purpose";
 
 export interface SpreadPosition {
   index: number;
@@ -415,6 +422,114 @@ export const RWS_SPREADS: SpreadDef[] = [
       { index: 5, x: 27, y: 71, rotate: 0, label: "Направление развития" },
       { index: 6, x: 73, y: 71, rotate: 0, label: "Поддержка / что усилит" },
       { index: 7, x: 50, y: 86, rotate: 0, label: "Итог (к чему ведёт путь)" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "inner_resource",
+    title: "Внутренний ресурс",
+    description: "Где ваша сила и как её восстановить.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 50, y: 50, rotate: 0, label: "Главный источник силы" },
+      { index: 2, x: 50, y: 24, rotate: 0, label: "Что усиливает" },
+      { index: 3, x: 30, y: 50, rotate: 0, label: "Что истощает" },
+      { index: 4, x: 70, y: 50, rotate: 0, label: "Скрытый резерв" },
+      { index: 5, x: 50, y: 76, rotate: 0, label: "Способ восстановления" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "inner_conflict",
+    title: "Внутренний конфликт",
+    description: "Разобраться в себе и принять решение.",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 30, y: 24, rotate: 0, label: "Сознательная позиция" },
+      { index: 2, x: 70, y: 24, rotate: 0, label: "Подсознательное желание" },
+      { index: 3, x: 50, y: 50, rotate: 0, label: "Суть конфликта" },
+      { index: 4, x: 30, y: 76, rotate: 0, label: "Страх" },
+      { index: 5, x: 70, y: 76, rotate: 0, label: "Решение" }
+    ],
+    openOrder: [1, 2, 3, 4, 5]
+  },
+  {
+    id: "shadow_side",
+    title: "Теневая сторона",
+    description: "Скрытые аспекты личности.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 50, y: 14, rotate: 0, label: "Осознанная личность" },
+      { index: 2, x: 34, y: 30, rotate: 0, label: "Маска и поведение" },
+      { index: 3, x: 66, y: 30, rotate: 0, label: "Маска и поведение" },
+      { index: 4, x: 34, y: 56, rotate: 0, label: "Подавленные эмоции" },
+      { index: 5, x: 66, y: 56, rotate: 0, label: "Подавленные эмоции" },
+      { index: 6, x: 50, y: 74, rotate: 0, label: "Глубинный страх" },
+      { index: 7, x: 50, y: 88, rotate: 0, label: "Путь интеграции" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "hero_path",
+    title: "Путь героя",
+    description: "Ваш этап трансформации.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 20, y: 28, rotate: 0, label: "Начало этапа" },
+      { index: 2, x: 40, y: 28, rotate: 0, label: "Вызов" },
+      { index: 3, x: 60, y: 28, rotate: 0, label: "Страх" },
+      { index: 4, x: 74, y: 72, rotate: 0, label: "Переломный момент" },
+      { index: 5, x: 56, y: 72, rotate: 0, label: "Урок" },
+      { index: 6, x: 38, y: 72, rotate: 0, label: "Трансформация" },
+      { index: 7, x: 20, y: 72, rotate: 0, label: "Новый уровень" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7]
+  },
+  {
+    id: "balance_wheel",
+    title: "Колесо баланса",
+    description: "Баланс сфер жизни.",
+    cardsCount: 8,
+    positions: [
+      { index: 1, x: 50, y: 14, rotate: 0, label: "Здоровье" },
+      { index: 2, x: 34, y: 30, rotate: 0, label: "Отношения" },
+      { index: 3, x: 66, y: 30, rotate: 0, label: "Работа" },
+      { index: 4, x: 26, y: 50, rotate: 0, label: "Финансы" },
+      { index: 5, x: 74, y: 50, rotate: 0, label: "Развитие" },
+      { index: 6, x: 34, y: 68, rotate: 0, label: "Отдых" },
+      { index: 7, x: 66, y: 68, rotate: 0, label: "Эмоции" },
+      { index: 8, x: 50, y: 86, rotate: 0, label: "Духовность" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6, 7, 8]
+  },
+  {
+    id: "reset_reload",
+    title: "Перезагрузка",
+    description: "Начало нового этапа.",
+    cardsCount: 6,
+    positions: [
+      { index: 1, x: 26, y: 30, rotate: 0, label: "Что завершить" },
+      { index: 2, x: 50, y: 30, rotate: 0, label: "Что отпустить" },
+      { index: 3, x: 74, y: 30, rotate: 0, label: "Главный урок" },
+      { index: 4, x: 26, y: 72, rotate: 0, label: "Новый фокус" },
+      { index: 5, x: 50, y: 72, rotate: 0, label: "Ресурс" },
+      { index: 6, x: 74, y: 72, rotate: 0, label: "Итог" }
+    ],
+    openOrder: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    id: "soul_purpose",
+    title: "Предназначение души",
+    description: "Глубинный вектор жизни.",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 50, y: 50, rotate: 0, label: "Суть души" },
+      { index: 2, x: 50, y: 20, rotate: 0, label: "Дар" },
+      { index: 3, x: 34, y: 36, rotate: 0, label: "Талант" },
+      { index: 4, x: 66, y: 36, rotate: 0, label: "Кармический урок" },
+      { index: 5, x: 34, y: 66, rotate: 0, label: "Препятствие" },
+      { index: 6, x: 66, y: 66, rotate: 0, label: "Поддержка" },
+      { index: 7, x: 50, y: 84, rotate: 0, label: "Итог пути" }
     ],
     openOrder: [1, 2, 3, 4, 5, 6, 7]
   }
