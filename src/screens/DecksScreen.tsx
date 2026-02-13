@@ -220,9 +220,9 @@ interface DeckFlowState {
   right: FlowCard[];
 }
 
-const FLOW_STEP_MS = 16000;
+const FLOW_STEP_MS = 9000;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [38, 50, 62];
+const FLOW_LANE_X = [32, 50, 68];
 
 function createFlowState(nextId: { current: number }): DeckFlowState {
   const takeCard = (index: number): FlowCard => {
@@ -256,24 +256,31 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
 
   useEffect(() => {
     if (!isActive) return undefined;
-    const timer = window.setInterval(() => {
+    const tick = () => {
       setFlow((prev) => advanceFlowState(prev));
+    };
+    const start = window.setTimeout(tick, 280);
+    const timer = window.setInterval(() => {
+      tick();
     }, FLOW_STEP_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(timer);
+    };
   }, [isActive]);
 
   return (
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[16%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-[14%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         {flow.left.map((card, index) => (
           <motion.div
             key={`left-${card.id}`}
             className="absolute"
             initial={false}
             animate={{ x: index * 0.65, y: (flow.left.length - 1 - index) * 1.6 }}
-            transition={{ duration: 1.4, ease: FLOW_EASE }}
+            transition={{ duration: 1.15, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
             <FaceCard name={card.name} size={52} className={index < flow.left.length - 2 ? "opacity-85" : ""} />
@@ -281,14 +288,14 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
         ))}
       </div>
 
-      <div className="absolute left-[84%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-[86%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         {flow.right.map((card, index) => (
           <motion.div
             key={`right-${card.id}`}
             className="absolute"
             initial={false}
             animate={{ x: index * 0.65, y: (flow.right.length - 1 - index) * 1.6 }}
-            transition={{ duration: 1.4, ease: FLOW_EASE }}
+            transition={{ duration: 1.15, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
             <FaceCard name={card.name} size={52} className={index < flow.right.length - 2 ? "opacity-85" : ""} />
@@ -303,10 +310,10 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             className="absolute -translate-x-1/2 -translate-y-1/2"
             initial={false}
             animate={{ left: `${FLOW_LANE_X[index]}%`, top: "50%" }}
-            transition={{ duration: isActive ? FLOW_STEP_MS / 1000 - 1 : 0.2, ease: FLOW_EASE }}
+            transition={{ duration: isActive ? FLOW_STEP_MS / 1000 - 0.65 : 0.2, ease: FLOW_EASE }}
             style={{ zIndex: 20 + index }}
           >
-            <FaceCard name={card.name} size={54} />
+            <FaceCard name={card.name} size={48} />
           </motion.div>
         ))}
       </div>
