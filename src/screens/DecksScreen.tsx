@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -209,55 +209,106 @@ function FaceCard({ name, size = 56, className = "", style }: { name: string; si
   );
 }
 
+interface FlowCard {
+  id: number;
+  name: string;
+}
+
+interface DeckFlowState {
+  left: FlowCard[];
+  lane: FlowCard[];
+  right: FlowCard[];
+}
+
+const FLOW_STEP_MS = 4200;
+const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const FLOW_LANE_X = [34, 50, 66];
+
+function createFlowState(nextId: { current: number }): DeckFlowState {
+  const takeCard = (index: number): FlowCard => {
+    const id = nextId.current++;
+    const name = RWS_FLOW_FACE_CARDS[index % RWS_FLOW_FACE_CARDS.length];
+    return { id, name };
+  };
+
+  return {
+    left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3), takeCard(4)],
+    lane: [takeCard(5), takeCard(6), takeCard(7)],
+    right: [takeCard(8), takeCard(9), takeCard(10), takeCard(11), takeCard(12)]
+  };
+}
+
+function advanceFlowState(prev: DeckFlowState): DeckFlowState {
+  const outgoingLeftTop = prev.left[prev.left.length - 1];
+  const movingIntoRightTop = prev.lane[prev.lane.length - 1];
+  const recycledFromRightBottom = prev.right[0];
+
+  return {
+    left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
+    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
+    right: [...prev.right.slice(1), movingIntoRightTop]
+  };
+}
+
 function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
-  const playState: CSSProperties["animationPlayState"] = isActive ? "running" : "paused";
+  const nextIdRef = useRef(1);
+  const [flow, setFlow] = useState<DeckFlowState>(() => createFlowState(nextIdRef));
+
+  useEffect(() => {
+    if (!isActive) return undefined;
+    const timer = window.setInterval(() => {
+      setFlow((prev) => advanceFlowState(prev));
+    }, FLOW_STEP_MS);
+    return () => window.clearInterval(timer);
+  }, [isActive]);
 
   return (
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[0px] top-[4px] opacity-75" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[2px] top-[0px]" />
-        <FaceCard
-          name={RWS_FLOW_FACE_CARDS[3]}
-          size={52}
-          className="deck-left-draw-card absolute left-[2px] top-[0px]"
-          style={{ animationPlayState: playState }}
-        />
+      <div className="absolute left-[10%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+        {flow.left.map((card, index) => (
+          <motion.div
+            key={`left-${card.id}`}
+            className="absolute"
+            initial={false}
+            animate={{ x: index * 0.8, y: (flow.left.length - 1 - index) * 1.6 }}
+            transition={{ duration: 0.9, ease: FLOW_EASE }}
+            style={{ zIndex: index + 1 }}
+          >
+            <FaceCard name={card.name} size={52} className={index < flow.left.length - 2 ? "opacity-85" : ""} />
+          </motion.div>
+        ))}
       </div>
 
-      <div className="absolute right-[11%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
-        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[0px] top-[4px] opacity-75" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[1px] top-[2px] opacity-85" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[2px] top-[0px] opacity-95" />
-        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[3px] top-[-2px]" />
+      <div className="absolute right-[10%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+        {flow.right.map((card, index) => (
+          <motion.div
+            key={`right-${card.id}`}
+            className="absolute"
+            initial={false}
+            animate={{ x: index * 0.8, y: (flow.right.length - 1 - index) * 1.6 }}
+            transition={{ duration: 0.9, ease: FLOW_EASE }}
+            style={{ zIndex: index + 1 }}
+          >
+            <FaceCard name={card.name} size={52} className={index < flow.right.length - 2 ? "opacity-85" : ""} />
+          </motion.div>
+        ))}
       </div>
 
-      <div className="absolute left-1/2 top-1/2 z-[3] h-[84px] w-[56px]">
-        {[0, 1, 2].map((idx) => {
-          const customVars = {
-            "--flow-start-x": "-124px",
-            "--flow-mid-x": "0px",
-            "--flow-end-x": "112px",
-            "--flow-stack-x": "114px",
-            "--flow-y": "-42px",
-            "--flow-stack-y": `${-41 + idx * 2}px`,
-            animationDelay: `${-idx * 12}s`,
-            animationPlayState: playState
-          } as CSSProperties;
-
-          return (
-            <FaceCard
-              key={`rws-flow-${idx}`}
-              name={RWS_FLOW_FACE_CARDS[idx]}
-              size={54}
-              className="deck-flow-card absolute left-0 top-0"
-              style={customVars}
-            />
-          );
-        })}
+      <div className="absolute inset-0 z-[3]">
+        {flow.lane.map((card, index) => (
+          <motion.div
+            key={`lane-${card.id}`}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            initial={false}
+            animate={{ left: `${FLOW_LANE_X[index]}%`, top: "50%" }}
+            transition={{ duration: isActive ? FLOW_STEP_MS / 1000 - 0.35 : 0.15, ease: FLOW_EASE }}
+            style={{ zIndex: 20 + index }}
+          >
+            <FaceCard name={card.name} size={54} />
+          </motion.div>
+        ))}
       </div>
     </div>
   );
