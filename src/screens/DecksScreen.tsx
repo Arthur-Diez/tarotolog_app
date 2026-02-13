@@ -1,18 +1,86 @@
-import { useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
+import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 
 interface DecksScreenProps {
   onSelectDeck: (deckId: DeckId) => void;
 }
 
+interface DeckContent {
+  positioning: string;
+  description: string[];
+  purpose: string[];
+  features: string[];
+  animationCaption: string;
+}
+
+const RWS_FLOW_FACE_CARDS = [
+  "Шут (0)",
+  "Маг (1)",
+  "Верховная Жрица (2)",
+  "Императрица (3)",
+  "Император (4)",
+  "Влюбленные (6)",
+  "Сила (8)",
+  "Колесо Фортуны (10)"
+];
+
+const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
+  rws: {
+    positioning: "Фундаментальная система символов и архетипов",
+    description: [
+      "Фундаментальная система Таро, ставшая основой большинства современных колод.",
+      "Колода раскрывает архетипы человеческой психики через глубокую символику и чёткую структуру.",
+      "Каждая карта отражает внутренний процесс, выбор или этап пути."
+    ],
+    purpose: [
+      "✔ Психологический анализ",
+      "✔ Отношения и внутренние процессы",
+      "✔ Стратегические расклады",
+      "✔ Саморазвитие"
+    ],
+    features: ["• 78 карт", "• 22 Старших Аркана", "• 56 Младших Арканов", "• Многослойная символика"],
+    animationCaption: "Архетипы раскрываются перед вами."
+  }
+};
+
+function getDeckContent(deck: Deck): DeckContent {
+  const custom = DECK_CONTENT[deck.id];
+  if (custom) return custom;
+  return {
+    positioning: deck.subtitle ?? "Символическая система чтения",
+    description: [deck.description],
+    purpose: ["✔ Быстрые ответы на текущие вопросы", "✔ Исследование внутренних состояний", "✔ Работа с интуицией"],
+    features: [`• ${deck.spreads.length} раскладов`, "• Интуитивная работа с образами"],
+    animationCaption: "Выберите колоду, которая откликается сейчас."
+  };
+}
+
+function usePageVisibility(): boolean {
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof document === "undefined") return true;
+    return document.visibilityState !== "hidden";
+  });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const onChange = () => setIsVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+
+  return isVisible;
+}
+
 export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   const [expandedDeck, setExpandedDeck] = useState<DeckId | null>(null);
+  const isPageVisible = usePageVisibility();
 
   const toggleDeck = (deckId: DeckId) => {
     setExpandedDeck((prev) => (prev === deckId ? null : deckId));
@@ -26,10 +94,8 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Расклады</h1>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Выберите колоду и исследуйте расклады под ваш запрос.
-        </p>
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Колоды Таро</h1>
+        <p className="text-sm text-[var(--text-secondary)]">Выберите стиль чтения и исследуйте подходящие расклады.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -37,7 +103,9 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
           <DeckCard
             key={deck.id}
             deck={deck}
+            content={getDeckContent(deck)}
             expanded={expandedDeck === deck.id}
+            animationActive={expandedDeck === deck.id && isPageVisible}
             onToggle={() => toggleDeck(deck.id)}
             onSelect={() => handleSelectDeck(deck.id)}
           />
@@ -49,58 +117,145 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
 
 interface DeckCardProps {
   deck: Deck;
+  content: DeckContent;
   expanded: boolean;
+  animationActive: boolean;
   onToggle: () => void;
   onSelect: () => void;
 }
 
-function DeckCard({ deck, expanded, onToggle, onSelect }: DeckCardProps) {
+function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect }: DeckCardProps) {
   return (
-    <Card
-      className="group flex cursor-pointer flex-col rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)] transition active:opacity-90"
-      role="button"
-      tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect();
-        }
-      }}
-    >
+    <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">{deck.title}</h2>
-            {/* TODO: cover image (CDN) */}
-          </div>
-          {deck.subtitle ? <p className="text-xs text-[var(--text-secondary)]">{deck.subtitle}</p> : null}
+        <div className="min-w-0">
+          <h2 className="truncate text-2xl font-semibold leading-tight text-[var(--text-primary)]">{deck.title}</h2>
+          <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">{content.positioning}</p>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="shrink-0 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggle();
-          }}
+          onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={`deck-desc-${deck.id}`}
         >
           Подробнее
-          <motion.span
-            animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ duration: 0.25 }}
-          >
+          <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.25 }}>
             <ChevronDown className="h-4 w-4" />
           </motion.span>
         </Button>
       </div>
 
       <Expander isOpen={expanded} ariaId={`deck-desc-${deck.id}`}>
-        <p>{deck.description}</p>
+        <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
+          {deck.id === "rws" ? <RwsDeckFlowPreview isActive={animationActive} /> : <StaticDeckPreview />}
+          <p className="text-center text-xs text-[var(--text-tertiary)]">{content.animationCaption}</p>
+
+          <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+            {content.description.map((paragraph) => (
+              <p key={`${deck.id}-${paragraph}`}>{paragraph}</p>
+            ))}
+          </div>
+
+          <div className="space-y-1 text-sm text-[var(--text-secondary)]">
+            <p className="text-sm font-medium text-[var(--text-primary)]">Для чего подходит</p>
+            {content.purpose.map((line) => (
+              <p key={`${deck.id}-purpose-${line}`}>{line}</p>
+            ))}
+          </div>
+
+          <div className="space-y-1 text-sm text-[var(--text-secondary)]">
+            <p className="text-sm font-medium text-[var(--text-primary)]">Особенности</p>
+            {content.features.map((line) => (
+              <p key={`${deck.id}-feature-${line}`}>{line}</p>
+            ))}
+          </div>
+
+          <Button type="button" className="w-full" onClick={onSelect}>
+            Исследовать расклады этой колоды
+          </Button>
+        </div>
       </Expander>
     </Card>
+  );
+}
+
+function FaceCard({ name, size = 56, className = "", style }: { name: string; size?: number; className?: string; style?: CSSProperties }) {
+  return (
+    <img
+      src={faceUrl("rws", name)}
+      alt={name}
+      className={`rounded-[10px] object-cover shadow-[0_14px_24px_rgba(0,0,0,0.4)] ${className}`}
+      style={{ width: `${size}px`, height: `${Math.round(size * 1.5)}px`, ...style }}
+      draggable={false}
+      loading="lazy"
+    />
+  );
+}
+
+function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  const playState: CSSProperties["animationPlayState"] = isActive ? "running" : "paused";
+
+  return (
+    <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
+
+      <div className="absolute left-[14%] top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute left-[-9px] top-[-8px] opacity-80" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute left-[-3px] top-[-3px] opacity-90" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute left-[3px] top-[2px]" />
+        <FaceCard
+          name={RWS_FLOW_FACE_CARDS[3]}
+          size={52}
+          className="deck-left-draw-card absolute left-[6px] top-[6px]"
+          style={{ animationPlayState: playState }}
+        />
+      </div>
+
+      <div className="absolute right-[14%] top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <FaceCard name={RWS_FLOW_FACE_CARDS[4]} size={52} className="absolute left-[-8px] top-[-7px] opacity-75" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[5]} size={52} className="absolute left-[-3px] top-[-2px] opacity-85" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[6]} size={52} className="absolute left-[2px] top-[3px] opacity-95" />
+        <FaceCard name={RWS_FLOW_FACE_CARDS[7]} size={52} className="absolute left-[6px] top-[7px]" />
+      </div>
+
+      <div className="absolute left-1/2 top-1/2">
+        {[0, 1, 2].map((idx) => {
+          const customVars = {
+            "--deck-from-x": `${-66 + idx * 66}px`,
+            "--deck-from-y": "-42px",
+            "--deck-to-x": `${102 + idx * 4}px`,
+            "--deck-to-y": `${-42 + idx * 2}px`,
+            "--deck-stack-x": "168px",
+            "--deck-stack-y": `${-20 + idx * 11}px`,
+            animationDelay: `${idx * 1.65}s`,
+            animationPlayState: playState
+          } as CSSProperties;
+
+          return (
+            <FaceCard
+              key={`rws-flow-${idx}`}
+              name={RWS_FLOW_FACE_CARDS[idx]}
+              size={54}
+              className="deck-flow-card absolute"
+              style={customVars}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StaticDeckPreview() {
+  return (
+    <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+      <div className="absolute h-24 w-24 rounded-full bg-[rgba(140,90,255,0.2)] blur-2xl" />
+      <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute -ml-16 opacity-80" />
+      <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute" />
+      <FaceCard name={RWS_FLOW_FACE_CARDS[2]} size={52} className="absolute ml-16 opacity-90" />
+    </div>
   );
 }
