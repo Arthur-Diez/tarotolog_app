@@ -220,12 +220,12 @@ interface DeckFlowState {
   right: FlowCard[];
 }
 
-const FLOW_STEP_MS = 12000;
+const FLOW_STEP_MS = 10000;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [30, 50, 70];
-const FLOW_LANE_SCALE = [1.12, 1.03, 0.84];
+const FLOW_LANE_X = [18, 40, 62, 82];
+const FLOW_LANE_SCALE = [1.06, 1.04, 1, 0.9];
 const DECK_CARD_SIZE = 42;
-const FLOW_CARD_SIZE = 50;
+const FLOW_CARD_SIZE = 48;
 
 function createFlowState(nextId: { current: number }): DeckFlowState {
   const takeCard = (index: number): FlowCard => {
@@ -236,8 +236,8 @@ function createFlowState(nextId: { current: number }): DeckFlowState {
 
   return {
     left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3)],
-    lane: [takeCard(4), takeCard(5), takeCard(6)],
-    right: [takeCard(7), takeCard(8), takeCard(9), takeCard(10)]
+    lane: [takeCard(4), takeCard(5), takeCard(6), takeCard(7)],
+    right: [takeCard(8), takeCard(9), takeCard(10), takeCard(11)]
   };
 }
 
@@ -248,7 +248,7 @@ function advanceFlowState(prev: DeckFlowState): DeckFlowState {
 
   return {
     left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
-    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
+    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1], prev.lane[2]],
     right: [...prev.right.slice(1), movingIntoRightStack]
   };
 }
@@ -259,15 +259,12 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
 
   useEffect(() => {
     if (!isActive) return undefined;
-    const tick = () => {
-      setFlow((prev) => advanceFlowState(prev));
-    };
-    const start = window.setTimeout(tick, 280);
+    // Always restart from a deterministic layout when the block opens.
+    setFlow(createFlowState(nextIdRef));
     const timer = window.setInterval(() => {
-      tick();
+      setFlow((prev) => advanceFlowState(prev));
     }, FLOW_STEP_MS);
     return () => {
-      window.clearTimeout(start);
       window.clearInterval(timer);
     };
   }, [isActive]);
