@@ -36,6 +36,34 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     openOrder: [1, 2, 3]
   },
   {
+    id: "lenormand_his_intentions",
+    title: "Его намерения",
+    description: "5 карт · мысли · чувства · реальные действия · итог",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 26, y: 52, label: "Его мысли" },
+      { index: 2, x: 50, y: 30, label: "Его чувства" },
+      { index: 3, x: 50, y: 52, label: "Истинное намерение (центр)" },
+      { index: 4, x: 74, y: 52, label: "Действия в ближайшее время" },
+      { index: 5, x: 50, y: 74, label: "Итог для вас" }
+    ],
+    openOrder: order(5)
+  },
+  {
+    id: "lenormand_feelings_actions",
+    title: "Чувства и действия",
+    description: "5 карт · эмоции · поступки · развитие",
+    cardsCount: 5,
+    positions: [
+      { index: 1, x: 32, y: 34, label: "Его чувства" },
+      { index: 2, x: 52, y: 34, label: "Его намерения" },
+      { index: 3, x: 42, y: 54, label: "Главный фактор влияния" },
+      { index: 4, x: 32, y: 74, label: "Его реальные действия" },
+      { index: 5, x: 52, y: 74, label: "Развитие ситуации" }
+    ],
+    openOrder: order(5)
+  },
+  {
     id: "lenormand_work_money",
     title: "Работа и деньги",
     description: "5 карт · доход · возможности · риски · результат",
@@ -64,6 +92,22 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     openOrder: order(5)
   },
   {
+    id: "lenormand_week",
+    title: "Неделя",
+    description: "7 карт · прогноз по дням недели",
+    cardsCount: 7,
+    positions: [
+      { index: 1, x: 20, y: 34, label: "Понедельник" },
+      { index: 2, x: 36, y: 34, label: "Вторник" },
+      { index: 3, x: 52, y: 34, label: "Среда" },
+      { index: 4, x: 68, y: 34, label: "Четверг" },
+      { index: 5, x: 24, y: 66, label: "Пятница" },
+      { index: 6, x: 40, y: 66, label: "Суббота" },
+      { index: 7, x: 56, y: 66, label: "Воскресенье" }
+    ],
+    openOrder: order(7)
+  },
+  {
     id: "lenormand_next_month",
     title: "Ближайший месяц",
     description: "7 карт · прогноз по неделям",
@@ -78,6 +122,27 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
       { index: 7, x: 70, y: 68, label: "Вторая половина месяца · итог" }
     ],
     openOrder: order(7)
+  },
+  {
+    id: "lenormand_wheel_of_year",
+    title: "Колесо года (12 карт)",
+    description: "12 карт · годовой цикл · события по месяцам",
+    cardsCount: 12,
+    positions: [
+      { index: 1, x: 50, y: 18, label: "Январь" },
+      { index: 2, x: 64, y: 26, label: "Февраль" },
+      { index: 3, x: 74, y: 40, label: "Март" },
+      { index: 4, x: 76, y: 56, label: "Апрель" },
+      { index: 5, x: 66, y: 70, label: "Май" },
+      { index: 6, x: 52, y: 78, label: "Июнь" },
+      { index: 7, x: 44, y: 78, label: "Июль" },
+      { index: 8, x: 30, y: 70, label: "Август" },
+      { index: 9, x: 20, y: 56, label: "Сентябрь" },
+      { index: 10, x: 22, y: 40, label: "Октябрь" },
+      { index: 11, x: 32, y: 26, label: "Ноябрь" },
+      { index: 12, x: 46, y: 26, label: "Декабрь" }
+    ],
+    openOrder: order(12)
   },
   {
     id: "lenormand_square_9",

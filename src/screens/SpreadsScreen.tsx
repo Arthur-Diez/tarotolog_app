@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
+import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 
@@ -20,7 +21,7 @@ const isSpreadAvailableForDeck = (deckId: Deck["id"], spreadId: string): boolean
   const schema = SPREAD_SCHEMAS[spreadId as SpreadId];
   return Boolean(schema && schema.deckType === deckId);
 };
-type SpreadCategory = "popular" | "relationships" | "work_finance" | "self_growth" | "premium";
+type SpreadCategory = "popular" | "relationships" | "work_finance" | "self_growth" | "premium" | "forecast";
 
 interface SpreadMeta {
   category: SpreadCategory;
@@ -85,6 +86,36 @@ const RWS_SPREAD_BLOCKS: SpreadBlock[] = [
   }
 ];
 
+const LENORMAND_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "popular",
+    title: "⚡ Быстрый ответ",
+    badge: "🔥 Часто выбирают",
+    spreadIds: ["lenormand_one_card", "lenormand_three_cards", "lenormand_yes_no"]
+  },
+  {
+    id: "relationships",
+    title: "❤️ Отношения",
+    spreadIds: ["lenormand_we_and_connection", "lenormand_his_intentions", "lenormand_feelings_actions"]
+  },
+  {
+    id: "work_finance",
+    title: "💼 Работа и деньги",
+    spreadIds: ["lenormand_work_money"]
+  },
+  {
+    id: "forecast",
+    title: "📅 Прогноз",
+    spreadIds: ["lenormand_week", "lenormand_next_month", "lenormand_wheel_of_year"]
+  },
+  {
+    id: "premium",
+    title: "🔎 Глубокий анализ",
+    badge: "👑 Премиум",
+    spreadIds: ["lenormand_square_9", "lenormand_grand_tableau"]
+  }
+];
+
 const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: 5, popularityScore: 95, keywords: ["быстро", "карта дня"] },
   yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: 10, popularityScore: 92, keywords: ["да", "нет"] },
@@ -121,7 +152,22 @@ const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   star: { category: "premium", tags: ["энергия", "чакры", "гармония"], energyCost: 26, popularityScore: 73, keywords: ["диагностика"] }
 };
 
-const getSpreadMeta = (spreadId: string, cardsCount: number): SpreadMeta => {
+const LENORMAND_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  lenormand_one_card: { category: "popular", tags: ["событие", "фокус", "день"], energyCost: 5, popularityScore: 95, keywords: ["быстро"] },
+  lenormand_three_cards: { category: "popular", tags: ["цепочка", "развитие", "итог"], energyCost: 9, popularityScore: 91, keywords: ["ход событий"] },
+  lenormand_yes_no: { category: "popular", tags: ["решение", "аргументы", "итог"], energyCost: 10, popularityScore: 90, keywords: ["фактический ответ"] },
+  lenormand_we_and_connection: { category: "relationships", tags: ["связь", "партнёр", "перспектива"], energyCost: 15, popularityScore: 86, keywords: ["отношения"] },
+  lenormand_his_intentions: { category: "relationships", tags: ["намерения", "чувства", "действия"], energyCost: 16, popularityScore: 88, keywords: ["он и вы"] },
+  lenormand_feelings_actions: { category: "relationships", tags: ["эмоции", "поступки", "динамика"], energyCost: 16, popularityScore: 87, keywords: ["искренность"] },
+  lenormand_work_money: { category: "work_finance", tags: ["доход", "риски", "результат"], energyCost: 17, popularityScore: 84, keywords: ["карьера"] },
+  lenormand_week: { category: "forecast", tags: ["дни", "ритм", "план"], energyCost: 14, popularityScore: 82, keywords: ["неделя"] },
+  lenormand_next_month: { category: "forecast", tags: ["месяц", "недели", "события"], energyCost: 18, popularityScore: 85, keywords: ["период"] },
+  lenormand_wheel_of_year: { category: "forecast", tags: ["год", "месяцы", "цикл"], energyCost: 28, popularityScore: 81, keywords: ["стратегия"] },
+  lenormand_square_9: { category: "premium", tags: ["детали", "анализ", "ситуация"], energyCost: 24, popularityScore: 79, keywords: ["9 карт"] },
+  lenormand_grand_tableau: { category: "premium", tags: ["36 карт", "полный обзор", "судьба"], energyCost: 40, popularityScore: 76, keywords: ["grand tableau"] }
+};
+
+const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
     tags: ["расклад", "анализ", "итог"],
@@ -129,6 +175,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number): SpreadMeta => {
     popularityScore: 50,
     keywords: []
   };
+  if (deckId === "lenormand") {
+    return LENORMAND_SPREAD_META[spreadId] ?? fallback;
+  }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
 
@@ -137,13 +186,17 @@ const CATEGORY_LABELS: Record<SpreadCategory, string[]> = {
   relationships: ["отношения", "любовь", "relationship", "love"],
   work_finance: ["работа", "финансы", "деньги", "career", "finance"],
   self_growth: ["саморазвитие", "ресурс", "психология", "self", "growth"],
-  premium: ["премиум", "глубокие", "стратегия", "premium"]
+  premium: ["премиум", "глубокие", "стратегия", "premium"],
+  forecast: ["прогноз", "месяц", "неделя", "год", "forecast"]
 };
 
-const matchesSpreadQuery = (spreadId: string, query: string): boolean => {
-  const spread = RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
+const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"]): boolean => {
+  const spread =
+    deckId === "lenormand"
+      ? LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]
+      : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
-  const meta = getSpreadMeta(spreadId, spread.cardsCount);
+  const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;
 
@@ -196,11 +249,25 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     return RWS_SPREAD_BLOCKS.map((block) => ({
       ...block,
       spreads: block.spreadIds
-        .filter((spreadId) => matchesSpreadQuery(spreadId, query))
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
         .map((spreadId) => ({
           id: spreadId,
           title: RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP]?.title ?? spreadId,
           description: RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
+  const lenormandBlocks = useMemo(() => {
+    if (deck.id !== "lenormand") return [];
+    return LENORMAND_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]?.title ?? spreadId,
+          description: LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]?.description ?? ""
         }))
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
@@ -255,6 +322,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                   <SpreadCard
                     key={spread.id}
                     spread={spread}
+                    deckId={deck.id}
                     expanded={Boolean(expandedSpreads[spread.id])}
                     onToggle={() => toggleSpread(spread.id)}
                     onSelect={() => handleSelectSpread(spread.id)}
@@ -270,12 +338,46 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </Card>
           ) : null}
         </div>
+      ) : deck.id === "lenormand" ? (
+        <div className="space-y-6">
+          {lenormandBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {lenormandBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
       ) : (
         <div className="space-y-3">
           {nonRwsSpreads.map((spread) => (
             <SpreadCard
               key={spread.id}
               spread={spread}
+              deckId={deck.id}
               expanded={Boolean(expandedSpreads[spread.id])}
               onToggle={() => toggleSpread(spread.id)}
               onSelect={() => handleSelectSpread(spread.id)}
@@ -295,6 +397,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
 
 interface SpreadCardProps {
   spread: DeckSpread;
+  deckId: Deck["id"];
   expanded: boolean;
   onToggle: () => void;
   onSelect: () => void;
@@ -674,25 +777,128 @@ const RWS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const LENORMAND_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  lenormand_one_card: {
+    subtitle: "Ключевое событие или тема дня",
+    metaLine: "1 карта · главное событие · ключевой фокус",
+    header: "Одна карта (Событие дня)",
+    purpose: ["📅 Понять, что станет главным сегодня", "🧭 Уловить направление дня", "⚡ Получить быстрый ориентир"],
+    howItWorks: ["🃏 1 позиция — событие или влияние, которое проявится ярче всего.", "Расклад даёт краткий и конкретный прогноз."],
+    forWhom: ["✓ Для ежедневного прогноза", "✓ Когда нужен быстрый ответ"]
+  },
+  lenormand_three_cards: {
+    subtitle: "Цепочка развития событий",
+    metaLine: "3 карты · текущая ситуация · развитие · итог",
+    header: "Три карты (Ход событий)",
+    purpose: ["📈 Понять, как будут развиваться события", "🔎 Увидеть причинно-следственную связь", "🧭 Считать вероятный итог"],
+    howItWorks: ["🃏 Первая карта — исходная точка, вторая — движение процесса, третья — вероятный результат.", "Показывает логику события по шагам."],
+    forWhom: ["✓ Для прогноза на ближайшее время", "✓ Когда важна динамика, а не моментальный ответ"]
+  },
+  lenormand_yes_no: {
+    subtitle: "Фактический ответ с контекстом",
+    metaLine: "3 карты · аргументы · итоговое направление",
+    header: "Да или Нет (Фактический ответ)",
+    purpose: ["⚖️ Взвесить ситуацию без иллюзий", "🧭 Получить чёткий ориентир", "🔍 Понять, что влияет на итог"],
+    howItWorks: ["🃏 Левая карта — «за», верхняя — главный фактор, правая — «против/итог».", "Итог читается через баланс аргументов."],
+    forWhom: ["✓ Когда нужно принять решение", "✓ Когда важна конкретика"]
+  },
+  lenormand_his_intentions: {
+    subtitle: "Мысли, чувства, реальные действия",
+    metaLine: "5 карт · мысли · чувства · намерение · действия · итог",
+    header: "Его намерения",
+    purpose: ["💬 Понять, серьёзен ли человек", "🔎 Отличить слова от намерений", "❤️ Увидеть скрытые мотивы"],
+    howItWorks: ["🃏 Центральная карта показывает истинное намерение. Верхняя — эмоции, левая — мысли, правая — действия, нижняя — к чему это ведёт.", "Расклад даёт конкретный ответ о перспективах взаимодействия."],
+    forWhom: ["✓ Когда есть сомнения", "✓ Если поведение человека противоречиво"]
+  },
+  lenormand_feelings_actions: {
+    subtitle: "Баланс эмоций и поступков",
+    metaLine: "5 карт · чувства · намерения · действия · развитие",
+    header: "Чувства и действия",
+    purpose: ["❤️ Разобраться в искренности", "⚖️ Сравнить чувства и поступки", "🔎 Понять динамику отношений"],
+    howItWorks: ["🃏 Верхний ряд — внутренний мир человека, нижний — проявление во внешнем мире, центр — ключевое влияние.", "Помогает увидеть расхождения между словами и действиями."],
+    forWhom: ["✓ Когда важна ясность", "✓ Если отношения нестабильны"]
+  },
+  lenormand_we_and_connection: {
+    subtitle: "Вы, партнёр и динамика связи",
+    metaLine: "5 карт · вы · партнёр · связь · препятствие · перспектива",
+    header: "Мы и связь",
+    purpose: ["❤️ Понять динамику отношений", "🔎 Увидеть сильные и слабые стороны связи", "🧭 Оценить перспективу"],
+    howItWorks: ["🃏 Центр показывает характер связи, нижние карты раскрывают развитие и препятствия.", "Расклад даёт практичный взгляд на будущее отношений."],
+    forWhom: ["✓ Для анализа чувств", "✓ При сомнениях в будущем пары"]
+  },
+  lenormand_work_money: {
+    subtitle: "Практичный прогноз по карьере и доходу",
+    metaLine: "5 карт · доход · возможности · риски · результат",
+    header: "Работа и деньги",
+    purpose: ["💼 Оценить карьерную ситуацию", "💰 Понять перспективы дохода", "⚠️ Считать риски заранее"],
+    howItWorks: ["🃏 Центральная карта — финансовый поток, верхняя — шанс, нижняя — итог развития.", "Даёт прикладной прогноз без абстракций."],
+    forWhom: ["✓ Для анализа работы", "✓ При финансовых вопросах"]
+  },
+  lenormand_week: {
+    subtitle: "Недельный ритм по дням",
+    metaLine: "7 карт · прогноз по дням недели",
+    header: "Неделя",
+    purpose: ["📆 Спланировать неделю", "📌 Подготовиться к событиям", "⚠️ Выделить ключевые дни"],
+    howItWorks: ["🃏 Каждая карта соответствует дню недели, чтение идёт последовательно как цепочка событий.", "Показывает где максимум напряжения и где точки роста."],
+    forWhom: ["✓ Для планирования", "✓ Перед насыщенной неделей"]
+  },
+  lenormand_next_month: {
+    subtitle: "Прогноз по этапам месяца",
+    metaLine: "7 карт · первая и вторая половина месяца",
+    header: "Ближайший месяц",
+    purpose: ["📅 Увидеть ключевые события месяца", "📈 Подготовиться к изменениям", "🎯 Понять общий вектор периода"],
+    howItWorks: ["🃏 Позиции 1–4 описывают первую часть месяца, 5–7 — вторую половину и итог.", "Каждая карта отражает период и его тему."],
+    forWhom: ["✓ Для планирования месяца", "✓ Для стратегических решений"]
+  },
+  lenormand_wheel_of_year: {
+    subtitle: "Годовой прогноз по месяцам",
+    metaLine: "12 карт · годовой цикл · события по месяцам",
+    header: "Колесо года (12 карт)",
+    purpose: ["📆 Построить картину года", "📊 Понять динамику месяцев", "🔮 Выделить ключевые периоды"],
+    howItWorks: ["🃏 Карты выкладываются по кругу как часы: каждая позиция = отдельный месяц.", "Расклад показывает периоды роста, напряжённые этапы и итог года."],
+    forWhom: ["✓ Для планирования года", "✓ Перед важными решениями"]
+  },
+  lenormand_square_9: {
+    subtitle: "Объёмный разбор ситуации",
+    metaLine: "9 карт · фон · развитие · итог и последствия",
+    header: "9-карточный квадрат (Анализ ситуации)",
+    purpose: ["🔎 Разобрать сложную ситуацию", "📌 Увидеть скрытые влияния", "🧠 Отделить фон от ключевого фактора"],
+    howItWorks: ["🃏 Центр — суть вопроса, верхний ряд — причины, средний — развитие, нижний — последствия.", "Даёт детальную картину и точки для вмешательства."],
+    forWhom: ["✓ При запутанных вопросах", "✓ Когда нужен глубокий анализ"]
+  },
+  lenormand_grand_tableau: {
+    subtitle: "Полный обзор по системе Ленорман",
+    metaLine: "36 карт · полный обзор жизни · судьбоносные события",
+    header: "Большой расклад Ленорман (Grand Tableau)",
+    purpose: ["🔮 Получить комплексный прогноз", "🧭 Увидеть линии судьбы и ключевые фигуры", "📚 Считать взаимосвязи между сферами жизни"],
+    howItWorks: ["🃏 4 ряда по 9 карт: анализируются дома, линии, диагонали и сочетания соседних карт.", "Это самый глубокий расклад системы Ленорман."],
+    forWhom: ["✓ Для стратегического прогноза", "✓ Для серьёзных жизненных решений"]
+  }
+};
+
+const getSpreadById = (spreadId: string) =>
+  RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
+  LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP];
+
 function extractCardsCount(spread: DeckSpread): number {
-  const mapped = RWS_SPREADS_MAP[spread.id as keyof typeof RWS_SPREADS_MAP];
+  const mapped = getSpreadById(spread.id);
   if (mapped) return mapped.cardsCount;
   const match = spread.description.match(/(\d+)\s*карт(?:а|ы)?/i);
   if (match) return Number(match[1]);
   return 3;
 }
 
-function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
-  const details = RWS_SPREAD_DETAILS[spread.id];
-  const isRwsDetailed = Boolean(details);
+function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
+  const details = deckId === "lenormand" ? LENORMAND_SPREAD_DETAILS[spread.id] : RWS_SPREAD_DETAILS[spread.id];
+  const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);
-  const meta = getSpreadMeta(spread.id, cardsCount);
+  const meta = getSpreadMeta(spread.id, cardsCount, deckId);
   const energyText = `⚡ -${meta.energyCost}`;
-  const subtitle = isRwsDetailed ? details.subtitle : spread.description;
-  const metaLine = isRwsDetailed
+  const subtitle = hasDetailedContent ? details.subtitle : spread.description;
+  const metaLine = hasDetailedContent
     ? details.metaLine
     : `${cardsCount} карт · ${meta.tags.slice(0, 2).join(" · ")}`;
-  const title = isRwsDetailed ? details.header : spread.title;
+  const title = hasDetailedContent ? details.header : spread.title;
 
   return (
     <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
@@ -733,7 +939,7 @@ function SpreadCard({ spread, expanded, onToggle, onSelect, canSelect }: SpreadC
         </div>
       </div>
       <Expander isOpen={expanded} ariaId={`spread-desc-${spread.id}`}>
-        {isRwsDetailed ? (
+        {hasDetailedContent ? (
           <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
             <SpreadPreviewByLayout spreadId={spread.id} />
             <div>
@@ -782,7 +988,7 @@ function SpreadPreviewOneCard() {
 }
 
 function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
-  const spread = RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
+  const spread = getSpreadById(spreadId);
 
   if (!spread) return <SpreadPreviewOneCard />;
 
@@ -867,6 +1073,20 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 78, y: 61 },
       { x: 78, y: 39 },
       { x: 78, y: 17 }
+    ],
+    lenormand_his_intentions: [
+      { x: 26, y: 52 },
+      { x: 50, y: 30 },
+      { x: 50, y: 52 },
+      { x: 74, y: 52 },
+      { x: 50, y: 74 }
+    ],
+    lenormand_feelings_actions: [
+      { x: 32, y: 34 },
+      { x: 52, y: 34 },
+      { x: 42, y: 54 },
+      { x: 32, y: 74 },
+      { x: 52, y: 74 }
     ]
   };
 
@@ -906,7 +1126,10 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     hero_path: 34,
     balance_wheel: 32,
     reset_reload: 36,
-    soul_purpose: 34
+    soul_purpose: 34,
+    lenormand_wheel_of_year: 30,
+    lenormand_square_9: 36,
+    lenormand_grand_tableau: 18
   };
   const customSize = customSizeById[spread.id] ?? null;
   const cardSize =

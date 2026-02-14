@@ -37,9 +37,13 @@ export type LenormandSpreadId =
   | "lenormand_one_card"
   | "lenormand_three_cards"
   | "lenormand_yes_no"
+  | "lenormand_his_intentions"
+  | "lenormand_feelings_actions"
   | "lenormand_work_money"
+  | "lenormand_week"
   | "lenormand_we_and_connection"
   | "lenormand_next_month"
+  | "lenormand_wheel_of_year"
   | "lenormand_square_9"
   | "lenormand_grand_tableau";
 
