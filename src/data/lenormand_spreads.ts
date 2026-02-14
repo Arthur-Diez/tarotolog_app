@@ -41,11 +41,11 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     description: "5 карт · мысли · чувства · реальные действия · итог",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 26, y: 52, label: "Его мысли" },
-      { index: 2, x: 50, y: 30, label: "Его чувства" },
+      { index: 1, x: 16, y: 52, label: "Его мысли" },
+      { index: 2, x: 50, y: 16, label: "Его чувства" },
       { index: 3, x: 50, y: 52, label: "Истинное намерение (центр)" },
-      { index: 4, x: 74, y: 52, label: "Действия в ближайшее время" },
-      { index: 5, x: 50, y: 74, label: "Итог для вас" }
+      { index: 4, x: 84, y: 52, label: "Действия в ближайшее время" },
+      { index: 5, x: 50, y: 88, label: "Итог для вас" }
     ],
     openOrder: order(5)
   },
@@ -55,11 +55,11 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     description: "5 карт · эмоции · поступки · развитие",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 32, y: 34, label: "Его чувства" },
-      { index: 2, x: 52, y: 34, label: "Его намерения" },
-      { index: 3, x: 42, y: 54, label: "Главный фактор влияния" },
-      { index: 4, x: 32, y: 74, label: "Его реальные действия" },
-      { index: 5, x: 52, y: 74, label: "Развитие ситуации" }
+      { index: 1, x: 24, y: 18, label: "Его чувства" },
+      { index: 2, x: 76, y: 18, label: "Его намерения" },
+      { index: 3, x: 50, y: 54, label: "Главный фактор влияния" },
+      { index: 4, x: 24, y: 90, label: "Его реальные действия" },
+      { index: 5, x: 76, y: 90, label: "Развитие ситуации" }
     ],
     openOrder: order(5)
   },
@@ -129,18 +129,18 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     description: "12 карт · годовой цикл · события по месяцам",
     cardsCount: 12,
     positions: [
-      { index: 1, x: 50, y: 18, label: "Январь" },
-      { index: 2, x: 64, y: 26, label: "Февраль" },
-      { index: 3, x: 74, y: 40, label: "Март" },
-      { index: 4, x: 76, y: 56, label: "Апрель" },
-      { index: 5, x: 66, y: 70, label: "Май" },
-      { index: 6, x: 52, y: 78, label: "Июнь" },
-      { index: 7, x: 44, y: 78, label: "Июль" },
-      { index: 8, x: 30, y: 70, label: "Август" },
-      { index: 9, x: 20, y: 56, label: "Сентябрь" },
-      { index: 10, x: 22, y: 40, label: "Октябрь" },
-      { index: 11, x: 32, y: 26, label: "Ноябрь" },
-      { index: 12, x: 46, y: 26, label: "Декабрь" }
+      { index: 1, x: 50, y: 16, label: "Январь" },
+      { index: 2, x: 67, y: 20, label: "Февраль" },
+      { index: 3, x: 79, y: 33, label: "Март" },
+      { index: 4, x: 84, y: 50, label: "Апрель" },
+      { index: 5, x: 79, y: 67, label: "Май" },
+      { index: 6, x: 67, y: 80, label: "Июнь" },
+      { index: 7, x: 50, y: 84, label: "Июль" },
+      { index: 8, x: 33, y: 80, label: "Август" },
+      { index: 9, x: 21, y: 67, label: "Сентябрь" },
+      { index: 10, x: 16, y: 50, label: "Октябрь" },
+      { index: 11, x: 21, y: 33, label: "Ноябрь" },
+      { index: 12, x: 33, y: 20, label: "Декабрь" }
     ],
     openOrder: order(12)
   },
@@ -150,15 +150,15 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     description: "9 карт · фон · развитие · итог и последствия",
     cardsCount: 9,
     positions: [
-      { index: 1, x: 26, y: 24, label: "Фон 1" },
-      { index: 2, x: 50, y: 24, label: "Фон 2" },
-      { index: 3, x: 74, y: 24, label: "Фон 3" },
-      { index: 4, x: 26, y: 50, label: "Развитие 1" },
+      { index: 1, x: 20, y: 18, label: "Фон 1" },
+      { index: 2, x: 50, y: 18, label: "Фон 2" },
+      { index: 3, x: 80, y: 18, label: "Фон 3" },
+      { index: 4, x: 20, y: 50, label: "Развитие 1" },
       { index: 5, x: 50, y: 50, label: "Центральная тема" },
-      { index: 6, x: 74, y: 50, label: "Развитие 3" },
-      { index: 7, x: 26, y: 76, label: "Итог 1" },
-      { index: 8, x: 50, y: 76, label: "Итог 2" },
-      { index: 9, x: 74, y: 76, label: "Итог 3" }
+      { index: 6, x: 80, y: 50, label: "Развитие 3" },
+      { index: 7, x: 20, y: 82, label: "Итог 1" },
+      { index: 8, x: 50, y: 82, label: "Итог 2" },
+      { index: 9, x: 80, y: 82, label: "Итог 3" }
     ],
     openOrder: order(9)
   },
@@ -170,8 +170,8 @@ export const LENORMAND_SPREADS: SpreadDef[] = [
     positions: Array.from({ length: 36 }, (_, idx) => {
       const row = Math.floor(idx / 9);
       const col = idx % 9;
-      const x = 10 + col * 10;
-      const y = 18 + row * 20;
+      const x = 6 + col * 11;
+      const y = 16 + row * 20;
       return {
         index: idx + 1,
         x,

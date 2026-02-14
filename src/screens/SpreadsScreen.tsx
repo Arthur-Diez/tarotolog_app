@@ -1075,18 +1075,18 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 78, y: 17 }
     ],
     lenormand_his_intentions: [
-      { x: 26, y: 52 },
-      { x: 50, y: 30 },
+      { x: 16, y: 52 },
+      { x: 50, y: 16 },
       { x: 50, y: 52 },
-      { x: 74, y: 52 },
-      { x: 50, y: 74 }
+      { x: 84, y: 52 },
+      { x: 50, y: 88 }
     ],
     lenormand_feelings_actions: [
-      { x: 32, y: 34 },
-      { x: 52, y: 34 },
-      { x: 42, y: 54 },
-      { x: 32, y: 74 },
-      { x: 52, y: 74 }
+      { x: 24, y: 18 },
+      { x: 76, y: 18 },
+      { x: 50, y: 54 },
+      { x: 24, y: 90 },
+      { x: 76, y: 90 }
     ]
   };
 
@@ -1127,9 +1127,11 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     balance_wheel: 32,
     reset_reload: 36,
     soul_purpose: 34,
-    lenormand_wheel_of_year: 30,
-    lenormand_square_9: 36,
-    lenormand_grand_tableau: 18
+    lenormand_his_intentions: 40,
+    lenormand_feelings_actions: 40,
+    lenormand_wheel_of_year: 24,
+    lenormand_square_9: 30,
+    lenormand_grand_tableau: 14
   };
   const customSize = customSizeById[spread.id] ?? null;
   const cardSize =

@@ -690,14 +690,22 @@ export default function SpreadPlayPage() {
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
                   const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                     const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
-                    const isWheelOfYear = schema.id === "wheel_of_year";
+                    const isWheelOfYear = schema.id === "wheel_of_year" || schema.id === "lenormand_wheel_of_year";
+                    const isLenormandSquare = schema.id === "lenormand_square_9";
+                    const isLenormandGrandTableau = schema.id === "lenormand_grand_tableau";
+                    const isLenormandCenterFocus =
+                      (schema.id === "lenormand_his_intentions" || schema.id === "lenormand_feelings_actions") &&
+                      position.id === 3;
                     const lockCelticObstacleClick =
                       isCelticCrossObstacle &&
                       stage === "await_open" &&
                       !card?.isOpen &&
                       expectedNextCardIndex === 1;
                     const showOrderLabel =
-                      !card?.isOpen && schema.openOrder.length > 1 && typeof orderNumber === "number";
+                      !card?.isOpen &&
+                      schema.openOrder.length > 1 &&
+                      typeof orderNumber === "number" &&
+                      !isLenormandGrandTableau;
                     const shouldHighlight =
                       stage === "await_open" &&
                       schema.openingRules === "in-order" &&
@@ -713,7 +721,8 @@ export default function SpreadPlayPage() {
                         left: position.x,
                         top: position.y,
                         transform: "translate(-50%, -50%)",
-                        pointerEvents: lockCelticObstacleClick ? "none" : "auto"
+                        pointerEvents: lockCelticObstacleClick ? "none" : "auto",
+                        zIndex: isLenormandCenterFocus ? 1210 : undefined
                       }}
                     >
                       {card && faceSrc && (
@@ -738,7 +747,9 @@ export default function SpreadPlayPage() {
                                   shouldHighlight
                                     ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
                                     : "",
-                                  isWheelOfYear ? "h-48 w-28" : ""
+                                  isWheelOfYear ? "h-36 w-22" : "",
+                                  isLenormandSquare ? "h-52 w-31" : "",
+                                  isLenormandGrandTableau ? "h-[76px] w-[46px]" : ""
                                 ].join(" ")
                               }
                               onClick={() => handleCardClick(position.id)}
