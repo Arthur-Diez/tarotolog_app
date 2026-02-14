@@ -30,6 +30,7 @@ function createSpreads(): DeckSpread[] {
   }));
 }
 
+import { LENORMAND_SPREADS } from "./lenormand_spreads";
 import { RWS_SPREADS } from "./rws_spreads";
 
 export const DECKS: Deck[] = [
@@ -49,7 +50,11 @@ export const DECKS: Deck[] = [
     title: "Таро Ленорман",
     subtitle: "Событийность, факты",
     description: "Более приземленные ответы и событийные акценты.",
-    spreads: createSpreads()
+    spreads: LENORMAND_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   },
   {
     id: "manara",

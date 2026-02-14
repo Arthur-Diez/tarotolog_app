@@ -8,14 +8,18 @@ import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
-import { RWS_SPREADS_MAP } from "@/data/rws_spreads";
+import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
+import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 
 interface SpreadsScreenProps {
   deck: Deck;
   onBack: () => void;
 }
 
-const isRwsSpreadAvailable = (spreadId: string) => spreadId in RWS_SPREADS_MAP;
+const isSpreadAvailableForDeck = (deckId: Deck["id"], spreadId: string): boolean => {
+  const schema = SPREAD_SCHEMAS[spreadId as SpreadId];
+  return Boolean(schema && schema.deckType === deckId);
+};
 type SpreadCategory = "popular" | "relationships" | "work_finance" | "self_growth" | "premium";
 
 interface SpreadMeta {
@@ -179,7 +183,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   };
 
   const handleSelectSpread = (spreadId: string) => {
-    if (deck.id === "rws" && isRwsSpreadAvailable(spreadId)) {
+    if (isSpreadAvailableForDeck(deck.id, spreadId)) {
       navigate(`/spreads/play/${spreadId}`);
       return;
     }
@@ -254,7 +258,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                     expanded={Boolean(expandedSpreads[spread.id])}
                     onToggle={() => toggleSpread(spread.id)}
                     onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isRwsSpreadAvailable(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
                   />
                 ))}
               </div>
@@ -275,7 +279,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
               expanded={Boolean(expandedSpreads[spread.id])}
               onToggle={() => toggleSpread(spread.id)}
               onSelect={() => handleSelectSpread(spread.id)}
-              canSelect={false}
+              canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
             />
           ))}
           {nonRwsSpreads.length === 0 ? (

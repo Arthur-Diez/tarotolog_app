@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { SpreadSchema } from "@/data/spreadSchemas";
 import { SpreadOneCard } from "@/data/spreadSchemas";
+import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { RWS_ALL } from "@/data/rws_deck";
 import type { BackendReadingStatus, ReadingOutputPayload } from "@/lib/api";
 
@@ -24,6 +25,11 @@ export interface SpreadReadingResult {
 const computeExpectedNext = (schema: SpreadSchema, cards: SpreadCardState[]): number | null => {
   const openedCount = cards.filter((card) => card.isOpen).length;
   return schema.openOrder[openedCount] ?? null;
+};
+
+const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
+  rws: RWS_ALL,
+  lenormand: LENORMAND_ALL
 };
 
 interface SpreadStoreState {
@@ -78,10 +84,11 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
   setStage: (stage) => set({ stage }),
   startSpread: (question) => {
     const { schema } = get();
-    const shuffled = [...RWS_ALL].sort(() => Math.random() - 0.5);
+    const sourceCards = DECK_CARDS[schema.deckType] ?? RWS_ALL;
+    const shuffled = [...sourceCards].sort(() => Math.random() - 0.5);
     const cards = schema.positions.map((position, index) => ({
       positionIndex: position.id,
-      name: shuffled[index],
+      name: shuffled[index % shuffled.length],
       reversed: false,
       isOpen: false
     }));

@@ -1,4 +1,6 @@
-import type { SpreadId } from "@/data/rws_spreads";
+import type { DeckId } from "@/data/decks";
+import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
+import type { LenormandSpreadId, SpreadId } from "@/data/rws_spreads";
 
 export interface SpreadPosition {
   id: number;
@@ -11,7 +13,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: "rws";
+  deckType: Extract<DeckId, "rws" | "lenormand">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -564,6 +566,30 @@ export const SpreadSoulPurpose: SpreadSchema = {
   ]
 };
 
+const LENORMAND_LAYOUT_SCALE_X = 5.6;
+const LENORMAND_LAYOUT_SCALE_Y = 7;
+
+const toLenormandPositions = (positions: Array<{ index: number; x: number; y: number; label?: string }>): SpreadPosition[] =>
+  positions.map((position) => ({
+    id: position.index,
+    label: position.label ?? `Позиция ${position.index}`,
+    x: Math.round((position.x - 50) * LENORMAND_LAYOUT_SCALE_X),
+    y: Math.round((position.y - 50) * LENORMAND_LAYOUT_SCALE_Y)
+  }));
+
+const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
+  acc[spread.id as LenormandSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "lenormand",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toLenormandPositions(spread.positions)
+  };
+  return acc;
+}, {} as Record<LenormandSpreadId, SpreadSchema>);
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -597,5 +623,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   hero_path: SpreadHeroPath,
   balance_wheel: SpreadBalanceWheel,
   reset_reload: SpreadResetReload,
-  soul_purpose: SpreadSoulPurpose
+  soul_purpose: SpreadSoulPurpose,
+  ...LENORMAND_SCHEMAS
 };

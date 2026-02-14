@@ -1,4 +1,4 @@
-export type SpreadId =
+export type RwsSpreadId =
   | "one_card"
   | "yes_no"
   | "three_cards"
@@ -32,6 +32,18 @@ export type SpreadId =
   | "balance_wheel"
   | "reset_reload"
   | "soul_purpose";
+
+export type LenormandSpreadId =
+  | "lenormand_one_card"
+  | "lenormand_three_cards"
+  | "lenormand_yes_no"
+  | "lenormand_work_money"
+  | "lenormand_we_and_connection"
+  | "lenormand_next_month"
+  | "lenormand_square_9"
+  | "lenormand_grand_tableau";
+
+export type SpreadId = RwsSpreadId | LenormandSpreadId;
 
 export interface SpreadPosition {
   index: number;
@@ -535,6 +547,6 @@ export const RWS_SPREADS: SpreadDef[] = [
   }
 ];
 
-export const RWS_SPREADS_MAP: Record<SpreadId, SpreadDef> = Object.fromEntries(
+export const RWS_SPREADS_MAP: Record<RwsSpreadId, SpreadDef> = Object.fromEntries(
   RWS_SPREADS.map((spread) => [spread.id, spread])
-) as Record<SpreadId, SpreadDef>;
+) as Record<RwsSpreadId, SpreadDef>;

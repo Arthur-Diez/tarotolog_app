@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { createShare, getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
 import { DECKS } from "@/data/decks";
+import { LENORMAND_ALL } from "@/data/lenormand_deck";
+import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
@@ -196,7 +198,13 @@ export default function InterpretationPage() {
   const cardNameMap = useMemo(() => {
     const map = new Map<string, string>();
     RWS_ALL.forEach((name) => {
-      const code = mapCardNameToCode(name);
+      const code = mapCardNameToCode(name, "rws");
+      if (code) {
+        map.set(code, name);
+      }
+    });
+    LENORMAND_ALL.forEach((name) => {
+      const code = mapCardNameToCode(name, "lenormand");
       if (code) {
         map.set(code, name);
       }
@@ -249,10 +257,26 @@ export default function InterpretationPage() {
   const questionText = inputMeta?.question ?? "Вопрос не указан";
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
+  const resolvedDeckId = useMemo(() => {
+    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true }) {
+      return inputMeta.deckId as "rws" | "lenormand";
+    }
+    const spreadId = inputMeta?.spreadId;
+    if (spreadId && spreadId in SPREAD_SCHEMAS) {
+      return SPREAD_SCHEMAS[spreadId as SpreadId].deckType;
+    }
+    if (cards.some((card) => card.card_code.startsWith("LENORMAND_"))) {
+      return "lenormand";
+    }
+    return "rws";
+  }, [cards, inputMeta?.deckId, inputMeta?.spreadId]);
   const spreadTitle = useMemo(() => {
     const spreadId = inputMeta?.spreadId;
     if (spreadId && (spreadId in RWS_SPREADS_MAP)) {
-      return RWS_SPREADS_MAP[spreadId as SpreadId]?.title ?? "Расклад";
+      return RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP]?.title ?? "Расклад";
+    }
+    if (spreadId && spreadId in LENORMAND_SPREADS_MAP) {
+      return LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]?.title ?? "Расклад";
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
@@ -275,7 +299,13 @@ export default function InterpretationPage() {
     const assetName = cardNameMap.get(card.card_code) ?? null;
     const friendlyName =
       assetName ??
-      card.card_code.replace("RWS_", "").replaceAll("_", " ").replace(/\s+/g, " ").trim();
+      card.card_code
+        .replace(/^RWS_/, "")
+        .replace(/^LENORMAND_/, "")
+        .replace(/^\d{2}_/, "")
+        .replaceAll("_", " ")
+        .replace(/\s+/g, " ")
+        .trim();
     return {
       ...card,
       displayName: friendlyName,
@@ -287,7 +317,7 @@ export default function InterpretationPage() {
   const shareCards = cardDisplayList.map((card) => ({
     name: card.displayName,
     positionLabel: card.positionLabel,
-    imageSrc: card.assetName ? faceUrl("rws", card.assetName) : null,
+    imageSrc: card.assetName ? faceUrl(resolvedDeckId, card.assetName) : null,
     reversed: card.reversed
   }));
 
@@ -440,7 +470,7 @@ export default function InterpretationPage() {
                 >
                   {card.assetName ? (
                     <img
-                      src={faceUrl("rws", card.assetName)}
+                      src={faceUrl(resolvedDeckId, card.assetName)}
                       alt={card.displayName}
                       className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
                       loading="lazy"

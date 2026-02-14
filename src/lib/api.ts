@@ -272,7 +272,7 @@ export interface CreateReadingCardInput {
 export interface CreateReadingPayload {
   type: "tarot";
   spread_id: SpreadId;
-  deck_id: "rws";
+  deck_id: string;
   spread_title?: string;
   deck_title?: string;
   question: string;

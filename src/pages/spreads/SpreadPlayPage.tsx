@@ -420,7 +420,7 @@ export default function SpreadPlayPage() {
           window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
         );
         const cardsPayload = snapshot.cards.map((card) => {
-          const code = mapCardNameToCode(card.name);
+          const code = mapCardNameToCode(card.name, snapshot.schema.deckType);
           if (!code) {
             throw new Error("Не удалось определить код карты. Попробуйте заново.");
           }

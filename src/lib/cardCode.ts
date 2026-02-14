@@ -20,14 +20,14 @@ const MAJOR_ARCANA_MAP: Record<string, string> = {
   "Луна (18)": "RWS_THE_MOON",
   "Солнце (19)": "RWS_THE_SUN",
   "Суд (20)": "RWS_JUDGEMENT",
-  "Мир (21)": "RWS_THE_WORLD",
+  "Мир (21)": "RWS_THE_WORLD"
 };
 
 const SUITS_MAP: Record<string, string> = {
   Жезлов: "WANDS",
   Кубков: "CUPS",
   Мечей: "SWORDS",
-  Пентаклей: "PENTACLES",
+  Пентаклей: "PENTACLES"
 };
 
 const RANKS_MAP: Record<string, string> = {
@@ -44,30 +44,65 @@ const RANKS_MAP: Record<string, string> = {
   Паж: "PAGE",
   Рыцарь: "KNIGHT",
   Королева: "QUEEN",
-  Король: "KING",
+  Король: "KING"
 };
 
-export function mapCardNameToCode(name: string): string | null {
-  const trimmed = name.trim();
-  const majorCode = MAJOR_ARCANA_MAP[trimmed];
-  if (majorCode) {
-    return majorCode;
-  }
+const LENORMAND_CARDS: Array<{ index: number; name: string; slug: string }> = [
+  { index: 1, name: "Всадник", slug: "RIDER" },
+  { index: 2, name: "Клевер", slug: "CLOVER" },
+  { index: 3, name: "Корабль", slug: "SHIP" },
+  { index: 4, name: "Дом", slug: "HOUSE" },
+  { index: 5, name: "Дерево", slug: "TREE" },
+  { index: 6, name: "Тучи", slug: "CLOUDS" },
+  { index: 7, name: "Змея", slug: "SNAKE" },
+  { index: 8, name: "Гроб", slug: "COFFIN" },
+  { index: 9, name: "Букет", slug: "BOUQUET" },
+  { index: 10, name: "Коса", slug: "SCYTHE" },
+  { index: 11, name: "Метла (Кнут)", slug: "WHIP" },
+  { index: 12, name: "Птицы", slug: "BIRDS" },
+  { index: 13, name: "Ребенок", slug: "CHILD" },
+  { index: 14, name: "Лиса", slug: "FOX" },
+  { index: 15, name: "Медведь", slug: "BEAR" },
+  { index: 16, name: "Звезды", slug: "STARS" },
+  { index: 17, name: "Аист", slug: "STORK" },
+  { index: 18, name: "Собака", slug: "DOG" },
+  { index: 19, name: "Башня", slug: "TOWER" },
+  { index: 20, name: "Сад", slug: "GARDEN" },
+  { index: 21, name: "Гора", slug: "MOUNTAIN" },
+  { index: 22, name: "Развилка", slug: "CROSSROADS" },
+  { index: 23, name: "Крысы", slug: "RATS" },
+  { index: 24, name: "Сердце", slug: "HEART" },
+  { index: 25, name: "Кольцо", slug: "RING" },
+  { index: 26, name: "Книга", slug: "BOOK" },
+  { index: 27, name: "Письмо", slug: "LETTER" },
+  { index: 28, name: "Мужчина", slug: "MAN" },
+  { index: 29, name: "Женщина", slug: "WOMAN" },
+  { index: 30, name: "Лилии", slug: "LILIES" },
+  { index: 31, name: "Солнце", slug: "SUN" },
+  { index: 32, name: "Луна", slug: "MOON" },
+  { index: 33, name: "Ключ", slug: "KEY" },
+  { index: 34, name: "Рыбы", slug: "FISH" },
+  { index: 35, name: "Якорь", slug: "ANCHOR" },
+  { index: 36, name: "Крест", slug: "CROSS" }
+];
 
-  const suitEntry = Object.entries(SUITS_MAP).find(([ruSuit]) => trimmed.endsWith(ruSuit));
-  if (!suitEntry) {
-    return null;
-  }
+const LENORMAND_NAME_ALIASES: Record<string, string> = {
+  Метла: "Метла (Кнут)",
+  Кнут: "Метла (Кнут)",
+  "Башня (16)": "Башня"
+};
 
-  const [ruSuit, suitCode] = suitEntry;
-  const rankPart = trimmed.slice(0, trimmed.length - ruSuit.length).trim();
-  const rankCode = RANKS_MAP[rankPart];
-  if (!rankCode) {
-    return null;
-  }
+const LENORMAND_NAME_TO_CODE: Record<string, string> = {};
+const LENORMAND_INDEX_TO_CODE: Record<number, string> = {};
+const LENORMAND_SLUG_TO_CODE: Record<string, string> = {};
 
-  return `RWS_${rankCode}_OF_${suitCode}`;
-}
+LENORMAND_CARDS.forEach((card) => {
+  const code = `LENORMAND_${String(card.index).padStart(2, "0")}_${card.slug}`;
+  LENORMAND_NAME_TO_CODE[card.name] = code;
+  LENORMAND_NAME_TO_CODE[`${card.name} (${card.index})`] = code;
+  LENORMAND_INDEX_TO_CODE[card.index] = code;
+  LENORMAND_SLUG_TO_CODE[card.slug] = code;
+});
 
 const EN_MINOR_SUITS: Record<string, string> = {
   WANDS: "WANDS",
@@ -129,6 +164,37 @@ const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
   WORLD: "RWS_THE_WORLD"
 };
 
+type SupportedDeckId = "rws" | "lenormand";
+
+const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
+
+function mapRwsCardNameToCode(name: string): string | null {
+  const majorCode = MAJOR_ARCANA_MAP[name];
+  if (majorCode) {
+    return majorCode;
+  }
+
+  const suitEntry = Object.entries(SUITS_MAP).find(([ruSuit]) => name.endsWith(ruSuit));
+  if (!suitEntry) {
+    return null;
+  }
+
+  const [ruSuit, suitCode] = suitEntry;
+  const rankPart = name.slice(0, name.length - ruSuit.length).trim();
+  const rankCode = RANKS_MAP[rankPart];
+  if (!rankCode) {
+    return null;
+  }
+
+  return `RWS_${rankCode}_OF_${suitCode}`;
+}
+
+function mapLenormandCardNameToCode(name: string): string | null {
+  const aliasTarget = LENORMAND_NAME_ALIASES[name];
+  const normalizedName = aliasTarget ?? name;
+  return LENORMAND_NAME_TO_CODE[normalizedName] ?? null;
+}
+
 function normalizeEnglishCardName(value: string): string {
   return value
     .trim()
@@ -163,9 +229,62 @@ function mapEnglishCardNameToCode(name: string): string | null {
   return `RWS_${rank}_OF_${suit}`;
 }
 
+function normalizeLenormandCode(rawCode: string): string | null {
+  const normalized = rawCode
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_")
+    .replace(/^LENORMAN_/, "LENORMAND_");
+
+  if (!normalized.startsWith("LENORMAND_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^LENORMAND_(\d{1,2})(?:_|$)/);
+  if (byNumberMatch) {
+    const index = Number(byNumberMatch[1]);
+    return LENORMAND_INDEX_TO_CODE[index] ?? null;
+  }
+
+  const bySlugMatch = normalized.match(/^LENORMAND_([A-Z_]+)$/);
+  if (!bySlugMatch) {
+    return null;
+  }
+  const slug = bySlugMatch[1];
+  return LENORMAND_SLUG_TO_CODE[slug] ?? null;
+}
+
+export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
+  const trimmed = normalizeCardName(name);
+  if (!trimmed) return null;
+
+  if (deckId === "rws") {
+    return mapRwsCardNameToCode(trimmed) ?? mapEnglishCardNameToCode(trimmed);
+  }
+
+  if (deckId === "lenormand") {
+    return mapLenormandCardNameToCode(trimmed);
+  }
+
+  return (
+    mapRwsCardNameToCode(trimmed) ??
+    mapLenormandCardNameToCode(trimmed) ??
+    mapEnglishCardNameToCode(trimmed)
+  );
+}
+
 export function mapCardValueToCode(value: string): string | null {
   const raw = value.trim();
   if (!raw) return null;
-  if (raw.startsWith("RWS_")) return raw;
-  return mapCardNameToCode(raw) ?? mapEnglishCardNameToCode(raw);
+
+  if (raw.startsWith("RWS_")) {
+    return raw;
+  }
+
+  const lenormandCode = normalizeLenormandCode(raw);
+  if (lenormandCode) {
+    return lenormandCode;
+  }
+
+  return mapCardNameToCode(raw);
 }
