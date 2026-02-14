@@ -34,6 +34,19 @@ const RWS_FLOW_FACE_CARDS = [
 
 const RWS_FLOW_CARD_URLS = RWS_FLOW_FACE_CARDS.map((name) => faceUrl("rws", name));
 
+const LENORMAND_FLOW_FACE_CARDS = [
+  "Всадник (1)",
+  "Клевер (2)",
+  "Корабль (3)",
+  "Дом (4)",
+  "Дерево (5)",
+  "Тучи (6)",
+  "Сердце (24)",
+  "Ключ (33)"
+];
+
+const LENORMAND_FLOW_CARD_URLS = LENORMAND_FLOW_FACE_CARDS.map((name) => faceUrl("lenormand", name));
+
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
     positioning: "Фундаментальная система символов и архетипов",
@@ -167,7 +180,13 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
 
       <Expander isOpen={expanded} ariaId={`deck-desc-${deck.id}`}>
         <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
-          {deck.id === "rws" ? <RwsDeckFlowPreview isActive={animationActive} /> : <StaticDeckPreview />}
+          {deck.id === "rws" ? (
+            <RwsDeckFlowPreview isActive={animationActive} />
+          ) : deck.id === "lenormand" ? (
+            <LenormandDeckFlowPreview isActive={animationActive} />
+          ) : (
+            <StaticDeckPreview />
+          )}
           <p className="text-center text-xs text-[var(--text-tertiary)]">{content.animationCaption}</p>
 
           <div className="space-y-2 text-sm text-[var(--text-secondary)]">
@@ -216,6 +235,19 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
   return (
     <DeckShowcaseAnimation
       cards={RWS_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={12000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
+  );
+}
+
+function LenormandDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  return (
+    <DeckShowcaseAnimation
+      cards={LENORMAND_FLOW_CARD_URLS}
       isActive={isActive}
       speedMs={12000}
       overlapPx={10}
