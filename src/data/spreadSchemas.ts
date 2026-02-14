@@ -569,15 +569,30 @@ export const SpreadSoulPurpose: SpreadSchema = {
 const LENORMAND_LAYOUT_SCALE_X = 5.6;
 const LENORMAND_LAYOUT_SCALE_Y = 7;
 
-const toLenormandPositions = (positions: Array<{ index: number; x: number; y: number; label?: string }>): SpreadPosition[] =>
+interface LenormandLayoutOptions {
+  scaleX?: number;
+  scaleY?: number;
+}
+
+const toLenormandPositions = (
+  positions: Array<{ index: number; x: number; y: number; label?: string }>,
+  options?: LenormandLayoutOptions
+): SpreadPosition[] =>
   positions.map((position) => ({
     id: position.index,
     label: position.label ?? `Позиция ${position.index}`,
-    x: Math.round((position.x - 50) * LENORMAND_LAYOUT_SCALE_X),
-    y: Math.round((position.y - 50) * LENORMAND_LAYOUT_SCALE_Y)
+    x: Math.round((position.x - 50) * (options?.scaleX ?? LENORMAND_LAYOUT_SCALE_X)),
+    y: Math.round((position.y - 50) * (options?.scaleY ?? LENORMAND_LAYOUT_SCALE_Y))
   }));
 
 const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
+  const layoutOptions =
+    spread.id === "lenormand_grand_tableau"
+      ? {
+          scaleX: 3.2,
+          scaleY: 3.8
+        }
+      : undefined;
   acc[spread.id as LenormandSpreadId] = {
     id: spread.id,
     name: spread.title,
@@ -585,7 +600,7 @@ const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
     deckType: "lenormand",
     openingRules: "in-order",
     openOrder: spread.openOrder,
-    positions: toLenormandPositions(spread.positions)
+    positions: toLenormandPositions(spread.positions, layoutOptions)
   };
   return acc;
 }, {} as Record<LenormandSpreadId, SpreadSchema>);
