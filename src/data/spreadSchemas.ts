@@ -589,8 +589,8 @@ const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
   const layoutOptions =
     spread.id === "lenormand_grand_tableau"
       ? {
-          scaleX: 3.2,
-          scaleY: 3.8
+          scaleX: 2.6,
+          scaleY: 3.4
         }
       : undefined;
   acc[spread.id as LenormandSpreadId] = {

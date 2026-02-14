@@ -749,7 +749,7 @@ export default function SpreadPlayPage() {
                                     : "",
                                   isWheelOfYear ? "h-36 w-22" : "",
                                   isLenormandSquare ? "h-52 w-31" : "",
-                                  isLenormandGrandTableau ? "h-[104px] w-[64px]" : ""
+                                  isLenormandGrandTableau ? "h-[116px] w-[72px]" : ""
                                 ].join(" ")
                               }
                               onClick={() => handleCardClick(position.id)}
