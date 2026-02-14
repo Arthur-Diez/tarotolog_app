@@ -222,7 +222,7 @@ interface DeckFlowState {
 
 const FLOW_STEP_MS = 12000;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [16, 45, 73];
+const FLOW_LANE_X = [16, 42, 64, 84];
 
 function createFlowState(nextId: { current: number }): DeckFlowState {
   const takeCard = (index: number): FlowCard => {
@@ -233,20 +233,20 @@ function createFlowState(nextId: { current: number }): DeckFlowState {
 
   return {
     left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3)],
-    lane: [takeCard(5), takeCard(6), takeCard(7)],
+    lane: [takeCard(4), takeCard(5), takeCard(6), takeCard(7)],
     right: [takeCard(8), takeCard(9), takeCard(10), takeCard(11)]
   };
 }
 
 function advanceFlowState(prev: DeckFlowState): DeckFlowState {
   const outgoingLeftTop = prev.left[prev.left.length - 1];
-  const movingIntoRightTop = prev.lane[prev.lane.length - 1];
+  const movingIntoRightStack = prev.lane[prev.lane.length - 1];
   const recycledFromRightBottom = prev.right[0];
 
   return {
     left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
-    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
-    right: [...prev.right.slice(1), movingIntoRightTop]
+    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1], prev.lane[2]],
+    right: [...prev.right.slice(1), movingIntoRightStack]
   };
 }
 
@@ -283,7 +283,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             transition={{ duration: 1.35, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
-            <FaceCard name={card.name} size={52} className={index < flow.left.length - 2 ? "opacity-85" : ""} />
+            <FaceCard name={card.name} size={52} className={index < flow.left.length - 2 ? "opacity-82" : "opacity-90"} />
           </motion.div>
         ))}
       </div>
@@ -298,7 +298,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             transition={{ duration: 1.35, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
-            <FaceCard name={card.name} size={52} className={index < flow.right.length - 2 ? "opacity-85" : ""} />
+            <FaceCard name={card.name} size={52} className={index < flow.right.length - 2 ? "opacity-82" : "opacity-90"} />
           </motion.div>
         ))}
       </div>
@@ -314,7 +314,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
               duration: isActive ? FLOW_STEP_MS / 1000 : 0.2,
               ease: isActive ? "linear" : FLOW_EASE
             }}
-            style={{ zIndex: 20 + index }}
+            style={{ zIndex: index === 3 ? 40 : 20 + index }}
           >
             <FaceCard name={card.name} size={48} />
           </motion.div>
