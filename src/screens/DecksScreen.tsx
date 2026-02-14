@@ -220,10 +220,11 @@ interface DeckFlowState {
   right: FlowCard[];
 }
 
-const FLOW_STEP_MS = 10000;
+const FLOW_STEP_MS = 9000;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [18, 40, 62, 82];
-const FLOW_LANE_SCALE = [1.06, 1.04, 1, 0.9];
+const FLOW_LANE_X = [18, 50, 82];
+const FLOW_LANE_SCALE = [1.14, 1.04, 0.88];
+const FLOW_LANE_TOP = "44%";
 const DECK_CARD_SIZE = 42;
 const FLOW_CARD_SIZE = 48;
 
@@ -236,8 +237,8 @@ function createFlowState(nextId: { current: number }): DeckFlowState {
 
   return {
     left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3)],
-    lane: [takeCard(4), takeCard(5), takeCard(6), takeCard(7)],
-    right: [takeCard(8), takeCard(9), takeCard(10), takeCard(11)]
+    lane: [takeCard(4), takeCard(5), takeCard(6)],
+    right: [takeCard(7), takeCard(8), takeCard(9), takeCard(10)]
   };
 }
 
@@ -248,7 +249,7 @@ function advanceFlowState(prev: DeckFlowState): DeckFlowState {
 
   return {
     left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
-    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1], prev.lane[2]],
+    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
     right: [...prev.right.slice(1), movingIntoRightStack]
   };
 }
@@ -317,7 +318,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             key={`lane-${card.id}`}
             className="absolute -translate-x-1/2 -translate-y-1/2"
             initial={false}
-            animate={{ left: `${FLOW_LANE_X[index]}%`, top: "50%", scale: FLOW_LANE_SCALE[index] }}
+            animate={{ left: `${FLOW_LANE_X[index]}%`, top: FLOW_LANE_TOP, scale: FLOW_LANE_SCALE[index] }}
             transition={{
               duration: isActive ? FLOW_STEP_MS / 1000 : 0.2,
               ease: isActive ? "linear" : FLOW_EASE
