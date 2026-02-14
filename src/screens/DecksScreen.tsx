@@ -220,11 +220,13 @@ interface DeckFlowState {
   right: FlowCard[];
 }
 
-const FLOW_STEP_MS = 9000;
+const FLOW_STEP_MS = 7500;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [18, 50, 82];
+const FLOW_LEFT_DECK_X = 22;
+const FLOW_RIGHT_DECK_X = 78;
+const FLOW_LANE_X = [34, 50, 66];
 const FLOW_LANE_SCALE = [1.14, 1.04, 0.88];
-const FLOW_LANE_TOP = "44%";
+const FLOW_LANE_TOP = "48%";
 const DECK_CARD_SIZE = 42;
 const FLOW_CARD_SIZE = 48;
 
@@ -274,7 +276,10 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[18%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div
+        className="absolute top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2"
+        style={{ left: `${FLOW_LEFT_DECK_X}%` }}
+      >
         {flow.left.map((card, index) => (
           <motion.div
             key={`left-${card.id}`}
@@ -293,7 +298,10 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
         ))}
       </div>
 
-      <div className="absolute left-[82%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div
+        className="absolute top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2"
+        style={{ left: `${FLOW_RIGHT_DECK_X}%` }}
+      >
         {flow.right.map((card, index) => (
           <motion.div
             key={`right-${card.id}`}
@@ -317,7 +325,11 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
           <motion.div
             key={`lane-${card.id}`}
             className="absolute -translate-x-1/2 -translate-y-1/2"
-            initial={false}
+            initial={
+              index === 0
+                ? { left: `${FLOW_LEFT_DECK_X}%`, top: FLOW_LANE_TOP, scale: 0.92 }
+                : false
+            }
             animate={{ left: `${FLOW_LANE_X[index]}%`, top: FLOW_LANE_TOP, scale: FLOW_LANE_SCALE[index] }}
             transition={{
               duration: isActive ? FLOW_STEP_MS / 1000 : 0.2,
