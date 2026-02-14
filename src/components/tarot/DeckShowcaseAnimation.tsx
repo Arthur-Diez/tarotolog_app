@@ -330,13 +330,9 @@ export function DeckShowcaseAnimation({
     ["--deck-scale" as string]: String(scaleDeck)
   } as CSSProperties;
 
-  const leftDeckBaseStyle = {
-    transform: `translate3d(${(layout.leftDeckCenterX - layout.cardWidth / 2).toFixed(2)}px, ${(layout.centerY - layout.cardHeight / 2).toFixed(2)}px, 0)`
-  };
-
-  const rightDeckBaseStyle = {
-    transform: `translate3d(${(layout.rightDeckCenterX - layout.cardWidth / 2).toFixed(2)}px, ${(layout.centerY - layout.cardHeight / 2).toFixed(2)}px, 0)`
-  };
+  const leftDeckBaseX = layout.leftDeckCenterX - layout.cardWidth / 2;
+  const rightDeckBaseX = layout.rightDeckCenterX - layout.cardWidth / 2;
+  const deckBaseY = layout.centerY - layout.cardHeight / 2;
 
   const staticProgress = 0;
 
@@ -344,62 +340,58 @@ export function DeckShowcaseAnimation({
     <div ref={containerRef} className={`${styles.root} ${className}`.trim()} style={rootStyle}>
       <div className={styles.glow} />
 
-      <div className={styles.deck} style={leftDeckBaseStyle}>
-        {flow.left.map((cardIndex, index) => {
-          const depth = flow.left.length - index - 1;
-          const dx = -depth * 0.7;
-          const dy = depth * 1.5;
+      {flow.left.map((cardIndex, index) => {
+        const depth = flow.left.length - index - 1;
+        const x = leftDeckBaseX - depth * 0.7;
+        const y = deckBaseY + depth * 1.5;
 
-          return (
-            <img
-              key={`left-${index}-${cardIndex}`}
-              src={safeCards[cardIndex] ?? ""}
-              alt=""
-              aria-hidden
-              loading="eager"
-              draggable={false}
-              className={styles.deckCard}
-              style={
-                {
-                  zIndex: index + 1,
-                  ["--dx" as string]: `${dx.toFixed(2)}px`,
-                  ["--dy" as string]: `${dy.toFixed(2)}px`,
-                  transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${scaleDeck})`
-                } as CSSProperties
-              }
-            />
-          );
-        })}
-      </div>
+        return (
+          <img
+            key={`left-${index}-${cardIndex}`}
+            src={safeCards[cardIndex] ?? ""}
+            alt=""
+            aria-hidden
+            loading="eager"
+            draggable={false}
+            className={styles.deckCard}
+            style={
+              {
+                zIndex: 12 + index,
+                ["--dx" as string]: `${x.toFixed(2)}px`,
+                ["--dy" as string]: `${y.toFixed(2)}px`,
+                transform: `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scaleDeck})`
+              } as CSSProperties
+            }
+          />
+        );
+      })}
 
-      <div className={styles.deck} style={rightDeckBaseStyle}>
-        {flow.right.map((cardIndex, index) => {
-          const depth = flow.right.length - index - 1;
-          const dx = depth * 0.7;
-          const dy = depth * 1.5;
-          const isTopCard = index === flow.right.length - 1;
+      {flow.right.map((cardIndex, index) => {
+        const depth = flow.right.length - index - 1;
+        const x = rightDeckBaseX + depth * 0.7;
+        const y = deckBaseY + depth * 1.5;
+        const isTopCard = index === flow.right.length - 1;
 
-          return (
-            <img
-              key={`right-${index}-${cardIndex}-${isTopCard ? flow.dockCount : "static"}`}
-              src={safeCards[cardIndex] ?? ""}
-              alt=""
-              aria-hidden
-              loading="eager"
-              draggable={false}
-              className={`${styles.deckCard} ${isTopCard && shouldAnimate ? styles.deckTopPop : ""}`}
-              style={
-                {
-                  zIndex: index + 1,
-                  ["--dx" as string]: `${dx.toFixed(2)}px`,
-                  ["--dy" as string]: `${dy.toFixed(2)}px`,
-                  transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${scaleDeck})`
-                } as CSSProperties
-              }
-            />
-          );
-        })}
-      </div>
+        return (
+          <img
+            key={`right-${index}-${cardIndex}-${isTopCard ? flow.dockCount : "static"}`}
+            src={safeCards[cardIndex] ?? ""}
+            alt=""
+            aria-hidden
+            loading="eager"
+            draggable={false}
+            className={`${styles.deckCard} ${isTopCard && shouldAnimate ? styles.deckTopPop : ""}`}
+            style={
+              {
+                zIndex: 12 + index,
+                ["--dx" as string]: `${x.toFixed(2)}px`,
+                ["--dy" as string]: `${y.toFixed(2)}px`,
+                transform: `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scaleDeck})`
+              } as CSSProperties
+            }
+          />
+        );
+      })}
 
       <div className={styles.movingLayer}>
         {flow.moving.map((cardIndex, index) => {
