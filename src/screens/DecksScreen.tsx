@@ -1,10 +1,11 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
+import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
 import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 
@@ -30,6 +31,8 @@ const RWS_FLOW_FACE_CARDS = [
   "Восьмерка Жезлов",
   "Шестерка Кубков"
 ];
+
+const RWS_FLOW_CARD_URLS = RWS_FLOW_FACE_CARDS.map((name) => faceUrl("rws", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
@@ -209,139 +212,16 @@ function FaceCard({ name, size = 56, className = "", style }: { name: string; si
   );
 }
 
-interface FlowCard {
-  id: number;
-  name: string;
-}
-
-interface DeckFlowState {
-  left: FlowCard[];
-  lane: FlowCard[];
-  right: FlowCard[];
-}
-
-const FLOW_STEP_MS = 7500;
-const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LEFT_DECK_X = 22;
-const FLOW_RIGHT_DECK_X = 78;
-const FLOW_LANE_X = [34, 50, 66];
-const FLOW_LANE_SCALE = [1.14, 1.04, 0.88];
-const FLOW_LANE_TOP = "48%";
-const DECK_CARD_SIZE = 42;
-const FLOW_CARD_SIZE = 48;
-
-function createFlowState(nextId: { current: number }): DeckFlowState {
-  const takeCard = (index: number): FlowCard => {
-    const id = nextId.current++;
-    const name = RWS_FLOW_FACE_CARDS[index % RWS_FLOW_FACE_CARDS.length];
-    return { id, name };
-  };
-
-  return {
-    left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3)],
-    lane: [takeCard(4), takeCard(5), takeCard(6)],
-    right: [takeCard(7), takeCard(8), takeCard(9), takeCard(10)]
-  };
-}
-
-function advanceFlowState(prev: DeckFlowState): DeckFlowState {
-  const outgoingLeftTop = prev.left[prev.left.length - 1];
-  const movingIntoRightStack = prev.lane[prev.lane.length - 1];
-  const recycledFromRightBottom = prev.right[0];
-
-  return {
-    left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
-    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
-    right: [...prev.right.slice(1), movingIntoRightStack]
-  };
-}
-
 function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
-  const nextIdRef = useRef(1);
-  const [flow, setFlow] = useState<DeckFlowState>(() => createFlowState(nextIdRef));
-
-  useEffect(() => {
-    if (!isActive) return undefined;
-    // Always restart from a deterministic layout when the block opens.
-    setFlow(createFlowState(nextIdRef));
-    const timer = window.setInterval(() => {
-      setFlow((prev) => advanceFlowState(prev));
-    }, FLOW_STEP_MS);
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [isActive]);
-
   return (
-    <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
-
-      <div
-        className="absolute top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2"
-        style={{ left: `${FLOW_LEFT_DECK_X}%` }}
-      >
-        {flow.left.map((card, index) => (
-          <motion.div
-            key={`left-${card.id}`}
-            className="absolute"
-            initial={false}
-            animate={{ x: index * 0.65, y: (flow.left.length - 1 - index) * 1.6 }}
-            transition={{ duration: 1.35, ease: FLOW_EASE }}
-            style={{ zIndex: index + 1 }}
-          >
-            <FaceCard
-              name={card.name}
-              size={DECK_CARD_SIZE}
-              className={index < flow.left.length - 2 ? "opacity-82" : "opacity-90"}
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      <div
-        className="absolute top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2"
-        style={{ left: `${FLOW_RIGHT_DECK_X}%` }}
-      >
-        {flow.right.map((card, index) => (
-          <motion.div
-            key={`right-${card.id}`}
-            className="absolute"
-            initial={false}
-            animate={{ x: index * 0.65, y: (flow.right.length - 1 - index) * 1.6 }}
-            transition={{ duration: 1.35, ease: FLOW_EASE }}
-            style={{ zIndex: index + 1 }}
-          >
-            <FaceCard
-              name={card.name}
-              size={DECK_CARD_SIZE}
-              className={index < flow.right.length - 2 ? "opacity-82" : "opacity-90"}
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="absolute inset-0 z-[3]">
-        {flow.lane.map((card, index) => (
-          <motion.div
-            key={`lane-${card.id}`}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            initial={
-              index === 0
-                ? { left: `${FLOW_LEFT_DECK_X}%`, top: FLOW_LANE_TOP, scale: 0.92 }
-                : false
-            }
-            animate={{ left: `${FLOW_LANE_X[index]}%`, top: FLOW_LANE_TOP, scale: FLOW_LANE_SCALE[index] }}
-            transition={{
-              duration: isActive ? FLOW_STEP_MS / 1000 : 0.2,
-              ease: isActive ? "linear" : FLOW_EASE
-            }}
-            style={{ zIndex: index === flow.lane.length - 1 ? 40 : 20 + index }}
-          >
-            <FaceCard name={card.name} size={FLOW_CARD_SIZE} />
-          </motion.div>
-        ))}
-      </div>
-    </div>
+    <DeckShowcaseAnimation
+      cards={RWS_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={6000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
   );
 }
 

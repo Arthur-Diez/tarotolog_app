@@ -1,0 +1,91 @@
+.root {
+  position: relative;
+  height: 11.25rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7.5rem;
+  height: 7.5rem;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(145, 95, 255, 0.24) 0%, rgba(145, 95, 255, 0) 72%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.deck {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+}
+
+.deckCard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--deck-card-w);
+  height: var(--deck-card-h);
+  border-radius: 12px;
+  object-fit: cover;
+  transform-origin: center center;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.38),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+  user-select: none;
+  -webkit-user-drag: none;
+  backface-visibility: hidden;
+}
+
+.movingLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+}
+
+.movingCard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--deck-card-w);
+  height: var(--deck-card-h);
+  transform-origin: center center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.movingCardImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.32),
+    0 0 18px rgba(149, 106, 255, 0.18);
+}
+
+.deckTopPop {
+  animation: deckTopPop 120ms ease-out;
+}
+
+@keyframes deckTopPop {
+  0% {
+    transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) scale(var(--deck-scale, 1));
+  }
+  55% {
+    transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) scale(calc(var(--deck-scale, 1) * 1.02));
+  }
+  100% {
+    transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) scale(var(--deck-scale, 1));
+  }
+}
