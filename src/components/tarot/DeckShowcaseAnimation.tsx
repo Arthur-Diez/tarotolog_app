@@ -41,9 +41,11 @@ const STACK_CARD_COUNT = 8;
 const SLOT_SPACING = 1 / MOVING_CARD_COUNT;
 const CARD_RATIO = 1.55;
 const EMERGE_PORTION = 0.025;
+const EMERGE_PICK_PORTION = 0.014;
 const DOCK_PORTION = 0.04;
-const EMERGE_LIFT_PX = 4;
-const EMERGE_PULL_PX = 3;
+const EMERGE_LIFT_PX = 6;
+const EMERGE_PULL_PX = 4;
+const DECK_GAP_EXTRA_PX = 18;
 const DOCK_MICRO_ARC_PX = 1.6;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -108,8 +110,9 @@ function computeLayout(
   const cardWidth = clamp(width * 0.18, 54, 66);
   const cardHeight = cardWidth * CARD_RATIO;
   const sidePadding = clamp(width * 0.08, 16, 30);
-  const leftDeckCenterX = sidePadding + cardWidth / 2;
-  const rightDeckCenterX = width - sidePadding - cardWidth / 2;
+  const halfGapExpansion = Math.min(DECK_GAP_EXTRA_PX / 2, Math.max(0, sidePadding - 4));
+  const leftDeckCenterX = sidePadding + cardWidth / 2 - halfGapExpansion;
+  const rightDeckCenterX = width - sidePadding - cardWidth / 2 + halfGapExpansion;
   const centerY = height * 0.57;
   const arcPx = Math.min(6, height * 0.04);
   const leftDeckTopX = leftDeckCenterX - cardWidth / 2;
@@ -202,6 +205,8 @@ export function DeckShowcaseAnimation({
       const trackSpan = layout.trackEndCenterX - layout.trackStartCenterX;
       const emergeTargetX = layout.trackStartCenterX + trackSpan * EMERGE_PORTION;
       const dockStartX = layout.trackStartCenterX + trackSpan * dockStart;
+      const leftTopCenterX = layout.leftDeckTopX + layout.cardWidth / 2;
+      const leftTopCenterY = layout.deckTopY + layout.cardHeight / 2;
 
       for (let index = 0; index < MOVING_CARD_COUNT; index += 1) {
         const element = movingRefs.current[index];
@@ -212,9 +217,18 @@ export function DeckShowcaseAnimation({
         let centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
 
         if (progress < EMERGE_PORTION) {
-          const t = easeOutCubic(progress / EMERGE_PORTION);
-          centerX = lerp(layout.leftDeckCenterX, emergeTargetX, t) + t * EMERGE_PULL_PX;
-          centerY -= (1 - t) * EMERGE_LIFT_PX;
+          if (progress < EMERGE_PICK_PORTION) {
+            const t = easeOutCubic(progress / EMERGE_PICK_PORTION);
+            centerX = leftTopCenterX + t * EMERGE_PULL_PX;
+            centerY = leftTopCenterY - t * EMERGE_LIFT_PX;
+          } else {
+            const t = easeOutCubic((progress - EMERGE_PICK_PORTION) / (EMERGE_PORTION - EMERGE_PICK_PORTION));
+            const pickX = leftTopCenterX + EMERGE_PULL_PX;
+            const pickY = leftTopCenterY - EMERGE_LIFT_PX;
+            const laneY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
+            centerX = lerp(pickX, emergeTargetX, t);
+            centerY = lerp(pickY, laneY, t);
+          }
         } else if (progress > dockStart) {
           const t = easeOutCubic((progress - dockStart) / DOCK_PORTION);
           centerX = lerp(dockStartX, layout.rightDeckCenterX, t);
@@ -224,9 +238,10 @@ export function DeckShowcaseAnimation({
         const scale = prefersReducedMotion ? scaleMoving : computeScale(progress, scaleDeck, scaleMoving);
         const translateX = centerX - layout.cardWidth / 2;
         const translateY = centerY - layout.cardHeight / 2;
+        const movingZ = progress < EMERGE_PORTION ? 90 + index : 60 + index;
 
         element.style.transform = `translate3d(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;
-        element.style.zIndex = `${60 + index}`;
+        element.style.zIndex = `${movingZ}`;
       }
     },
     [layout, prefersReducedMotion, scaleDeck, scaleMoving]
@@ -353,14 +368,25 @@ export function DeckShowcaseAnimation({
       const trackSpan = layout.trackEndCenterX - layout.trackStartCenterX;
       const emergeTargetX = layout.trackStartCenterX + trackSpan * EMERGE_PORTION;
       const dockStartX = layout.trackStartCenterX + trackSpan * dockStart;
+      const leftTopCenterX = layout.leftDeckTopX + layout.cardWidth / 2;
+      const leftTopCenterY = layout.deckTopY + layout.cardHeight / 2;
 
       let centerX = layout.trackStartCenterX + trackSpan * progress;
       let centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
 
       if (progress < EMERGE_PORTION) {
-        const t = easeOutCubic(progress / EMERGE_PORTION);
-        centerX = lerp(layout.leftDeckCenterX, emergeTargetX, t) + t * EMERGE_PULL_PX;
-        centerY -= (1 - t) * EMERGE_LIFT_PX;
+        if (progress < EMERGE_PICK_PORTION) {
+          const t = easeOutCubic(progress / EMERGE_PICK_PORTION);
+          centerX = leftTopCenterX + t * EMERGE_PULL_PX;
+          centerY = leftTopCenterY - t * EMERGE_LIFT_PX;
+        } else {
+          const t = easeOutCubic((progress - EMERGE_PICK_PORTION) / (EMERGE_PORTION - EMERGE_PICK_PORTION));
+          const pickX = leftTopCenterX + EMERGE_PULL_PX;
+          const pickY = leftTopCenterY - EMERGE_LIFT_PX;
+          const laneY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
+          centerX = lerp(pickX, emergeTargetX, t);
+          centerY = lerp(pickY, laneY, t);
+        }
       } else if (progress > dockStart) {
         const t = easeOutCubic((progress - dockStart) / DOCK_PORTION);
         centerX = lerp(dockStartX, layout.rightDeckCenterX, t);
@@ -450,6 +476,7 @@ export function DeckShowcaseAnimation({
         {flow.moving.map((cardIndex, index) => {
           const progress = (staticProgress + index * SLOT_SPACING) % 1;
           const pose = resolvePose(progress);
+          const movingZ = progress < EMERGE_PORTION ? 90 + index : 60 + index;
 
           return (
             <div
@@ -460,7 +487,7 @@ export function DeckShowcaseAnimation({
               className={styles.movingCard}
               style={{
                 transform: `translate3d(${pose.x.toFixed(2)}px, ${pose.y.toFixed(2)}px, 0) scale(${pose.scale.toFixed(4)})`,
-                zIndex: 60 + index
+                zIndex: movingZ
               }}
             >
               <img
