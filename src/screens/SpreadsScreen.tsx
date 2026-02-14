@@ -9,6 +9,7 @@ import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
+import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 
@@ -116,6 +117,31 @@ const LENORMAND_SPREAD_BLOCKS: SpreadBlock[] = [
   }
 ];
 
+const MANARA_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "relationships",
+    title: "❤️ Любовь и страсть",
+    badge: "🔥 Основной блок",
+    spreadIds: ["manara_mystery_love", "manara_love_check", "manara_two_hearts", "manara_relationship_future"]
+  },
+  {
+    id: "self_growth",
+    title: "💭 Намерения и психология",
+    spreadIds: ["manara_his_intentions", "manara_feelings_actions"]
+  },
+  {
+    id: "popular",
+    title: "🧭 Ситуация и выбор",
+    spreadIds: ["manara_three_cards", "manara_path"]
+  },
+  {
+    id: "premium",
+    title: "🔮 Глубокий анализ",
+    badge: "👑 Премиум",
+    spreadIds: ["manara_celtic_cross"]
+  }
+];
+
 const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: 5, popularityScore: 95, keywords: ["быстро", "карта дня"] },
   yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: 10, popularityScore: 92, keywords: ["да", "нет"] },
@@ -167,6 +193,72 @@ const LENORMAND_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   lenormand_grand_tableau: { category: "premium", tags: ["36 карт", "полный обзор", "судьба"], energyCost: 40, popularityScore: 76, keywords: ["grand tableau"] }
 };
 
+const MANARA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  manara_mystery_love: {
+    category: "relationships",
+    tags: ["близость", "мысли", "страсть", "итог"],
+    energyCost: 24,
+    popularityScore: 91,
+    keywords: ["любовь", "интимность"]
+  },
+  manara_love_check: {
+    category: "relationships",
+    tags: ["искренность", "намерения", "перспектива"],
+    energyCost: 12,
+    popularityScore: 88,
+    keywords: ["проверка", "чувства"]
+  },
+  manara_two_hearts: {
+    category: "relationships",
+    tags: ["пара", "ожидания", "притяжение", "итог"],
+    energyCost: 24,
+    popularityScore: 86,
+    keywords: ["два сердца", "совместимость"]
+  },
+  manara_relationship_future: {
+    category: "relationships",
+    tags: ["будущее", "динамика", "вклад", "перспектива"],
+    energyCost: 26,
+    popularityScore: 89,
+    keywords: ["союз", "развитие"]
+  },
+  manara_his_intentions: {
+    category: "self_growth",
+    tags: ["намерение", "мысли", "действия", "психология"],
+    energyCost: 16,
+    popularityScore: 90,
+    keywords: ["мотивация", "истина"]
+  },
+  manara_feelings_actions: {
+    category: "self_growth",
+    tags: ["эмоции", "поступки", "конфликт", "итог"],
+    energyCost: 16,
+    popularityScore: 89,
+    keywords: ["чувства", "действия"]
+  },
+  manara_three_cards: {
+    category: "popular",
+    tags: ["причина", "развитие", "итог"],
+    energyCost: 9,
+    popularityScore: 85,
+    keywords: ["быстрый", "ситуация"]
+  },
+  manara_path: {
+    category: "popular",
+    tags: ["траектория", "перелом", "совет", "итог"],
+    energyCost: 18,
+    popularityScore: 84,
+    keywords: ["путь", "выбор"]
+  },
+  manara_celtic_cross: {
+    category: "premium",
+    tags: ["глубокий", "психология", "анализ", "итог"],
+    energyCost: 30,
+    popularityScore: 83,
+    keywords: ["кельтский крест", "глубина"]
+  }
+};
+
 const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
@@ -177,6 +269,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"])
   };
   if (deckId === "lenormand") {
     return LENORMAND_SPREAD_META[spreadId] ?? fallback;
+  }
+  if (deckId === "manara") {
+    return MANARA_SPREAD_META[spreadId] ?? fallback;
   }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
@@ -194,6 +289,8 @@ const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"])
   const spread =
     deckId === "lenormand"
       ? LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]
+      : deckId === "manara"
+      ? MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]
       : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
   const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
@@ -272,8 +369,22 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
 
+  const manaraBlocks = useMemo(() => {
+    if (deck.id !== "manara") return [];
+    return MANARA_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]?.title ?? spreadId,
+          description: MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
   const nonRwsSpreads = useMemo(() => {
-    if (deck.id === "rws") return [];
+    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara") return [];
     const normalized = query.trim().toLowerCase();
     if (!normalized) return deck.spreads;
     return deck.spreads.filter((spread) => `${spread.title} ${spread.description}`.toLowerCase().includes(normalized));
@@ -366,6 +477,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {lenormandBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : deck.id === "manara" ? (
+        <div className="space-y-6">
+          {manaraBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {manaraBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               Ничего не найдено. Попробуйте запрос по теме или количеству карт.
             </Card>
@@ -876,9 +1020,85 @@ const LENORMAND_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const MANARA_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  manara_mystery_love: {
+    subtitle: "Двойной уровень близости",
+    metaLine: "8 карт · сознание · страсть · итог союза",
+    header: "Мистерия любви (8 карт)",
+    purpose: ["❤️ Разобрать чувства и сексуальную динамику", "🔎 Увидеть скрытые страхи пары", "🧭 Понять, куда движется связь"],
+    howItWorks: ["🃏 Верхний ряд показывает осознанный уровень отношений, нижний — глубинные импульсы и страсть.", "Финальные позиции дают вектор развития и итог союза."],
+    forWhom: ["✓ Для глубокого анализа пары", "✓ Когда важно понять эмоциональную и интимную совместимость"]
+  },
+  manara_love_check: {
+    subtitle: "Квадрат близости",
+    metaLine: "4 карты · чувства · намерения · мотивы · перспектива",
+    header: "Проверка любви (4 карты)",
+    purpose: ["❤️ Проверить искренность отношений", "🧠 Отличить чувства от расчёта", "🔮 Оценить перспективу союза"],
+    howItWorks: ["🃏 Карты читаются как компактный квадрат: чувства, намерения, скрытые мотивы и итоговая перспектива.", "Расклад даёт быстрый и чёткий эмоциональный срез."],
+    forWhom: ["✓ Для раннего этапа отношений", "✓ Когда нужна проверка без длинного расклада"]
+  },
+  manara_two_hearts: {
+    subtitle: "Форма сердца",
+    metaLine: "8 карт · вы · партнёр · притяжение · препятствие · итог",
+    header: "Два сердца (8 карт)",
+    purpose: ["💞 Увидеть баланс ожиданий в паре", "🔥 Понять уровень притяжения", "🧭 Считать ближайшее развитие и итог"],
+    howItWorks: ["🃏 Верхние карты описывают вас и партнёра, центр — страсть и препятствие, нижние — развитие и финал.", "Форма расклада подсвечивает эмоциональное ядро отношений."],
+    forWhom: ["✓ Для анализа серьёзных отношений", "✓ Когда нужно понять совместимость и риски"]
+  },
+  manara_relationship_future: {
+    subtitle: "Треугольник судьбы",
+    metaLine: "9 карт · вклад партнёров · фактор · этапы · два итога",
+    header: "Отношения на будущее (9 карт)",
+    purpose: ["🔮 Оценить будущее пары", "⚖️ Понять вклад каждого", "📌 Выявить внешние и внутренние факторы"],
+    howItWorks: ["🃏 Верхняя вершина задаёт основу связи, середина раскрывает динамику, нижние позиции показывают индивидуальные итоги.", "Расклад помогает увидеть общий потенциал и зону напряжения."],
+    forWhom: ["✓ Для долгосрочного прогноза отношений", "✓ Когда важно понять перспективу каждого из партнёров"]
+  },
+  manara_his_intentions: {
+    subtitle: "Фокус на центре",
+    metaLine: "5 карт · мысли · чувства · истинное намерение · действия · итог",
+    header: "Его намерения (5 карт)",
+    purpose: ["💬 Понять, серьёзен ли человек", "🔍 Разделить слова и реальные мотивы", "❤️ Увидеть вероятный итог для вас"],
+    howItWorks: ["🃏 Центральная карта — истинное намерение; вокруг неё читаются мысли, чувства, действия и итог.", "Расклад даёт прямой ответ о мотивации партнёра."],
+    forWhom: ["✓ Когда есть сомнения в искренности", "✓ При противоречивом поведении человека"]
+  },
+  manara_feelings_actions: {
+    subtitle: "Внутреннее vs внешнее",
+    metaLine: "5 карт · чувства · желания · конфликт · действия · итог",
+    header: "Чувства и действия (5 карт)",
+    purpose: ["❤️ Сравнить эмоции и поступки", "🧠 Понять внутренний конфликт человека", "🧭 Считать развитие ситуации"],
+    howItWorks: ["🃏 Верхние карты показывают чувства и желания, центр — ключевой конфликт, нижние — действия и результат.", "Расклад выявляет расхождение между внутренним и внешним проявлением."],
+    forWhom: ["✓ Когда нужна ясность в отношениях", "✓ Если слова и действия не совпадают"]
+  },
+  manara_three_cards: {
+    subtitle: "Линия импульса",
+    metaLine: "3 карты · причина · развитие · итог",
+    header: "Три карты Манара",
+    purpose: ["⚡ Быстро оценить ситуацию", "🧭 Понять ход развития", "🎯 Получить короткий итог без перегруза"],
+    howItWorks: ["🃏 Первая карта — источник ситуации, вторая — её движение, третья — вероятный итог.", "Подходит для ежедневных и точечных вопросов."],
+    forWhom: ["✓ Когда нужен быстрый ответ", "✓ Для стартовой диагностики темы"]
+  },
+  manara_path: {
+    subtitle: "Дуга развития",
+    metaLine: "7 карт · факторы · перелом · совет · риск · итог",
+    header: "Путь (7 карт)",
+    purpose: ["🛤️ Проследить траекторию ситуации", "⚖️ Найти точку перелома", "🧭 Получить совет и увидеть риск"],
+    howItWorks: ["🃏 Верхний ряд показывает исходные факторы, центр — переломный момент, нижний — варианты исхода.", "Расклад помогает выбрать стратегию в сложном выборе."],
+    forWhom: ["✓ Для личных и эмоционально сложных решений", "✓ Когда нужен прогноз по этапам"]
+  },
+  manara_celtic_cross: {
+    subtitle: "Классика + чувственный анализ",
+    metaLine: "10 карт · суть · внутренние факторы · влияние · итог",
+    header: "Кельтский крест (Манара)",
+    purpose: ["🔮 Получить глубокий психологический разбор", "🧠 Выявить скрытые мотивы и страхи", "📈 Оценить вероятный итог ситуации"],
+    howItWorks: ["🃏 Центральная зона раскрывает суть и препятствие, нижний блок — влияние, страх и итог.", "Манара усиливает фокус на эмоциональной и сексуальной мотивации."],
+    forWhom: ["✓ Для серьёзных отношений и жизненных развилок", "✓ Когда нужен максимально глубокий анализ"]
+  }
+};
+
 const getSpreadById = (spreadId: string) =>
   RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
-  LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP];
+  LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP] ??
+  MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP];
 
 function extractCardsCount(spread: DeckSpread): number {
   const mapped = getSpreadById(spread.id);
@@ -889,7 +1109,12 @@ function extractCardsCount(spread: DeckSpread): number {
 }
 
 function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
-  const details = deckId === "lenormand" ? LENORMAND_SPREAD_DETAILS[spread.id] : RWS_SPREAD_DETAILS[spread.id];
+  const details =
+    deckId === "lenormand"
+      ? LENORMAND_SPREAD_DETAILS[spread.id]
+      : deckId === "manara"
+      ? MANARA_SPREAD_DETAILS[spread.id]
+      : RWS_SPREAD_DETAILS[spread.id];
   const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);
   const meta = getSpreadMeta(spread.id, cardsCount, deckId);
@@ -1087,6 +1312,43 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 50, y: 54 },
       { x: 24, y: 90 },
       { x: 76, y: 90 }
+    ],
+    manara_his_intentions: [
+      { x: 24, y: 50 },
+      { x: 50, y: 18 },
+      { x: 50, y: 50 },
+      { x: 76, y: 50 },
+      { x: 50, y: 82 }
+    ],
+    manara_feelings_actions: [
+      { x: 26, y: 20 },
+      { x: 74, y: 20 },
+      { x: 50, y: 50 },
+      { x: 26, y: 80 },
+      { x: 74, y: 80 }
+    ],
+    manara_relationship_future: [
+      { x: 50, y: 12 },
+      { x: 36, y: 26 },
+      { x: 64, y: 26 },
+      { x: 24, y: 44 },
+      { x: 50, y: 44 },
+      { x: 76, y: 44 },
+      { x: 50, y: 62 },
+      { x: 38, y: 80 },
+      { x: 62, y: 80 }
+    ],
+    manara_celtic_cross: [
+      { x: 38, y: 24 },
+      { x: 50, y: 14 },
+      { x: 62, y: 24 },
+      { x: 50, y: 38 },
+      { x: 68, y: 38 },
+      { x: 32, y: 38 },
+      { x: 50, y: 52 },
+      { x: 30, y: 70 },
+      { x: 50, y: 70 },
+      { x: 70, y: 70 }
     ]
   };
 
@@ -1131,7 +1393,16 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     lenormand_feelings_actions: 40,
     lenormand_wheel_of_year: 24,
     lenormand_square_9: 30,
-    lenormand_grand_tableau: 14
+    lenormand_grand_tableau: 14,
+    manara_love_check: 54,
+    manara_three_cards: 62,
+    manara_his_intentions: 40,
+    manara_feelings_actions: 40,
+    manara_path: 36,
+    manara_mystery_love: 34,
+    manara_two_hearts: 34,
+    manara_relationship_future: 32,
+    manara_celtic_cross: 32
   };
   const customSize = customSizeById[spread.id] ?? null;
   const cardSize =

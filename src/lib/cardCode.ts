@@ -104,6 +104,49 @@ LENORMAND_CARDS.forEach((card) => {
   LENORMAND_SLUG_TO_CODE[card.slug] = code;
 });
 
+const MANARA_CARDS: Array<{ index: number; name: string; slug: string }> = [
+  { index: 0, name: "Шут", slug: "FOOL" },
+  { index: 1, name: "Маг", slug: "MAGICIAN" },
+  { index: 2, name: "Верховная Жрица", slug: "HIGH_PRIESTESS" },
+  { index: 3, name: "Императрица", slug: "EMPRESS" },
+  { index: 4, name: "Император", slug: "EMPEROR" },
+  { index: 5, name: "Иерофант", slug: "HIEROPHANT" },
+  { index: 6, name: "Влюбленные", slug: "LOVERS" },
+  { index: 7, name: "Колесница", slug: "CHARIOT" },
+  { index: 8, name: "Сила", slug: "STRENGTH" },
+  { index: 9, name: "Отшельник", slug: "HERMIT" },
+  { index: 10, name: "Колесо Фортуны", slug: "WHEEL_OF_FORTUNE" },
+  { index: 11, name: "Справедливость", slug: "JUSTICE" },
+  { index: 12, name: "Повешенный", slug: "HANGED_MAN" },
+  { index: 13, name: "Смерть", slug: "DEATH" },
+  { index: 14, name: "Умеренность", slug: "TEMPERANCE" },
+  { index: 15, name: "Дьявол", slug: "DEVIL" },
+  { index: 16, name: "Башня", slug: "TOWER" },
+  { index: 17, name: "Звезда", slug: "STAR" },
+  { index: 18, name: "Луна", slug: "MOON" },
+  { index: 19, name: "Солнце", slug: "SUN" },
+  { index: 20, name: "Суд", slug: "JUDGEMENT" },
+  { index: 21, name: "Мир", slug: "WORLD" }
+];
+
+const MANARA_NAME_ALIASES: Record<string, string> = {
+  "12 Повешенный (Манара)": "12 Повешенный (Манара)",
+  "Повешенный (Манара)": "Повешенный (Манара)"
+};
+
+const MANARA_NAME_TO_CODE: Record<string, string> = {};
+const MANARA_INDEX_TO_CODE: Record<number, string> = {};
+const MANARA_SLUG_TO_CODE: Record<string, string> = {};
+
+MANARA_CARDS.forEach((card) => {
+  const code = `MANARA_${String(card.index).padStart(2, "0")}_${card.slug}`;
+  MANARA_NAME_TO_CODE[`${card.index} ${card.name} (Манара)`] = code;
+  MANARA_NAME_TO_CODE[`${card.name} (Манара)`] = code;
+  MANARA_NAME_TO_CODE[card.name] = code;
+  MANARA_INDEX_TO_CODE[card.index] = code;
+  MANARA_SLUG_TO_CODE[card.slug] = code;
+});
+
 const EN_MINOR_SUITS: Record<string, string> = {
   WANDS: "WANDS",
   CUPS: "CUPS",
@@ -164,7 +207,7 @@ const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
   WORLD: "RWS_THE_WORLD"
 };
 
-type SupportedDeckId = "rws" | "lenormand";
+type SupportedDeckId = "rws" | "lenormand" | "manara";
 
 const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
 
@@ -193,6 +236,23 @@ function mapLenormandCardNameToCode(name: string): string | null {
   const aliasTarget = LENORMAND_NAME_ALIASES[name];
   const normalizedName = aliasTarget ?? name;
   return LENORMAND_NAME_TO_CODE[normalizedName] ?? null;
+}
+
+function mapManaraCardNameToCode(name: string): string | null {
+  const aliasTarget = MANARA_NAME_ALIASES[name];
+  const normalizedName = aliasTarget ?? name;
+
+  const directCode = MANARA_NAME_TO_CODE[normalizedName];
+  if (directCode) {
+    return directCode;
+  }
+
+  const indexMatch = normalizedName.match(/^(\d{1,2})\b/);
+  if (!indexMatch) {
+    return null;
+  }
+  const index = Number(indexMatch[1]);
+  return MANARA_INDEX_TO_CODE[index] ?? null;
 }
 
 function normalizeEnglishCardName(value: string): string {
@@ -254,6 +314,26 @@ function normalizeLenormandCode(rawCode: string): string | null {
   return LENORMAND_SLUG_TO_CODE[slug] ?? null;
 }
 
+function normalizeManaraCode(rawCode: string): string | null {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!normalized.startsWith("MANARA_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^MANARA_(\d{1,2})(?:_|$)/);
+  if (byNumberMatch) {
+    const index = Number(byNumberMatch[1]);
+    return MANARA_INDEX_TO_CODE[index] ?? null;
+  }
+
+  const bySlugMatch = normalized.match(/^MANARA_([A-Z_]+)$/);
+  if (!bySlugMatch) {
+    return null;
+  }
+  const slug = bySlugMatch[1];
+  return MANARA_SLUG_TO_CODE[slug] ?? null;
+}
+
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
   const trimmed = normalizeCardName(name);
   if (!trimmed) return null;
@@ -266,9 +346,14 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     return mapLenormandCardNameToCode(trimmed);
   }
 
+  if (deckId === "manara") {
+    return mapManaraCardNameToCode(trimmed);
+  }
+
   return (
     mapRwsCardNameToCode(trimmed) ??
     mapLenormandCardNameToCode(trimmed) ??
+    mapManaraCardNameToCode(trimmed) ??
     mapEnglishCardNameToCode(trimmed)
   );
 }
@@ -284,6 +369,11 @@ export function mapCardValueToCode(value: string): string | null {
   const lenormandCode = normalizeLenormandCode(raw);
   if (lenormandCode) {
     return lenormandCode;
+  }
+
+  const manaraCode = normalizeManaraCode(raw);
+  if (manaraCode) {
+    return manaraCode;
   }
 
   return mapCardNameToCode(raw);

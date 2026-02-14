@@ -9,6 +9,8 @@ import { createShare, getReading, type ReadingResponse, type ViewReadingResponse
 import { DECKS } from "@/data/decks";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
+import { MANARA_ALL } from "@/data/manara_deck";
+import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
@@ -209,6 +211,12 @@ export default function InterpretationPage() {
         map.set(code, name);
       }
     });
+    MANARA_ALL.forEach((name) => {
+      const code = mapCardNameToCode(name, "manara");
+      if (code) {
+        map.set(code, name);
+      }
+    });
     return map;
   }, []);
 
@@ -258,8 +266,8 @@ export default function InterpretationPage() {
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
   const resolvedDeckId = useMemo(() => {
-    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true }) {
-      return inputMeta.deckId as "rws" | "lenormand";
+    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true }) {
+      return inputMeta.deckId as "rws" | "lenormand" | "manara";
     }
     const spreadId = inputMeta?.spreadId;
     if (spreadId && spreadId in SPREAD_SCHEMAS) {
@@ -267,6 +275,9 @@ export default function InterpretationPage() {
     }
     if (cards.some((card) => card.card_code.startsWith("LENORMAND_"))) {
       return "lenormand";
+    }
+    if (cards.some((card) => card.card_code.startsWith("MANARA_"))) {
+      return "manara";
     }
     return "rws";
   }, [cards, inputMeta?.deckId, inputMeta?.spreadId]);
@@ -277,6 +288,9 @@ export default function InterpretationPage() {
     }
     if (spreadId && spreadId in LENORMAND_SPREADS_MAP) {
       return LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]?.title ?? "Расклад";
+    }
+    if (spreadId && spreadId in MANARA_SPREADS_MAP) {
+      return MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]?.title ?? "Расклад";
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
@@ -302,6 +316,7 @@ export default function InterpretationPage() {
       card.card_code
         .replace(/^RWS_/, "")
         .replace(/^LENORMAND_/, "")
+        .replace(/^MANARA_/, "")
         .replace(/^\d{2}_/, "")
         .replaceAll("_", " ")
         .replace(/\s+/g, " ")
