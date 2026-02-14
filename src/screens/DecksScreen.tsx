@@ -217,7 +217,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
     <DeckShowcaseAnimation
       cards={RWS_FLOW_CARD_URLS}
       isActive={isActive}
-      speedMs={6000}
+      speedMs={12000}
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}

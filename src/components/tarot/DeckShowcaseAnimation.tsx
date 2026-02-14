@@ -27,23 +27,30 @@ interface LayoutMetrics {
   cardHeight: number;
   leftDeckCenterX: number;
   rightDeckCenterX: number;
+  leftDeckTopX: number;
+  rightDeckTopX: number;
+  deckTopY: number;
   centerY: number;
   arcPx: number;
-  trackStartX: number;
-  trackLength: number;
+  trackStartCenterX: number;
+  trackEndCenterX: number;
 }
 
 const MOVING_CARD_COUNT = 3;
 const STACK_CARD_COUNT = 8;
 const SLOT_SPACING = 1 / MOVING_CARD_COUNT;
 const CARD_RATIO = 1.55;
-const EMERGE_PORTION = 0.17;
-const DOCK_PORTION = 0.2;
+const EMERGE_PORTION = 0.025;
+const DOCK_PORTION = 0.04;
+const EMERGE_LIFT_PX = 4;
+const EMERGE_PULL_PX = 3;
+const DOCK_MICRO_ARC_PX = 1.6;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
 const easeInCubic = (t: number) => t ** 3;
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 
 function createInitialFlow(cardCount: number): FlowState {
   if (cardCount <= 0) {
@@ -72,22 +79,6 @@ function createInitialFlow(cardCount: number): FlowState {
   };
 }
 
-function rotateFlow(flow: FlowState, cardCount: number): FlowState {
-  if (cardCount <= 0) return flow;
-
-  const dockingCard = flow.moving[flow.moving.length - 1];
-  const emergingCard = flow.left[flow.left.length - 1];
-  const newBottomLeft = flow.nextSeed % cardCount;
-
-  return {
-    left: [newBottomLeft, ...flow.left.slice(0, -1)],
-    moving: [emergingCard, flow.moving[0], flow.moving[1]],
-    right: [...flow.right.slice(1), dockingCard],
-    nextSeed: flow.nextSeed + 1,
-    dockCount: flow.dockCount + 1
-  };
-}
-
 function computeScale(progress: number, scaleDeck: number, scaleMoving: number): number {
   if (progress < EMERGE_PORTION) {
     const t = easeOutCubic(progress / EMERGE_PORTION);
@@ -111,8 +102,8 @@ function computeLayout(
   width: number,
   height: number,
   overlapPx: number,
-  scaleDeck: number,
-  scaleMoving: number
+  _scaleDeck: number,
+  _scaleMoving: number
 ): LayoutMetrics {
   const cardWidth = clamp(width * 0.18, 54, 66);
   const cardHeight = cardWidth * CARD_RATIO;
@@ -121,14 +112,11 @@ function computeLayout(
   const rightDeckCenterX = width - sidePadding - cardWidth / 2;
   const centerY = height * 0.57;
   const arcPx = Math.min(6, height * 0.04);
-
-  const deckVisualHalf = (cardWidth * scaleDeck) / 2;
-  const movingVisualHalf = (cardWidth * scaleMoving) / 2;
-
-  const leftOverlapX = leftDeckCenterX + deckVisualHalf - overlapPx + movingVisualHalf;
-  const rightOverlapX = rightDeckCenterX - deckVisualHalf + overlapPx - movingVisualHalf;
-  const laneDistance = Math.max(70, rightOverlapX - leftOverlapX);
-  const trackLength = laneDistance / (2 / 3);
+  const leftDeckTopX = leftDeckCenterX - cardWidth / 2;
+  const rightDeckTopX = rightDeckCenterX - cardWidth / 2;
+  const deckTopY = centerY - cardHeight / 2;
+  const trackStartCenterX = leftDeckCenterX + overlapPx;
+  const trackEndCenterX = rightDeckCenterX - overlapPx;
 
   return {
     width,
@@ -137,10 +125,13 @@ function computeLayout(
     cardHeight,
     leftDeckCenterX,
     rightDeckCenterX,
+    leftDeckTopX,
+    rightDeckTopX,
+    deckTopY,
     centerY,
     arcPx,
-    trackStartX: leftOverlapX,
-    trackLength
+    trackStartCenterX,
+    trackEndCenterX
   };
 }
 
@@ -180,7 +171,7 @@ function useDocumentVisible() {
 
 export function DeckShowcaseAnimation({
   cards,
-  speedMs = 6000,
+  speedMs = 12000,
   overlapPx = 10,
   scaleMoving = 1.08,
   scaleDeck = 1,
@@ -192,7 +183,6 @@ export function DeckShowcaseAnimation({
   const rafRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const progressRef = useRef(0);
-  const stepRef = useRef(0);
 
   const safeCards = useMemo(() => cards.filter(Boolean), [cards]);
   const cardCount = safeCards.length;
@@ -208,20 +198,35 @@ export function DeckShowcaseAnimation({
 
   const updateMovingTransforms = useCallback(
     (baseProgress: number) => {
+      const dockStart = 1 - DOCK_PORTION;
+      const trackSpan = layout.trackEndCenterX - layout.trackStartCenterX;
+      const emergeTargetX = layout.trackStartCenterX + trackSpan * EMERGE_PORTION;
+      const dockStartX = layout.trackStartCenterX + trackSpan * dockStart;
+
       for (let index = 0; index < MOVING_CARD_COUNT; index += 1) {
         const element = movingRefs.current[index];
         if (!element) continue;
 
         const progress = (baseProgress + index * SLOT_SPACING) % 1;
-        const centerX = layout.trackStartX + layout.trackLength * progress;
-        const centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
+        let centerX = layout.trackStartCenterX + trackSpan * progress;
+        let centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
+
+        if (progress < EMERGE_PORTION) {
+          const t = easeOutCubic(progress / EMERGE_PORTION);
+          centerX = lerp(layout.leftDeckCenterX, emergeTargetX, t) + t * EMERGE_PULL_PX;
+          centerY -= (1 - t) * EMERGE_LIFT_PX;
+        } else if (progress > dockStart) {
+          const t = easeOutCubic((progress - dockStart) / DOCK_PORTION);
+          centerX = lerp(dockStartX, layout.rightDeckCenterX, t);
+          centerY += Math.sin(t * Math.PI) * DOCK_MICRO_ARC_PX;
+        }
+
         const scale = prefersReducedMotion ? scaleMoving : computeScale(progress, scaleDeck, scaleMoving);
         const translateX = centerX - layout.cardWidth / 2;
         const translateY = centerY - layout.cardHeight / 2;
-        const isHiddenTransitionZone = progress < 0.06 || progress > 0.93;
 
         element.style.transform = `translate3d(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;
-        element.style.zIndex = isHiddenTransitionZone ? "10" : `${30 + index}`;
+        element.style.zIndex = `${60 + index}`;
       }
     },
     [layout, prefersReducedMotion, scaleDeck, scaleMoving]
@@ -271,7 +276,6 @@ export function DeckShowcaseAnimation({
     flowRef.current = initial;
     setFlow(initial);
     progressRef.current = 0;
-    stepRef.current = 0;
     lastTimestampRef.current = null;
   }, [cardCount]);
 
@@ -296,21 +300,40 @@ export function DeckShowcaseAnimation({
       const deltaMs = Math.min(64, Math.max(0, timestamp - previous));
       lastTimestampRef.current = timestamp;
 
+      const previousProgress = progressRef.current % 1;
       progressRef.current += deltaMs / safeSpeedMs;
-      const currentStep = Math.floor(progressRef.current / SLOT_SPACING);
-      const missedSteps = currentStep - stepRef.current;
+      const nextProgress = progressRef.current % 1;
 
-      if (missedSteps > 0) {
-        let nextFlow = flowRef.current;
-        for (let index = 0; index < missedSteps; index += 1) {
-          nextFlow = rotateFlow(nextFlow, cardCount);
-        }
-        stepRef.current = currentStep;
+      let nextFlow = flowRef.current;
+      let hasWrap = false;
+
+      for (let index = 0; index < MOVING_CARD_COUNT; index += 1) {
+        const prevSlotProgress = (previousProgress + index * SLOT_SPACING) % 1;
+        const nextSlotProgress = (nextProgress + index * SLOT_SPACING) % 1;
+        if (nextSlotProgress >= prevSlotProgress) continue;
+
+        const dockingCard = nextFlow.moving[index];
+        const emergingCard = nextFlow.left[nextFlow.left.length - 1];
+        const nextLeftBottom = nextFlow.nextSeed % cardCount;
+        const nextMoving = nextFlow.moving.slice();
+        nextMoving[index] = emergingCard;
+
+        nextFlow = {
+          left: [nextLeftBottom, ...nextFlow.left.slice(0, -1)],
+          moving: nextMoving,
+          right: [...nextFlow.right.slice(1), dockingCard],
+          nextSeed: nextFlow.nextSeed + 1,
+          dockCount: nextFlow.dockCount + 1
+        };
+        hasWrap = true;
+      }
+
+      if (hasWrap) {
         flowRef.current = nextFlow;
         setFlow(nextFlow);
       }
 
-      updateMovingTransforms(progressRef.current % 1);
+      updateMovingTransforms(nextProgress);
       rafRef.current = window.requestAnimationFrame(run);
     };
 
@@ -324,17 +347,47 @@ export function DeckShowcaseAnimation({
     };
   }, [cardCount, safeSpeedMs, shouldAnimate, updateMovingTransforms]);
 
+  const resolvePose = useCallback(
+    (progress: number) => {
+      const dockStart = 1 - DOCK_PORTION;
+      const trackSpan = layout.trackEndCenterX - layout.trackStartCenterX;
+      const emergeTargetX = layout.trackStartCenterX + trackSpan * EMERGE_PORTION;
+      const dockStartX = layout.trackStartCenterX + trackSpan * dockStart;
+
+      let centerX = layout.trackStartCenterX + trackSpan * progress;
+      let centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
+
+      if (progress < EMERGE_PORTION) {
+        const t = easeOutCubic(progress / EMERGE_PORTION);
+        centerX = lerp(layout.leftDeckCenterX, emergeTargetX, t) + t * EMERGE_PULL_PX;
+        centerY -= (1 - t) * EMERGE_LIFT_PX;
+      } else if (progress > dockStart) {
+        const t = easeOutCubic((progress - dockStart) / DOCK_PORTION);
+        centerX = lerp(dockStartX, layout.rightDeckCenterX, t);
+        centerY += Math.sin(t * Math.PI) * DOCK_MICRO_ARC_PX;
+      }
+
+      const scale = prefersReducedMotion ? scaleMoving : computeScale(progress, scaleDeck, scaleMoving);
+      return {
+        x: centerX - layout.cardWidth / 2,
+        y: centerY - layout.cardHeight / 2,
+        scale
+      };
+    },
+    [layout, prefersReducedMotion, scaleDeck, scaleMoving]
+  );
+
   const rootStyle = {
     ["--deck-card-w" as string]: `${layout.cardWidth}px`,
     ["--deck-card-h" as string]: `${layout.cardHeight}px`,
     ["--deck-scale" as string]: String(scaleDeck)
   } as CSSProperties;
 
-  const leftDeckBaseX = layout.leftDeckCenterX - layout.cardWidth / 2;
-  const rightDeckBaseX = layout.rightDeckCenterX - layout.cardWidth / 2;
-  const deckBaseY = layout.centerY - layout.cardHeight / 2;
+  const leftDeckBaseX = layout.leftDeckTopX;
+  const rightDeckBaseX = layout.rightDeckTopX;
+  const deckBaseY = layout.deckTopY;
 
-  const staticProgress = 0;
+  const staticProgress = prefersReducedMotion ? 0 : progressRef.current % 1;
 
   return (
     <div ref={containerRef} className={`${styles.root} ${className}`.trim()} style={rootStyle}>
@@ -396,11 +449,7 @@ export function DeckShowcaseAnimation({
       <div className={styles.movingLayer}>
         {flow.moving.map((cardIndex, index) => {
           const progress = (staticProgress + index * SLOT_SPACING) % 1;
-          const centerX = layout.trackStartX + layout.trackLength * progress;
-          const centerY = layout.centerY - Math.sin(progress * Math.PI) * layout.arcPx;
-          const scale = prefersReducedMotion ? scaleMoving : computeScale(progress, scaleDeck, scaleMoving);
-          const translateX = centerX - layout.cardWidth / 2;
-          const translateY = centerY - layout.cardHeight / 2;
+          const pose = resolvePose(progress);
 
           return (
             <div
@@ -410,8 +459,8 @@ export function DeckShowcaseAnimation({
               }}
               className={styles.movingCard}
               style={{
-                transform: `translate3d(${translateX.toFixed(2)}px, ${translateY.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`,
-                zIndex: 30 + index
+                transform: `translate3d(${pose.x.toFixed(2)}px, ${pose.y.toFixed(2)}px, 0) scale(${pose.scale.toFixed(4)})`,
+                zIndex: 60 + index
               }}
             >
               <img
