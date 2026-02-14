@@ -222,7 +222,10 @@ interface DeckFlowState {
 
 const FLOW_STEP_MS = 12000;
 const FLOW_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const FLOW_LANE_X = [16, 42, 64, 84];
+const FLOW_LANE_X = [30, 50, 70];
+const FLOW_LANE_SCALE = [1.12, 1.03, 0.84];
+const DECK_CARD_SIZE = 42;
+const FLOW_CARD_SIZE = 50;
 
 function createFlowState(nextId: { current: number }): DeckFlowState {
   const takeCard = (index: number): FlowCard => {
@@ -233,8 +236,8 @@ function createFlowState(nextId: { current: number }): DeckFlowState {
 
   return {
     left: [takeCard(0), takeCard(1), takeCard(2), takeCard(3)],
-    lane: [takeCard(4), takeCard(5), takeCard(6), takeCard(7)],
-    right: [takeCard(8), takeCard(9), takeCard(10), takeCard(11)]
+    lane: [takeCard(4), takeCard(5), takeCard(6)],
+    right: [takeCard(7), takeCard(8), takeCard(9), takeCard(10)]
   };
 }
 
@@ -245,7 +248,7 @@ function advanceFlowState(prev: DeckFlowState): DeckFlowState {
 
   return {
     left: [recycledFromRightBottom, ...prev.left.slice(0, -1)],
-    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1], prev.lane[2]],
+    lane: [outgoingLeftTop, prev.lane[0], prev.lane[1]],
     right: [...prev.right.slice(1), movingIntoRightStack]
   };
 }
@@ -273,7 +276,7 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
     <div className="relative h-44 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.22)] blur-2xl" />
 
-      <div className="absolute left-[16%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-[18%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         {flow.left.map((card, index) => (
           <motion.div
             key={`left-${card.id}`}
@@ -283,12 +286,16 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             transition={{ duration: 1.35, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
-            <FaceCard name={card.name} size={52} className={index < flow.left.length - 2 ? "opacity-82" : "opacity-90"} />
+            <FaceCard
+              name={card.name}
+              size={DECK_CARD_SIZE}
+              className={index < flow.left.length - 2 ? "opacity-82" : "opacity-90"}
+            />
           </motion.div>
         ))}
       </div>
 
-      <div className="absolute left-[84%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-[82%] top-1/2 z-[2] h-[84px] w-[56px] -translate-x-1/2 -translate-y-1/2">
         {flow.right.map((card, index) => (
           <motion.div
             key={`right-${card.id}`}
@@ -298,7 +305,11 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             transition={{ duration: 1.35, ease: FLOW_EASE }}
             style={{ zIndex: index + 1 }}
           >
-            <FaceCard name={card.name} size={52} className={index < flow.right.length - 2 ? "opacity-82" : "opacity-90"} />
+            <FaceCard
+              name={card.name}
+              size={DECK_CARD_SIZE}
+              className={index < flow.right.length - 2 ? "opacity-82" : "opacity-90"}
+            />
           </motion.div>
         ))}
       </div>
@@ -309,14 +320,14 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
             key={`lane-${card.id}`}
             className="absolute -translate-x-1/2 -translate-y-1/2"
             initial={false}
-            animate={{ left: `${FLOW_LANE_X[index]}%`, top: "50%" }}
+            animate={{ left: `${FLOW_LANE_X[index]}%`, top: "50%", scale: FLOW_LANE_SCALE[index] }}
             transition={{
               duration: isActive ? FLOW_STEP_MS / 1000 : 0.2,
               ease: isActive ? "linear" : FLOW_EASE
             }}
-            style={{ zIndex: index === 3 ? 40 : 20 + index }}
+            style={{ zIndex: index === flow.lane.length - 1 ? 40 : 20 + index }}
           >
-            <FaceCard name={card.name} size={48} />
+            <FaceCard name={card.name} size={FLOW_CARD_SIZE} />
           </motion.div>
         ))}
       </div>
