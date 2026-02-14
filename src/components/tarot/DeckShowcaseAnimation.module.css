@@ -1,5 +1,6 @@
 .root {
   position: relative;
+  isolation: isolate;
   height: 11.25rem;
   overflow: hidden;
   border-radius: 1rem;
@@ -47,7 +48,7 @@
 .movingLayer {
   position: absolute;
   inset: 0;
-  z-index: 16;
+  z-index: 120;
   pointer-events: none;
 }
 
