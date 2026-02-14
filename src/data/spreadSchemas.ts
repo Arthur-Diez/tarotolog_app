@@ -1,6 +1,7 @@
 import type { DeckId } from "@/data/decks";
 import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
-import type { LenormandSpreadId, SpreadId } from "@/data/rws_spreads";
+import { MANARA_SPREADS } from "@/data/manara_spreads";
+import type { LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
 
 export interface SpreadPosition {
   id: number;
@@ -13,7 +14,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: Extract<DeckId, "rws" | "lenormand">;
+  deckType: Extract<DeckId, "rws" | "lenormand" | "manara">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -568,21 +569,24 @@ export const SpreadSoulPurpose: SpreadSchema = {
 
 const LENORMAND_LAYOUT_SCALE_X = 5.6;
 const LENORMAND_LAYOUT_SCALE_Y = 7;
+const MANARA_LAYOUT_SCALE_X = 5.4;
+const MANARA_LAYOUT_SCALE_Y = 6.8;
 
-interface LenormandLayoutOptions {
+interface LayoutScaleOptions {
   scaleX?: number;
   scaleY?: number;
 }
 
-const toLenormandPositions = (
+const toScaledPositions = (
   positions: Array<{ index: number; x: number; y: number; label?: string }>,
-  options?: LenormandLayoutOptions
+  defaults: { scaleX: number; scaleY: number },
+  options?: LayoutScaleOptions
 ): SpreadPosition[] =>
   positions.map((position) => ({
     id: position.index,
     label: position.label ?? `Позиция ${position.index}`,
-    x: Math.round((position.x - 50) * (options?.scaleX ?? LENORMAND_LAYOUT_SCALE_X)),
-    y: Math.round((position.y - 50) * (options?.scaleY ?? LENORMAND_LAYOUT_SCALE_Y))
+    x: Math.round((position.x - 50) * (options?.scaleX ?? defaults.scaleX)),
+    y: Math.round((position.y - 50) * (options?.scaleY ?? defaults.scaleY))
   }));
 
 const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
@@ -600,10 +604,38 @@ const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
     deckType: "lenormand",
     openingRules: "in-order",
     openOrder: spread.openOrder,
-    positions: toLenormandPositions(spread.positions, layoutOptions)
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: LENORMAND_LAYOUT_SCALE_X, scaleY: LENORMAND_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
   };
   return acc;
 }, {} as Record<LenormandSpreadId, SpreadSchema>);
+
+const MANARA_SCHEMAS = MANARA_SPREADS.reduce((acc, spread) => {
+  const layoutOptions =
+    spread.id === "manara_celtic_cross"
+      ? {
+          scaleX: 4.8,
+          scaleY: 6
+        }
+      : undefined;
+  acc[spread.id as ManaraSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "manara",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: MANARA_LAYOUT_SCALE_X, scaleY: MANARA_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
+  };
+  return acc;
+}, {} as Record<ManaraSpreadId, SpreadSchema>);
 
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
@@ -639,5 +671,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   balance_wheel: SpreadBalanceWheel,
   reset_reload: SpreadResetReload,
   soul_purpose: SpreadSoulPurpose,
-  ...LENORMAND_SCHEMAS
+  ...LENORMAND_SCHEMAS,
+  ...MANARA_SCHEMAS
 };

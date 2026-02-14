@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { SpreadSchema } from "@/data/spreadSchemas";
 import { SpreadOneCard } from "@/data/spreadSchemas";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
+import { MANARA_ALL } from "@/data/manara_deck";
 import { RWS_ALL } from "@/data/rws_deck";
 import type { BackendReadingStatus, ReadingOutputPayload } from "@/lib/api";
 
@@ -29,7 +30,8 @@ const computeExpectedNext = (schema: SpreadSchema, cards: SpreadCardState[]): nu
 
 const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
   rws: RWS_ALL,
-  lenormand: LENORMAND_ALL
+  lenormand: LENORMAND_ALL,
+  manara: MANARA_ALL
 };
 
 interface SpreadStoreState {

@@ -47,7 +47,18 @@ export type LenormandSpreadId =
   | "lenormand_square_9"
   | "lenormand_grand_tableau";
 
-export type SpreadId = RwsSpreadId | LenormandSpreadId;
+export type ManaraSpreadId =
+  | "manara_mystery_love"
+  | "manara_love_check"
+  | "manara_two_hearts"
+  | "manara_relationship_future"
+  | "manara_his_intentions"
+  | "manara_feelings_actions"
+  | "manara_three_cards"
+  | "manara_path"
+  | "manara_celtic_cross";
+
+export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId;
 
 export interface SpreadPosition {
   index: number;

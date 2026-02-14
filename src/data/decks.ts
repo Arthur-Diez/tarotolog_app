@@ -31,6 +31,7 @@ function createSpreads(): DeckSpread[] {
 }
 
 import { LENORMAND_SPREADS } from "./lenormand_spreads";
+import { MANARA_SPREADS } from "./manara_spreads";
 import { RWS_SPREADS } from "./rws_spreads";
 
 export const DECKS: Deck[] = [
@@ -61,7 +62,11 @@ export const DECKS: Deck[] = [
     title: "Таро Манара",
     subtitle: "Отношения, желания",
     description: "Глубина чувств, тени, межличностные динамики.",
-    spreads: createSpreads()
+    spreads: MANARA_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   },
   {
     id: "angels",
