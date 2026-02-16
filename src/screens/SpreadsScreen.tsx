@@ -1345,10 +1345,10 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
       { x: 50, y: 58 },
       { x: 76, y: 58 },
       { x: 24, y: 58 },
-      { x: 50, y: 86 },
-      { x: 30, y: 114 },
-      { x: 50, y: 114 },
-      { x: 70, y: 114 }
+      { x: 50, y: 92 },
+      { x: 30, y: 130 },
+      { x: 50, y: 130 },
+      { x: 70, y: 130 }
     ]
   };
 

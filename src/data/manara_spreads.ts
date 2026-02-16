@@ -136,10 +136,10 @@ export const MANARA_SPREADS: SpreadDef[] = [
       { index: 4, x: 50, y: 58, label: "Подсознательное" },
       { index: 5, x: 76, y: 58, label: "Прошлое" },
       { index: 6, x: 24, y: 58, label: "Будущее" },
-      { index: 7, x: 50, y: 86, label: "Совет" },
-      { index: 8, x: 30, y: 114, label: "Влияние" },
-      { index: 9, x: 50, y: 114, label: "Страх" },
-      { index: 10, x: 70, y: 114, label: "Итог" }
+      { index: 7, x: 50, y: 92, label: "Совет" },
+      { index: 8, x: 30, y: 130, label: "Влияние" },
+      { index: 9, x: 50, y: 130, label: "Страх" },
+      { index: 10, x: 70, y: 130, label: "Итог" }
     ],
     openOrder: order(10)
   }
