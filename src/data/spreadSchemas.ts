@@ -619,7 +619,7 @@ const MANARA_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<ManaraSpreadId, LayoutScal
     scaleY: 11
   },
   manara_relationship_future: {
-    scaleX: 7.2,
+    scaleX: 5.6,
     scaleY: 10
   },
   manara_his_intentions: {
@@ -635,7 +635,7 @@ const MANARA_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<ManaraSpreadId, LayoutScal
     scaleY: 8.8
   },
   manara_celtic_cross: {
-    scaleX: 7.2,
+    scaleX: 5.6,
     scaleY: 10
   }
 };
