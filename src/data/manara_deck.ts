@@ -1,4 +1,4 @@
-export const MANARA_ALL: string[] = [
+const MANARA_MAJOR_ARCANA = [
   "0 Шут (Манара)",
   "1 Маг (Манара)",
   "2 Верховная Жрица (Манара)",
@@ -21,4 +21,15 @@ export const MANARA_ALL: string[] = [
   "19 Солнце (Манара)",
   "20 Суд (Манара)",
   "21 Мир (Манара)"
-];
+] as const;
+
+const MANARA_SUITS = ["Огня", "Воды", "Воздуха", "Земли"] as const;
+const MANARA_PIPS = ["Туз", "2", "3", "4", "5", "6", "7", "8", "9", "10"] as const;
+const MANARA_COURTS = ["Паж", "Рыцарь", "Королева", "Король"] as const;
+
+const MANARA_MINOR_ARCANA = MANARA_SUITS.flatMap((suit) => [
+  ...MANARA_PIPS.map((rank) => `${rank} ${suit} (Манара)`),
+  ...MANARA_COURTS.map((rank) => `${rank} ${suit} (Манара)`)
+]);
+
+export const MANARA_ALL: string[] = [...MANARA_MAJOR_ARCANA, ...MANARA_MINOR_ARCANA];

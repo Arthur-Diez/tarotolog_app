@@ -104,7 +104,7 @@ LENORMAND_CARDS.forEach((card) => {
   LENORMAND_SLUG_TO_CODE[card.slug] = code;
 });
 
-const MANARA_CARDS: Array<{ index: number; name: string; slug: string }> = [
+const MANARA_MAJOR_ARCANA: Array<{ index: number; name: string; slug: string }> = [
   { index: 0, name: "Шут", slug: "FOOL" },
   { index: 1, name: "Маг", slug: "MAGICIAN" },
   { index: 2, name: "Верховная Жрица", slug: "HIGH_PRIESTESS" },
@@ -129,6 +129,30 @@ const MANARA_CARDS: Array<{ index: number; name: string; slug: string }> = [
   { index: 21, name: "Мир", slug: "WORLD" }
 ];
 
+const MANARA_MINOR_SUITS: Record<string, string> = {
+  Огня: "FIRE",
+  Воды: "WATER",
+  Воздуха: "AIR",
+  Земли: "EARTH"
+};
+
+const MANARA_MINOR_RANKS: Record<string, string> = {
+  Туз: "ACE",
+  "2": "TWO",
+  "3": "THREE",
+  "4": "FOUR",
+  "5": "FIVE",
+  "6": "SIX",
+  "7": "SEVEN",
+  "8": "EIGHT",
+  "9": "NINE",
+  "10": "TEN",
+  Паж: "PAGE",
+  Рыцарь: "KNIGHT",
+  Королева: "QUEEN",
+  Король: "KING"
+};
+
 const MANARA_NAME_ALIASES: Record<string, string> = {
   "12 Повешенный (Манара)": "12 Повешенный (Манара)",
   "Повешенный (Манара)": "Повешенный (Манара)"
@@ -138,13 +162,23 @@ const MANARA_NAME_TO_CODE: Record<string, string> = {};
 const MANARA_INDEX_TO_CODE: Record<number, string> = {};
 const MANARA_SLUG_TO_CODE: Record<string, string> = {};
 
-MANARA_CARDS.forEach((card) => {
+MANARA_MAJOR_ARCANA.forEach((card) => {
   const code = `MANARA_${String(card.index).padStart(2, "0")}_${card.slug}`;
   MANARA_NAME_TO_CODE[`${card.index} ${card.name} (Манара)`] = code;
   MANARA_NAME_TO_CODE[`${card.name} (Манара)`] = code;
   MANARA_NAME_TO_CODE[card.name] = code;
   MANARA_INDEX_TO_CODE[card.index] = code;
   MANARA_SLUG_TO_CODE[card.slug] = code;
+});
+
+Object.entries(MANARA_MINOR_SUITS).forEach(([ruSuit, suitSlug]) => {
+  Object.entries(MANARA_MINOR_RANKS).forEach(([ruRank, rankSlug]) => {
+    const code = `MANARA_${rankSlug}_OF_${suitSlug}`;
+    const cardName = `${ruRank} ${ruSuit}`;
+    MANARA_NAME_TO_CODE[cardName] = code;
+    MANARA_NAME_TO_CODE[`${cardName} (Манара)`] = code;
+    MANARA_SLUG_TO_CODE[`${rankSlug}_OF_${suitSlug}`] = code;
+  });
 });
 
 const EN_MINOR_SUITS: Record<string, string> = {
@@ -245,6 +279,22 @@ function mapManaraCardNameToCode(name: string): string | null {
   const directCode = MANARA_NAME_TO_CODE[normalizedName];
   if (directCode) {
     return directCode;
+  }
+
+  const minorMatch = normalizedName.match(
+    /^(Туз|[2-9]|10|Паж|Рыцарь|Королева|Король)\s+(Огня|Воды|Воздуха|Земли)(?:\s+\(Манара\))?$/
+  );
+  if (minorMatch) {
+    const [, rankRaw, suitRaw] = minorMatch;
+    const rankSlug = MANARA_MINOR_RANKS[rankRaw];
+    const suitSlug = MANARA_MINOR_SUITS[suitRaw];
+    if (rankSlug && suitSlug) {
+      return `MANARA_${rankSlug}_OF_${suitSlug}`;
+    }
+  }
+
+  if (/(Огня|Воды|Воздуха|Земли)/.test(normalizedName)) {
+    return null;
   }
 
   const indexMatch = normalizedName.match(/^(\d{1,2})\b/);
