@@ -635,8 +635,8 @@ const MANARA_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<ManaraSpreadId, LayoutScal
     scaleY: 8.8
   },
   manara_celtic_cross: {
-    scaleX: 5.6,
-    scaleY: 7
+    scaleX: 5,
+    scaleY: 6
   }
 };
 
