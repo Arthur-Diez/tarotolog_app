@@ -60,6 +60,19 @@ const MANARA_FLOW_FACE_CARDS = [
 
 const MANARA_FLOW_CARD_URLS = MANARA_FLOW_FACE_CARDS.map((name) => faceUrl("manara", name));
 
+const ANGELS_FLOW_FACE_CARDS = [
+  "0 Шут (Vehuiah)",
+  "1 Маг (Nithhaiah)",
+  "2 Верховная Жрица (Ielahiah)",
+  "3 Императрица (Mihael)",
+  "6 Влюбленные (Haniel)",
+  "17 Звезда (Vasariah)",
+  "19 Солнце (Mehiel)",
+  "21 Мир (Damabiah)"
+];
+
+const ANGELS_FLOW_CARD_URLS = ANGELS_FLOW_FACE_CARDS.map((name) => faceUrl("angels", name));
+
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
     positioning: "Фундаментальная система символов и архетипов",
@@ -199,6 +212,8 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             <LenormandDeckFlowPreview isActive={animationActive} />
           ) : deck.id === "manara" ? (
             <ManaraDeckFlowPreview isActive={animationActive} />
+          ) : deck.id === "angels" ? (
+            <AngelsDeckFlowPreview isActive={animationActive} />
           ) : (
             <StaticDeckPreview />
           )}
@@ -276,6 +291,19 @@ function ManaraDeckFlowPreview({ isActive }: { isActive: boolean }) {
   return (
     <DeckShowcaseAnimation
       cards={MANARA_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={12000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
+  );
+}
+
+function AngelsDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  return (
+    <DeckShowcaseAnimation
+      cards={ANGELS_FLOW_CARD_URLS}
       isActive={isActive}
       speedMs={12000}
       overlapPx={10}
