@@ -613,14 +613,35 @@ const LENORMAND_SCHEMAS = LENORMAND_SPREADS.reduce((acc, spread) => {
   return acc;
 }, {} as Record<LenormandSpreadId, SpreadSchema>);
 
+const MANARA_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<ManaraSpreadId, LayoutScaleOptions>> = {
+  manara_two_hearts: {
+    scaleX: 9,
+    scaleY: 11
+  },
+  manara_relationship_future: {
+    scaleX: 8.2,
+    scaleY: 10
+  },
+  manara_his_intentions: {
+    scaleX: 6.4,
+    scaleY: 8.8
+  },
+  manara_feelings_actions: {
+    scaleX: 6.4,
+    scaleY: 8.8
+  },
+  manara_path: {
+    scaleX: 6.4,
+    scaleY: 8.8
+  },
+  manara_celtic_cross: {
+    scaleX: 8.4,
+    scaleY: 10
+  }
+};
+
 const MANARA_SCHEMAS = MANARA_SPREADS.reduce((acc, spread) => {
-  const layoutOptions =
-    spread.id === "manara_celtic_cross"
-      ? {
-          scaleX: 4.8,
-          scaleY: 6
-        }
-      : undefined;
+  const layoutOptions = MANARA_LAYOUT_OPTIONS_BY_SPREAD[spread.id as ManaraSpreadId];
   acc[spread.id as ManaraSpreadId] = {
     id: spread.id,
     name: spread.title,

@@ -39,14 +39,14 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "8 карт · форма сердца",
     cardsCount: 8,
     positions: [
-      { index: 1, x: 42, y: 14, label: "Вы" },
-      { index: 2, x: 58, y: 14, label: "Партнёр" },
-      { index: 3, x: 30, y: 32, label: "Ваши ожидания" },
-      { index: 4, x: 70, y: 32, label: "Его ожидания" },
-      { index: 5, x: 40, y: 50, label: "Страсть" },
-      { index: 6, x: 60, y: 50, label: "Препятствие" },
-      { index: 7, x: 50, y: 68, label: "Ближайшее развитие" },
-      { index: 8, x: 50, y: 86, label: "Итог" }
+      { index: 1, x: 40, y: 12, label: "Вы" },
+      { index: 2, x: 60, y: 12, label: "Партнёр" },
+      { index: 3, x: 24, y: 34, label: "Ваши ожидания" },
+      { index: 4, x: 76, y: 34, label: "Его ожидания" },
+      { index: 5, x: 40, y: 60, label: "Страсть" },
+      { index: 6, x: 60, y: 60, label: "Препятствие" },
+      { index: 7, x: 50, y: 82, label: "Ближайшее развитие" },
+      { index: 8, x: 50, y: 104, label: "Итог" }
     ],
     openOrder: order(8)
   },
@@ -56,15 +56,15 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "9 карт · треугольник судьбы",
     cardsCount: 9,
     positions: [
-      { index: 1, x: 50, y: 12, label: "Основа связи" },
-      { index: 2, x: 38, y: 26, label: "Ваш вклад" },
-      { index: 3, x: 62, y: 26, label: "Его вклад" },
-      { index: 4, x: 26, y: 42, label: "Сексуальная динамика" },
-      { index: 5, x: 50, y: 42, label: "Главный фактор" },
-      { index: 6, x: 74, y: 42, label: "Внешнее влияние" },
-      { index: 7, x: 50, y: 58, label: "Ближайший этап" },
-      { index: 8, x: 38, y: 76, label: "Его итог" },
-      { index: 9, x: 62, y: 76, label: "Ваш итог" }
+      { index: 1, x: 50, y: 4, label: "Основа связи" },
+      { index: 2, x: 38, y: 30, label: "Ваш вклад" },
+      { index: 3, x: 62, y: 30, label: "Его вклад" },
+      { index: 4, x: 24, y: 58, label: "Сексуальная динамика" },
+      { index: 5, x: 50, y: 58, label: "Главный фактор" },
+      { index: 6, x: 76, y: 58, label: "Внешнее влияние" },
+      { index: 7, x: 50, y: 86, label: "Ближайший этап" },
+      { index: 8, x: 38, y: 114, label: "Его итог" },
+      { index: 9, x: 62, y: 114, label: "Ваш итог" }
     ],
     openOrder: order(9)
   },
@@ -74,11 +74,11 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "5 карт · фокус на центре",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 26, y: 50, label: "Мысли" },
-      { index: 2, x: 50, y: 26, label: "Чувства" },
+      { index: 1, x: 24, y: 50, label: "Мысли" },
+      { index: 2, x: 50, y: 18, label: "Чувства" },
       { index: 3, x: 50, y: 50, label: "Истинное намерение" },
-      { index: 4, x: 74, y: 50, label: "Действия" },
-      { index: 5, x: 50, y: 74, label: "Итог" }
+      { index: 4, x: 76, y: 50, label: "Действия" },
+      { index: 5, x: 50, y: 82, label: "Итог" }
     ],
     openOrder: order(5)
   },
@@ -88,11 +88,11 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "5 карт · внутреннее vs внешнее",
     cardsCount: 5,
     positions: [
-      { index: 1, x: 32, y: 24, label: "Его чувства" },
-      { index: 2, x: 68, y: 24, label: "Его желания" },
+      { index: 1, x: 26, y: 20, label: "Его чувства" },
+      { index: 2, x: 74, y: 20, label: "Его желания" },
       { index: 3, x: 50, y: 50, label: "Внутренний конфликт" },
-      { index: 4, x: 32, y: 76, label: "Его действия" },
-      { index: 5, x: 68, y: 76, label: "Итог" }
+      { index: 4, x: 26, y: 80, label: "Его действия" },
+      { index: 5, x: 74, y: 80, label: "Итог" }
     ],
     openOrder: order(5)
   },
@@ -114,13 +114,13 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "7 карт · дуга развития",
     cardsCount: 7,
     positions: [
-      { index: 1, x: 30, y: 22, label: "Суть ситуации" },
-      { index: 2, x: 50, y: 22, label: "Ментальный фактор" },
-      { index: 3, x: 70, y: 22, label: "Эмоциональный фактор" },
+      { index: 1, x: 24, y: 20, label: "Суть ситуации" },
+      { index: 2, x: 50, y: 20, label: "Ментальный фактор" },
+      { index: 3, x: 76, y: 20, label: "Эмоциональный фактор" },
       { index: 4, x: 50, y: 50, label: "Переломный момент" },
-      { index: 5, x: 70, y: 78, label: "Совет" },
-      { index: 6, x: 50, y: 78, label: "Риск" },
-      { index: 7, x: 30, y: 78, label: "Итог" }
+      { index: 5, x: 76, y: 80, label: "Совет" },
+      { index: 6, x: 50, y: 80, label: "Риск" },
+      { index: 7, x: 24, y: 80, label: "Итог" }
     ],
     openOrder: order(7)
   },
@@ -130,16 +130,16 @@ export const MANARA_SPREADS: SpreadDef[] = [
     description: "10 карт · классика + чувственный анализ",
     cardsCount: 10,
     positions: [
-      { index: 1, x: 40, y: 22, label: "Суть" },
-      { index: 2, x: 50, y: 12, label: "Препятствие" },
-      { index: 3, x: 60, y: 22, label: "Осознанное" },
-      { index: 4, x: 50, y: 36, label: "Подсознательное" },
-      { index: 5, x: 66, y: 36, label: "Прошлое" },
-      { index: 6, x: 34, y: 36, label: "Будущее" },
-      { index: 7, x: 50, y: 50, label: "Совет" },
-      { index: 8, x: 30, y: 68, label: "Влияние" },
-      { index: 9, x: 50, y: 68, label: "Страх" },
-      { index: 10, x: 70, y: 68, label: "Итог" }
+      { index: 1, x: 38, y: 30, label: "Суть" },
+      { index: 2, x: 50, y: 4, label: "Препятствие" },
+      { index: 3, x: 62, y: 30, label: "Осознанное" },
+      { index: 4, x: 50, y: 58, label: "Подсознательное" },
+      { index: 5, x: 76, y: 58, label: "Прошлое" },
+      { index: 6, x: 24, y: 58, label: "Будущее" },
+      { index: 7, x: 50, y: 86, label: "Совет" },
+      { index: 8, x: 30, y: 114, label: "Влияние" },
+      { index: 9, x: 50, y: 114, label: "Страх" },
+      { index: 10, x: 70, y: 114, label: "Итог" }
     ],
     openOrder: order(10)
   }
