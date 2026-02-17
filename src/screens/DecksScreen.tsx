@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
-import { GOLDEN_ALL_LIST } from "@/data/golden_deck";
 import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 
@@ -73,7 +72,18 @@ const ANGELS_FLOW_FACE_CARDS = [
 ];
 
 const ANGELS_FLOW_CARD_URLS = ANGELS_FLOW_FACE_CARDS.map((name) => faceUrl("angels", name));
-const GOLDEN_FLOW_CARD_URLS = GOLDEN_ALL_LIST.slice(0, 8).map((name) => faceUrl("golden", name));
+const GOLDEN_FLOW_FACE_CARDS = [
+  "10 Монет",
+  "11 Золотая Справедливость",
+  "13 Золотая Смерть",
+  "14 Золотая Умеренность",
+  "16 Золотая Башня",
+  "17 Золотая Звезда",
+  "18 Золотая Луна",
+  "19 Золотое Солнце"
+];
+
+const GOLDEN_FLOW_CARD_URLS = GOLDEN_FLOW_FACE_CARDS.map((name) => faceUrl("golden", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
