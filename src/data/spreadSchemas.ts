@@ -1,7 +1,8 @@
 import type { DeckId } from "@/data/decks";
+import { ANGELS_SPREADS } from "@/data/angels_spreads";
 import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS } from "@/data/manara_spreads";
-import type { LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
+import type { AngelsSpreadId, LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
 
 export interface SpreadPosition {
   id: number;
@@ -14,7 +15,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: Extract<DeckId, "rws" | "lenormand" | "manara">;
+  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -571,6 +572,8 @@ const LENORMAND_LAYOUT_SCALE_X = 5.6;
 const LENORMAND_LAYOUT_SCALE_Y = 7;
 const MANARA_LAYOUT_SCALE_X = 5.4;
 const MANARA_LAYOUT_SCALE_Y = 6.8;
+const ANGELS_LAYOUT_SCALE_X = 5.8;
+const ANGELS_LAYOUT_SCALE_Y = 7.2;
 
 interface LayoutScaleOptions {
   scaleX?: number;
@@ -658,6 +661,47 @@ const MANARA_SCHEMAS = MANARA_SPREADS.reduce((acc, spread) => {
   return acc;
 }, {} as Record<ManaraSpreadId, SpreadSchema>);
 
+const ANGELS_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<AngelsSpreadId, LayoutScaleOptions>> = {
+  angels_one_card: {
+    scaleX: 6.8,
+    scaleY: 8
+  },
+  angels_advice: {
+    scaleX: 6.8,
+    scaleY: 8.6
+  },
+  angels_yes_no_soft: {
+    scaleX: 6.8,
+    scaleY: 8.6
+  },
+  angels_vector: {
+    scaleX: 7.2,
+    scaleY: 7
+  },
+  angels_higher_connection_meaning: {
+    scaleX: 6.2,
+    scaleY: 8.4
+  }
+};
+
+const ANGELS_SCHEMAS = ANGELS_SPREADS.reduce((acc, spread) => {
+  const layoutOptions = ANGELS_LAYOUT_OPTIONS_BY_SPREAD[spread.id as AngelsSpreadId];
+  acc[spread.id as AngelsSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "angels",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: ANGELS_LAYOUT_SCALE_X, scaleY: ANGELS_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
+  };
+  return acc;
+}, {} as Record<AngelsSpreadId, SpreadSchema>);
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -693,5 +737,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   reset_reload: SpreadResetReload,
   soul_purpose: SpreadSoulPurpose,
   ...LENORMAND_SCHEMAS,
-  ...MANARA_SCHEMAS
+  ...MANARA_SCHEMAS,
+  ...ANGELS_SCHEMAS
 };

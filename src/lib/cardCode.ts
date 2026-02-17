@@ -181,6 +181,91 @@ Object.entries(MANARA_MINOR_SUITS).forEach(([ruSuit, suitSlug]) => {
   });
 });
 
+function normalizeRuToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+const ANGELS_MAJOR_ARCANA: Array<{ index: number; name: string; slug: string }> = [
+  { index: 0, name: "Шут", slug: "FOOL" },
+  { index: 1, name: "Маг", slug: "MAGICIAN" },
+  { index: 2, name: "Верховная Жрица", slug: "HIGH_PRIESTESS" },
+  { index: 3, name: "Императрица", slug: "EMPRESS" },
+  { index: 4, name: "Император", slug: "EMPEROR" },
+  { index: 5, name: "Иерофант", slug: "HIEROPHANT" },
+  { index: 6, name: "Влюбленные", slug: "LOVERS" },
+  { index: 7, name: "Колесница", slug: "CHARIOT" },
+  { index: 8, name: "Сила", slug: "STRENGTH" },
+  { index: 9, name: "Отшельник", slug: "HERMIT" },
+  { index: 10, name: "Колесо Фортуны", slug: "WHEEL_OF_FORTUNE" },
+  { index: 11, name: "Справедливость", slug: "JUSTICE" },
+  { index: 12, name: "Повешенный", slug: "HANGED_MAN" },
+  { index: 13, name: "Смерть", slug: "DEATH" },
+  { index: 14, name: "Умеренность", slug: "TEMPERANCE" },
+  { index: 15, name: "Дьявол", slug: "DEVIL" },
+  { index: 16, name: "Башня", slug: "TOWER" },
+  { index: 17, name: "Звезда", slug: "STAR" },
+  { index: 18, name: "Луна", slug: "MOON" },
+  { index: 19, name: "Солнце", slug: "SUN" },
+  { index: 20, name: "Суд", slug: "JUDGEMENT" },
+  { index: 21, name: "Мир", slug: "WORLD" }
+];
+
+const ANGELS_MINOR_SUITS: Record<string, string> = {
+  жезлов: "WANDS",
+  кубков: "CUPS",
+  мечеи: "SWORDS",
+  пентаклеи: "PENTACLES"
+};
+
+const ANGELS_MINOR_RANKS: Record<string, string> = {
+  туз: "ACE",
+  "2": "TWO",
+  "3": "THREE",
+  "4": "FOUR",
+  "5": "FIVE",
+  "6": "SIX",
+  "7": "SEVEN",
+  "8": "EIGHT",
+  "9": "NINE",
+  "10": "TEN",
+  паж: "PAGE",
+  рыцарь: "KNIGHT",
+  королева: "QUEEN",
+  король: "KING"
+};
+
+const ANGELS_NAME_ALIASES: Record<string, string> = {
+  "12 Повешенный": "12 Повешенный",
+  "Повешенный": "Повешенный",
+  "4 кубков": "4 Кубков",
+  "Паж мечей": "Паж Мечей"
+};
+
+const ANGELS_INDEX_TO_CODE: Record<number, string> = {};
+const ANGELS_SLUG_TO_CODE: Record<string, string> = {};
+const ANGELS_MAJOR_NAME_TO_INDEX: Record<string, number> = {};
+
+ANGELS_MAJOR_ARCANA.forEach((card) => {
+  const code = `ANGELS_${String(card.index).padStart(2, "0")}_${card.slug}`;
+  ANGELS_INDEX_TO_CODE[card.index] = code;
+  ANGELS_SLUG_TO_CODE[card.slug] = code;
+  ANGELS_MAJOR_NAME_TO_INDEX[card.name] = card.index;
+  ANGELS_MAJOR_NAME_TO_INDEX[normalizeRuToken(card.name)] = card.index;
+});
+
+Object.entries(ANGELS_MINOR_SUITS).forEach(([, suitSlug]) => {
+  Object.entries(ANGELS_MINOR_RANKS).forEach(([, rankSlug]) => {
+    const code = `ANGELS_${rankSlug}_OF_${suitSlug}`;
+    ANGELS_SLUG_TO_CODE[`${rankSlug}_OF_${suitSlug}`] = code;
+  });
+});
+
 const EN_MINOR_SUITS: Record<string, string> = {
   WANDS: "WANDS",
   CUPS: "CUPS",
@@ -241,7 +326,7 @@ const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
   WORLD: "RWS_THE_WORLD"
 };
 
-type SupportedDeckId = "rws" | "lenormand" | "manara";
+type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels";
 
 const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
 
@@ -303,6 +388,42 @@ function mapManaraCardNameToCode(name: string): string | null {
   }
   const index = Number(indexMatch[1]);
   return MANARA_INDEX_TO_CODE[index] ?? null;
+}
+
+function mapAngelsCardNameToCode(name: string): string | null {
+  const aliasTarget = ANGELS_NAME_ALIASES[name];
+  const normalizedName = aliasTarget ?? name;
+  const baseName = normalizedName.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const baseToken = normalizeRuToken(baseName);
+
+  const majorIndexByName = ANGELS_MAJOR_NAME_TO_INDEX[baseName] ?? ANGELS_MAJOR_NAME_TO_INDEX[baseToken];
+  if (typeof majorIndexByName === "number") {
+    return ANGELS_INDEX_TO_CODE[majorIndexByName] ?? null;
+  }
+
+  const majorWithIndexMatch = baseName.match(/^(\d{1,2})\s+(.+)$/);
+  if (majorWithIndexMatch) {
+    const [, indexRaw, majorRaw] = majorWithIndexMatch;
+    const index = Number(indexRaw);
+    const byIndexCode = ANGELS_INDEX_TO_CODE[index];
+    const majorToken = normalizeRuToken(majorRaw);
+    const majorIndex = ANGELS_MAJOR_NAME_TO_INDEX[majorRaw] ?? ANGELS_MAJOR_NAME_TO_INDEX[majorToken];
+    if (byIndexCode && majorIndex === index) {
+      return byIndexCode;
+    }
+  }
+
+  const minorMatch = baseToken.match(/^(туз|[2-9]|10|паж|рыцарь|королева|король)\s+([а-яa-z]+)$/u);
+  if (!minorMatch) {
+    return null;
+  }
+  const [, rankRaw, suitRaw] = minorMatch;
+  const rankSlug = ANGELS_MINOR_RANKS[rankRaw];
+  const suitSlug = ANGELS_MINOR_SUITS[suitRaw];
+  if (!rankSlug || !suitSlug) {
+    return null;
+  }
+  return `ANGELS_${rankSlug}_OF_${suitSlug}`;
 }
 
 function normalizeEnglishCardName(value: string): string {
@@ -384,6 +505,26 @@ function normalizeManaraCode(rawCode: string): string | null {
   return MANARA_SLUG_TO_CODE[slug] ?? null;
 }
 
+function normalizeAngelsCode(rawCode: string): string | null {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!normalized.startsWith("ANGELS_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^ANGELS_(\d{1,2})(?:_|$)/);
+  if (byNumberMatch) {
+    const index = Number(byNumberMatch[1]);
+    return ANGELS_INDEX_TO_CODE[index] ?? null;
+  }
+
+  const bySlugMatch = normalized.match(/^ANGELS_([A-Z_]+)$/);
+  if (!bySlugMatch) {
+    return null;
+  }
+  const slug = bySlugMatch[1];
+  return ANGELS_SLUG_TO_CODE[slug] ?? null;
+}
+
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
   const trimmed = normalizeCardName(name);
   if (!trimmed) return null;
@@ -400,10 +541,15 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     return mapManaraCardNameToCode(trimmed);
   }
 
+  if (deckId === "angels") {
+    return mapAngelsCardNameToCode(trimmed);
+  }
+
   return (
     mapRwsCardNameToCode(trimmed) ??
     mapLenormandCardNameToCode(trimmed) ??
     mapManaraCardNameToCode(trimmed) ??
+    mapAngelsCardNameToCode(trimmed) ??
     mapEnglishCardNameToCode(trimmed)
   );
 }
@@ -424,6 +570,11 @@ export function mapCardValueToCode(value: string): string | null {
   const manaraCode = normalizeManaraCode(raw);
   if (manaraCode) {
     return manaraCode;
+  }
+
+  const angelsCode = normalizeAngelsCode(raw);
+  if (angelsCode) {
+    return angelsCode;
   }
 
   return mapCardNameToCode(raw);

@@ -58,7 +58,21 @@ export type ManaraSpreadId =
   | "manara_path"
   | "manara_celtic_cross";
 
-export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId;
+export type AngelsSpreadId =
+  | "angels_one_card"
+  | "angels_advice"
+  | "angels_yes_no_soft"
+  | "angels_balance_soul"
+  | "angels_healing_needed"
+  | "angels_body_spirit_energy"
+  | "angels_soul_path"
+  | "angels_karmic_lesson"
+  | "angels_vector"
+  | "angels_relationship_support"
+  | "angels_union_harmony"
+  | "angels_higher_connection_meaning";
+
+export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId;
 
 export interface SpreadPosition {
   index: number;

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
+import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
@@ -142,6 +143,30 @@ const MANARA_SPREAD_BLOCKS: SpreadBlock[] = [
   }
 ];
 
+const ANGELS_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "popular",
+    title: "✨ Послание и поддержка",
+    badge: "🔥 Часто выбирают",
+    spreadIds: ["angels_one_card", "angels_advice", "angels_yes_no_soft"]
+  },
+  {
+    id: "self_growth",
+    title: "🌿 Исцеление и внутреннее состояние",
+    spreadIds: ["angels_balance_soul", "angels_healing_needed", "angels_body_spirit_energy"]
+  },
+  {
+    id: "forecast",
+    title: "🕊 Жизненный путь и предназначение",
+    spreadIds: ["angels_soul_path", "angels_karmic_lesson", "angels_vector"]
+  },
+  {
+    id: "relationships",
+    title: "💞 Отношения под защитой",
+    spreadIds: ["angels_relationship_support", "angels_union_harmony", "angels_higher_connection_meaning"]
+  }
+];
+
 const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: 5, popularityScore: 95, keywords: ["быстро", "карта дня"] },
   yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: 10, popularityScore: 92, keywords: ["да", "нет"] },
@@ -259,6 +284,93 @@ const MANARA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   }
 };
 
+const ANGELS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  angels_one_card: {
+    category: "popular",
+    tags: ["поддержка", "послание", "ориентир"],
+    energyCost: 5,
+    popularityScore: 94,
+    keywords: ["одна карта", "ангел"]
+  },
+  angels_advice: {
+    category: "popular",
+    tags: ["совет", "ситуация", "благословение"],
+    energyCost: 10,
+    popularityScore: 90,
+    keywords: ["треугольник совета"]
+  },
+  angels_yes_no_soft: {
+    category: "popular",
+    tags: ["выбор", "мягкий ответ", "направление"],
+    energyCost: 10,
+    popularityScore: 88,
+    keywords: ["да нет", "ответ свыше"]
+  },
+  angels_balance_soul: {
+    category: "self_growth",
+    tags: ["гармония", "душа", "восстановление"],
+    energyCost: 16,
+    popularityScore: 86,
+    keywords: ["баланс души"]
+  },
+  angels_healing_needed: {
+    category: "self_growth",
+    tags: ["исцеление", "причина", "урок"],
+    energyCost: 14,
+    popularityScore: 84,
+    keywords: ["что требует исцеления"]
+  },
+  angels_body_spirit_energy: {
+    category: "self_growth",
+    tags: ["тело", "дух", "ресурс", "баланс"],
+    energyCost: 18,
+    popularityScore: 83,
+    keywords: ["энергия тела и духа"]
+  },
+  angels_soul_path: {
+    category: "forecast",
+    tags: ["предназначение", "путь", "итог"],
+    energyCost: 20,
+    popularityScore: 82,
+    keywords: ["путь души"]
+  },
+  angels_karmic_lesson: {
+    category: "forecast",
+    tags: ["карма", "сценарий", "освобождение"],
+    energyCost: 17,
+    popularityScore: 80,
+    keywords: ["кармический урок"]
+  },
+  angels_vector: {
+    category: "forecast",
+    tags: ["направление", "поддержка", "выбор"],
+    energyCost: 16,
+    popularityScore: 85,
+    keywords: ["вектор развития"]
+  },
+  angels_relationship_support: {
+    category: "relationships",
+    tags: ["союз", "роль", "поддержка"],
+    energyCost: 14,
+    popularityScore: 81,
+    keywords: ["отношения под защитой"]
+  },
+  angels_union_harmony: {
+    category: "relationships",
+    tags: ["гармония", "пара", "перспектива"],
+    energyCost: 18,
+    popularityScore: 83,
+    keywords: ["гармония союза"]
+  },
+  angels_higher_connection_meaning: {
+    category: "relationships",
+    tags: ["кармический узел", "урок", "высший итог"],
+    energyCost: 17,
+    popularityScore: 79,
+    keywords: ["высший смысл связи"]
+  }
+};
+
 const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
@@ -272,6 +384,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"])
   }
   if (deckId === "manara") {
     return MANARA_SPREAD_META[spreadId] ?? fallback;
+  }
+  if (deckId === "angels") {
+    return ANGELS_SPREAD_META[spreadId] ?? fallback;
   }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
@@ -291,6 +406,8 @@ const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"])
       ? LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP]
       : deckId === "manara"
       ? MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]
+      : deckId === "angels"
+      ? ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]
       : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
   const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
@@ -383,8 +500,22 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
 
+  const angelsBlocks = useMemo(() => {
+    if (deck.id !== "angels") return [];
+    return ANGELS_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]?.title ?? spreadId,
+          description: ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
   const nonRwsSpreads = useMemo(() => {
-    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara") return [];
+    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels") return [];
     const normalized = query.trim().toLowerCase();
     if (!normalized) return deck.spreads;
     return deck.spreads.filter((spread) => `${spread.title} ${spread.description}`.toLowerCase().includes(normalized));
@@ -510,6 +641,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {manaraBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : deck.id === "angels" ? (
+        <div className="space-y-6">
+          {angelsBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {angelsBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               Ничего не найдено. Попробуйте запрос по теме или количеству карт.
             </Card>
@@ -1095,10 +1259,146 @@ const MANARA_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const ANGELS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  angels_one_card: {
+    subtitle: "Послание Небесной поддержки",
+    metaLine: "1 карта · поддержка · духовный ориентир",
+    header: "Одна карта Ангела",
+    purpose: ["✨ Получить поддержку", "🌿 Уловить тон текущего периода", "🕊 Услышать мягкую подсказку"],
+    howItWorks: [
+      "🃏 Одна карта отражает главное послание Небесной поддержки именно сейчас.",
+      "Это не жёсткий прогноз, а направление: где искать ресурс и на что обратить внимание."
+    ],
+    forWhom: ["✓ Для ежедневного вдохновения", "✓ В моменты сомнений", "✓ Для внутреннего успокоения"]
+  },
+  angels_advice: {
+    subtitle: "Треугольник совета",
+    metaLine: "3 карты · ситуация · совет · благословение",
+    header: "Ангельский совет (3 карты)",
+    purpose: ["🧭 Понять суть ситуации", "✨ Получить мягкое направление действий", "🌤 Считать благоприятный итог при следовании совету"],
+    howItWorks: [
+      "🃏 Верхняя карта — центральный совет, нижние — контекст и результат.",
+      "Расклад поддержки: акцент на ресурсе и созидательном варианте движения."
+    ],
+    forWhom: ["✓ Когда нужен бережный ориентир", "✓ Для выбора следующего шага"]
+  },
+  angels_yes_no_soft: {
+    subtitle: "Мягкий ответ без категоричности",
+    metaLine: "3 карты · направление · мягкий ответ",
+    header: "Ответ свыше (Да / Нет — мягкий)",
+    purpose: ["⚖️ Взвесить ситуацию без давления", "🧠 Увидеть условия благоприятного исхода", "🌿 Понять, где есть задержка"],
+    howItWorks: [
+      "🃏 Левая карта — энергия «да», верхняя — главный духовный фактор, правая — энергия «пока нет».",
+      "Расклад показывает степень готовности ситуации, а не «жёсткий приговор»."
+    ],
+    forWhom: ["✓ Для вопросов выбора", "✓ Когда важно сохранить спокойствие и ясность"]
+  },
+  angels_balance_soul: {
+    subtitle: "Крест гармонии",
+    metaLine: "5 карт · состояние · блок · восстановление",
+    header: "Баланс души (5 карт)",
+    purpose: ["🌿 Понять причину внутреннего дисбаланса", "🕯 Выявить духовный ресурс", "🧭 Найти шаг к восстановлению"],
+    howItWorks: [
+      "🃏 Центр — главная тема души, верх — духовная энергия, низ — путь восстановления.",
+      "Боковые позиции показывают эмоциональный фон и фактор, нарушающий гармонию."
+    ],
+    forWhom: ["✓ В период усталости", "✓ Когда хочется вернуть внутренний баланс"]
+  },
+  angels_healing_needed: {
+    subtitle: "Источник напряжения и способ исцеления",
+    metaLine: "4 карты · источник · урок · поддержка",
+    header: "Что требует исцеления (4 карты)",
+    purpose: ["🔎 Найти корень внутреннего напряжения", "📖 Понять урок ситуации", "🕊 Увидеть формат ангельской помощи"],
+    howItWorks: [
+      "🃏 Верхний ряд — источник и проявление, нижний — урок и поддержка.",
+      "Финальная карта показывает, через что можно мягко восстановить состояние."
+    ],
+    forWhom: ["✓ При эмоциональной перегрузке", "✓ Когда нужно понять, что исцелять в первую очередь"]
+  },
+  angels_body_spirit_energy: {
+    subtitle: "Двойная ось: тело и дух",
+    metaLine: "6 карт · ресурс · баланс · гармония",
+    header: "Энергия тела и духа (6 карт)",
+    purpose: ["💪 Оценить уровень жизненного ресурса", "🕯 Проверить связь с интуицией", "⚖️ Увидеть общий баланс"],
+    howItWorks: [
+      "🃏 Верхний ряд отражает состояние тела и эмоций, нижний — духовный слой и интеграцию.",
+      "Расклад помогает увидеть, где теряется энергия и как восстановить целостность."
+    ],
+    forWhom: ["✓ Для мягкой самодиагностики", "✓ Когда нужно вернуть ресурсность"]
+  },
+  angels_soul_path: {
+    subtitle: "Дуга предназначения",
+    metaLine: "7 карт · предназначение · урок · итог",
+    header: "Путь души (7 карт)",
+    purpose: ["🕊 Осознать текущий этап пути", "📚 Понять высший урок", "🌟 Увидеть итоговую траекторию"],
+    howItWorks: [
+      "🃏 Верхний ряд — опыт и текущие задачи, центр — предназначение, нижний — поддержка/испытание/итог.",
+      "Расклад показывает не только события, но и духовный смысл движения."
+    ],
+    forWhom: ["✓ Для вопросов предназначения", "✓ В переходные периоды жизни"]
+  },
+  angels_karmic_lesson: {
+    subtitle: "Пентаграмма кармического урока",
+    metaLine: "5 карт · карма · урок · освобождение",
+    header: "Кармический урок (5 карт)",
+    purpose: ["🔁 Выявить повторяющийся сценарий", "🧠 Понять кармический урок", "🌿 Найти путь освобождения"],
+    howItWorks: [
+      "🃏 Верх задаёт кармическую тему, центр раскрывает урок, низ показывает вектор освобождения.",
+      "Боковые карты объясняют, откуда пришёл паттерн и как он воспроизводится."
+    ],
+    forWhom: ["✓ Для глубокой внутренней работы", "✓ Когда ситуации повторяются по кругу"]
+  },
+  angels_vector: {
+    subtitle: "Стрела развития",
+    metaLine: "5 карт · направление · поддержка · выбор",
+    header: "Вектор развития (5 карт)",
+    purpose: ["🎯 Увидеть оптимальный курс", "⚠️ Осознать риск на пути", "🤍 Определить поддерживающий фактор"],
+    howItWorks: [
+      "🃏 Карты читаются слева направо как последовательная линия решений.",
+      "Расклад помогает выбрать направление с наилучшим потенциалом."
+    ],
+    forWhom: ["✓ Для ситуаций выбора", "✓ Когда нужно стратегическое направление"]
+  },
+  angels_relationship_support: {
+    subtitle: "Поддержка союза свыше",
+    metaLine: "4 карты · энергия · защита · перспектива",
+    header: "Ангельская поддержка в отношениях (4 карты)",
+    purpose: ["💞 Понять энергию союза", "🧭 Увидеть роли партнёров", "🕊 Получить духовную опору для пары"],
+    howItWorks: [
+      "🃏 Верхняя карта — базовая энергия отношений, боковые — роли каждого, нижняя — небесная поддержка.",
+      "Расклад мягко показывает, как укрепить союз."
+    ],
+    forWhom: ["✓ Для гармонизации отношений", "✓ Когда нужен бережный взгляд на пару"]
+  },
+  angels_union_harmony: {
+    subtitle: "Двойной баланс пары",
+    metaLine: "6 карт · вы · партнёр · энергия · перспектива",
+    header: "Гармония союза (6 карт)",
+    purpose: ["🤝 Сравнить вклад партнёров", "⚖️ Понять, где баланс и где испытание", "🌿 Увидеть, что укрепляет связь"],
+    howItWorks: [
+      "🃏 Верхний ряд — вы и партнёр, центр — общая энергия и испытание, нижний — укрепляющий фактор и перспектива.",
+      "Расклад даёт практичный ориентир для развития союза."
+    ],
+    forWhom: ["✓ Для осознанной работы над отношениями", "✓ Когда нужен прогноз по паре"]
+  },
+  angels_higher_connection_meaning: {
+    subtitle: "Вертикаль судьбы",
+    metaLine: "5 карт · причина встречи · урок · высший итог",
+    header: "Высший смысл связи (5 карт)",
+    purpose: ["🕊 Понять духовный смысл связи", "📖 Осознать кармический узел", "🌟 Увидеть высший итог отношений"],
+    howItWorks: [
+      "🃏 Карты читаются по вертикали: от причины встречи к итогу роста.",
+      "Каждая позиция раскрывает следующий слой глубины отношений."
+    ],
+    forWhom: ["✓ Для судьбоносных и значимых связей", "✓ Когда важен не только прогноз, но и смысл"]
+  }
+};
+
 const getSpreadById = (spreadId: string) =>
   RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
   LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP] ??
-  MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP];
+  MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP] ??
+  ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP];
 
 function extractCardsCount(spread: DeckSpread): number {
   const mapped = getSpreadById(spread.id);
@@ -1114,6 +1414,8 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
       ? LENORMAND_SPREAD_DETAILS[spread.id]
       : deckId === "manara"
       ? MANARA_SPREAD_DETAILS[spread.id]
+      : deckId === "angels"
+      ? ANGELS_SPREAD_DETAILS[spread.id]
       : RWS_SPREAD_DETAILS[spread.id];
   const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);
@@ -1402,7 +1704,18 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     manara_mystery_love: 34,
     manara_two_hearts: 34,
     manara_relationship_future: 32,
-    manara_celtic_cross: 32
+    manara_celtic_cross: 32,
+    angels_advice: 56,
+    angels_yes_no_soft: 56,
+    angels_balance_soul: 46,
+    angels_healing_needed: 52,
+    angels_body_spirit_energy: 46,
+    angels_soul_path: 40,
+    angels_karmic_lesson: 44,
+    angels_vector: 48,
+    angels_relationship_support: 50,
+    angels_union_harmony: 44,
+    angels_higher_connection_meaning: 44
   };
   const customSize = customSizeById[spread.id] ?? null;
   const cardSize =

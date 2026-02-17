@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import { ANGELS_ALL_LIST } from "@/data/angels_deck";
 import type { SpreadSchema } from "@/data/spreadSchemas";
 import { SpreadOneCard } from "@/data/spreadSchemas";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
@@ -31,7 +32,8 @@ const computeExpectedNext = (schema: SpreadSchema, cards: SpreadCardState[]): nu
 const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
   rws: RWS_ALL,
   lenormand: LENORMAND_ALL,
-  manara: MANARA_ALL
+  manara: MANARA_ALL,
+  angels: ANGELS_ALL_LIST
 };
 
 interface SpreadStoreState {
