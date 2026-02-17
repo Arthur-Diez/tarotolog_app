@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toBlob } from "html-to-image";
 
 import { Button } from "@/components/ui/button";
+import CardFaceImage from "@/components/tarot/CardFaceImage";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { createShare, getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
 import { DECKS } from "@/data/decks";
@@ -502,8 +503,9 @@ export default function InterpretationPage() {
                   className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3 text-center"
                 >
                   {card.assetName ? (
-                    <img
-                      src={faceUrl(resolvedDeckId, card.assetName)}
+                    <CardFaceImage
+                      deckId={resolvedDeckId}
+                      cardName={card.assetName}
                       alt={card.displayName}
                       className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
                       loading="lazy"

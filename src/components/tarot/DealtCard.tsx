@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 
+import CardFaceImage from "@/components/tarot/CardFaceImage";
+
 interface DealtCardProps {
   backSrc: string;
-  faceSrc: string;
+  deckId: string;
+  faceName: string;
   isOpen: boolean;
   reversed?: boolean;
   className?: string;
@@ -11,7 +14,8 @@ interface DealtCardProps {
 
 export default function DealtCard({
   backSrc,
-  faceSrc,
+  deckId,
+  faceName,
   isOpen,
   reversed = false,
   className = "",
@@ -39,8 +43,9 @@ export default function DealtCard({
         draggable={false}
         style={{ willChange: "transform" }}
       />
-      <img
-        src={faceSrc}
+      <CardFaceImage
+        deckId={deckId}
+        cardName={faceName}
         alt=""
         className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl [backface-visibility:hidden]"
         draggable={false}

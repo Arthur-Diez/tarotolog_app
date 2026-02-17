@@ -598,19 +598,33 @@ function normalizeGoldenCode(rawCode: string): string | null {
     return RWS_MAJOR_INDEX_TO_CODE[index] ?? null;
   }
 
-  const minorMatch = normalized.match(
-    /^GOLDEN_(ACE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)_OF_(WANDS|CUPS|SWORDS|PENTACLES|PENTACLE|COINS?)$/
+  const bySlugMatch = normalized.match(/^GOLDEN_([A-Z_]+)$/);
+  if (!bySlugMatch) {
+    return null;
+  }
+
+  const slug = bySlugMatch[1];
+
+  const minorMatch = slug.match(
+    /^(ACE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)_OF_(WANDS|CUPS|SWORDS|PENTACLES|PENTACLE|COINS?)$/
   );
-  if (!minorMatch) {
-    return null;
+  if (minorMatch) {
+    const rank = EN_MINOR_RANKS[minorMatch[1]];
+    const suitRaw = minorMatch[2] === "COIN" || minorMatch[2] === "COINS" ? "PENTACLES" : minorMatch[2];
+    const suit = EN_MINOR_SUITS[suitRaw];
+    if (!rank || !suit) {
+      return null;
+    }
+    return `RWS_${rank}_OF_${suit}`;
   }
-  const rank = EN_MINOR_RANKS[minorMatch[1]];
-  const suitRaw = minorMatch[2] === "COIN" || minorMatch[2] === "COINS" ? "PENTACLES" : minorMatch[2];
-  const suit = EN_MINOR_SUITS[suitRaw];
-  if (!rank || !suit) {
-    return null;
+
+  const majorKey = slug.replace(/_/g, " ").replace(/^THE\s+/, "").trim();
+  const majorCode = EN_MAJOR_ARCANA_MAP[majorKey];
+  if (majorCode) {
+    return majorCode;
   }
-  return `RWS_${rank}_OF_${suit}`;
+
+  return null;
 }
 
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {

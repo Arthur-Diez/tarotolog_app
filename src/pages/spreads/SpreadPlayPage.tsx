@@ -19,7 +19,7 @@ import {
   type BackendReadingStatus,
   type ViewReadingResponse
 } from "@/lib/api";
-import { backUrl, faceUrl } from "@/lib/cardAsset";
+import { backUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
@@ -688,7 +688,6 @@ export default function SpreadPlayPage() {
                 style={{ willChange: "transform" }}
               >
                 {cardsWithPosition.map(({ position, card, orderNumber }) => {
-                  const faceSrc = card ? faceUrl(schema.deckType, card.name) : null;
                     const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
                     const isWheelOfYear = schema.id === "wheel_of_year" || schema.id === "lenormand_wheel_of_year";
                     const isLenormandSquare = schema.id === "lenormand_square_9";
@@ -725,7 +724,7 @@ export default function SpreadPlayPage() {
                         zIndex: isLenormandCenterFocus ? 1210 : undefined
                       }}
                     >
-                      {card && faceSrc && (
+                      {card && (
                         <div className="relative">
                           {showOrderLabel && (
                             <motion.div
@@ -739,7 +738,8 @@ export default function SpreadPlayPage() {
                           <div style={isCelticCrossObstacle ? { transform: "rotate(90deg)", transformOrigin: "center center" } : undefined}>
                             <DealtCard
                               backSrc={backSrc}
-                              faceSrc={faceSrc}
+                              deckId={schema.deckType}
+                              faceName={card.name}
                               isOpen={card.isOpen}
                               reversed={card.reversed}
                               className={
