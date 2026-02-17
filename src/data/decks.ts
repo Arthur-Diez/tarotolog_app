@@ -34,6 +34,7 @@ import { LENORMAND_SPREADS } from "./lenormand_spreads";
 import { MANARA_SPREADS } from "./manara_spreads";
 import { RWS_SPREADS } from "./rws_spreads";
 import { ANGELS_SPREADS } from "./angels_spreads";
+import { GOLDEN_SPREADS } from "./golden_spreads";
 
 export const DECKS: Deck[] = [
   {
@@ -85,7 +86,11 @@ export const DECKS: Deck[] = [
     title: "Золотое Таро",
     subtitle: "Классика с изящием",
     description: "Элегантная визуальная подача и ясные интерпретации.",
-    spreads: createSpreads()
+    spreads: GOLDEN_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   },
   {
     id: "ancestry",

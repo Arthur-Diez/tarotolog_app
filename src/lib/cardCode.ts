@@ -47,6 +47,14 @@ const RANKS_MAP: Record<string, string> = {
   Король: "KING"
 };
 
+const RWS_MAJOR_INDEX_TO_CODE: Record<number, string> = {};
+Object.entries(MAJOR_ARCANA_MAP).forEach(([name, code]) => {
+  const match = name.match(/\((\d{1,2})\)\s*$/);
+  if (!match) return;
+  const index = Number(match[1]);
+  RWS_MAJOR_INDEX_TO_CODE[index] = code;
+});
+
 const LENORMAND_CARDS: Array<{ index: number; name: string; slug: string }> = [
   { index: 1, name: "Всадник", slug: "RIDER" },
   { index: 2, name: "Клевер", slug: "CLOVER" },
@@ -247,6 +255,33 @@ const ANGELS_NAME_ALIASES: Record<string, string> = {
   "Паж мечей": "Паж Мечей"
 };
 
+const GOLDEN_MINOR_SUITS: Record<string, string> = {
+  жезлов: "WANDS",
+  кубков: "CUPS",
+  мечеи: "SWORDS",
+  мечей: "SWORDS",
+  мечей: "SWORDS",
+  монет: "PENTACLES",
+  пентаклей: "PENTACLES"
+};
+
+const GOLDEN_MINOR_RANKS: Record<string, string> = {
+  туз: "ACE",
+  "2": "TWO",
+  "3": "THREE",
+  "4": "FOUR",
+  "5": "FIVE",
+  "6": "SIX",
+  "7": "SEVEN",
+  "8": "EIGHT",
+  "9": "NINE",
+  "10": "TEN",
+  паж: "PAGE",
+  рыцарь: "KNIGHT",
+  королева: "QUEEN",
+  король: "KING"
+};
+
 const ANGELS_INDEX_TO_CODE: Record<number, string> = {};
 const ANGELS_SLUG_TO_CODE: Record<string, string> = {};
 const ANGELS_MAJOR_NAME_TO_INDEX: Record<string, number> = {};
@@ -326,7 +361,7 @@ const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
   WORLD: "RWS_THE_WORLD"
 };
 
-type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels";
+type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels" | "golden";
 
 const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
 
@@ -424,6 +459,32 @@ function mapAngelsCardNameToCode(name: string): string | null {
     return null;
   }
   return `ANGELS_${rankSlug}_OF_${suitSlug}`;
+}
+
+function mapGoldenCardNameToCode(name: string): string | null {
+  const withoutDeckTag = name.replace(/\s*\([^)]*золотое\s*таро[^)]*\)\s*$/iu, "").trim();
+  const normalized = normalizeRuToken(withoutDeckTag);
+
+  const minorMatch = normalized.match(/^(туз|[2-9]|10|паж|рыцарь|королева|король)\s+([а-яa-z]+)$/u);
+  if (minorMatch) {
+    const [, rankRaw, suitRaw] = minorMatch;
+    const rankCode = GOLDEN_MINOR_RANKS[rankRaw];
+    const suitCode = GOLDEN_MINOR_SUITS[suitRaw];
+    if (rankCode && suitCode) {
+      return `RWS_${rankCode}_OF_${suitCode}`;
+    }
+  }
+
+  const majorByIndexMatch = normalized.match(/^(\d{1,2})\s+/);
+  if (majorByIndexMatch) {
+    const index = Number(majorByIndexMatch[1]);
+    const majorCode = RWS_MAJOR_INDEX_TO_CODE[index];
+    if (majorCode) {
+      return majorCode;
+    }
+  }
+
+  return null;
 }
 
 function normalizeEnglishCardName(value: string): string {
@@ -525,6 +586,33 @@ function normalizeAngelsCode(rawCode: string): string | null {
   return ANGELS_SLUG_TO_CODE[slug] ?? null;
 }
 
+function normalizeGoldenCode(rawCode: string): string | null {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!normalized.startsWith("GOLDEN_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^GOLDEN_(\d{1,2})(?:_|$)/);
+  if (byNumberMatch) {
+    const index = Number(byNumberMatch[1]);
+    return RWS_MAJOR_INDEX_TO_CODE[index] ?? null;
+  }
+
+  const minorMatch = normalized.match(
+    /^GOLDEN_(ACE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|PAGE|KNIGHT|QUEEN|KING)_OF_(WANDS|CUPS|SWORDS|PENTACLES|PENTACLE|COINS?)$/
+  );
+  if (!minorMatch) {
+    return null;
+  }
+  const rank = EN_MINOR_RANKS[minorMatch[1]];
+  const suitRaw = minorMatch[2] === "COIN" || minorMatch[2] === "COINS" ? "PENTACLES" : minorMatch[2];
+  const suit = EN_MINOR_SUITS[suitRaw];
+  if (!rank || !suit) {
+    return null;
+  }
+  return `RWS_${rank}_OF_${suit}`;
+}
+
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
   const trimmed = normalizeCardName(name);
   if (!trimmed) return null;
@@ -545,11 +633,16 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     return mapAngelsCardNameToCode(trimmed);
   }
 
+  if (deckId === "golden") {
+    return mapGoldenCardNameToCode(trimmed) ?? mapEnglishCardNameToCode(trimmed);
+  }
+
   return (
     mapRwsCardNameToCode(trimmed) ??
     mapLenormandCardNameToCode(trimmed) ??
     mapManaraCardNameToCode(trimmed) ??
     mapAngelsCardNameToCode(trimmed) ??
+    mapGoldenCardNameToCode(trimmed) ??
     mapEnglishCardNameToCode(trimmed)
   );
 }
@@ -575,6 +668,11 @@ export function mapCardValueToCode(value: string): string | null {
   const angelsCode = normalizeAngelsCode(raw);
   if (angelsCode) {
     return angelsCode;
+  }
+
+  const goldenCode = normalizeGoldenCode(raw);
+  if (goldenCode) {
+    return goldenCode;
   }
 
   return mapCardNameToCode(raw);

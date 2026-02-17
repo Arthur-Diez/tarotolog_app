@@ -9,6 +9,7 @@ import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
 import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
+import { GOLDEN_SPREADS_MAP } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
@@ -164,6 +165,31 @@ const ANGELS_SPREAD_BLOCKS: SpreadBlock[] = [
     id: "relationships",
     title: "💞 Отношения под защитой",
     spreadIds: ["angels_relationship_support", "angels_union_harmony", "angels_higher_connection_meaning"]
+  }
+];
+
+const GOLDEN_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "work_finance",
+    title: "👑 Стратегия и амбиции",
+    badge: "🔥 Основной блок",
+    spreadIds: ["golden_crown_opportunities", "golden_big_game", "golden_path_success", "golden_influence_resources"]
+  },
+  {
+    id: "popular",
+    title: "💰 Деньги и материальный успех",
+    spreadIds: ["golden_money_flow", "golden_investment", "golden_financial_forecast", "golden_risk_reward"]
+  },
+  {
+    id: "self_growth",
+    title: "⚖ Власть и решения",
+    spreadIds: ["golden_strong_decision", "golden_competitive_field", "golden_negotiations", "golden_leadership"]
+  },
+  {
+    id: "premium",
+    title: "🌟 Высокий уровень жизни",
+    badge: "👑 Премиум",
+    spreadIds: ["golden_abundance_level", "golden_new_level", "golden_image_reputation", "golden_long_term_perspective"]
   }
 ];
 
@@ -371,6 +397,121 @@ const ANGELS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   }
 };
 
+const GOLDEN_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  golden_crown_opportunities: {
+    category: "work_finance",
+    tags: ["карьера", "рост", "статус", "стратегия"],
+    energyCost: 15,
+    popularityScore: 89,
+    keywords: ["корона возможностей"]
+  },
+  golden_big_game: {
+    category: "work_finance",
+    tags: ["стратегия", "конкуренция", "исход"],
+    energyCost: 20,
+    popularityScore: 86,
+    keywords: ["большая игра"]
+  },
+  golden_path_success: {
+    category: "work_finance",
+    tags: ["рост", "ускорение", "результат"],
+    energyCost: 18,
+    popularityScore: 84,
+    keywords: ["путь к успеху"]
+  },
+  golden_influence_resources: {
+    category: "work_finance",
+    tags: ["влияние", "связи", "рычаги"],
+    energyCost: 16,
+    popularityScore: 82,
+    keywords: ["ресурсы влияния"]
+  },
+  golden_money_flow: {
+    category: "popular",
+    tags: ["деньги", "поток", "утечки"],
+    energyCost: 16,
+    popularityScore: 90,
+    keywords: ["денежный поток"]
+  },
+  golden_investment: {
+    category: "popular",
+    tags: ["инвестиции", "риск", "вложения"],
+    energyCost: 18,
+    popularityScore: 85,
+    keywords: ["инвестиция"]
+  },
+  golden_financial_forecast: {
+    category: "popular",
+    tags: ["финансы", "прогноз", "период"],
+    energyCost: 20,
+    popularityScore: 88,
+    keywords: ["финансовый прогноз"]
+  },
+  golden_risk_reward: {
+    category: "popular",
+    tags: ["риск", "выгода", "баланс"],
+    energyCost: 14,
+    popularityScore: 87,
+    keywords: ["риск и выгода"]
+  },
+  golden_strong_decision: {
+    category: "self_growth",
+    tags: ["решение", "контроль", "ресурс"],
+    energyCost: 16,
+    popularityScore: 84,
+    keywords: ["сильное решение"]
+  },
+  golden_competitive_field: {
+    category: "self_growth",
+    tags: ["конкуренты", "союзники", "среда"],
+    energyCost: 18,
+    popularityScore: 82,
+    keywords: ["конкурентная среда"]
+  },
+  golden_negotiations: {
+    category: "self_growth",
+    tags: ["переговоры", "сделка", "диалог"],
+    energyCost: 16,
+    popularityScore: 83,
+    keywords: ["переговоры"]
+  },
+  golden_leadership: {
+    category: "self_growth",
+    tags: ["лидерство", "авторитет", "иерархия"],
+    energyCost: 17,
+    popularityScore: 80,
+    keywords: ["лидерство"]
+  },
+  golden_abundance_level: {
+    category: "premium",
+    tags: ["изобилие", "потолок", "рост"],
+    energyCost: 17,
+    popularityScore: 81,
+    keywords: ["уровень изобилия"]
+  },
+  golden_new_level: {
+    category: "premium",
+    tags: ["рост", "барьер", "переход"],
+    energyCost: 20,
+    popularityScore: 84,
+    keywords: ["новый уровень"]
+  },
+  golden_image_reputation: {
+    category: "premium",
+    tags: ["имидж", "репутация", "восприятие"],
+    energyCost: 16,
+    popularityScore: 79,
+    keywords: ["имидж и репутация"]
+  },
+  golden_long_term_perspective: {
+    category: "premium",
+    tags: ["год", "стратегия", "долгосрочно"],
+    energyCost: 24,
+    popularityScore: 85,
+    keywords: ["долгосрочная перспектива"]
+  }
+};
+
 const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
@@ -387,6 +528,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"])
   }
   if (deckId === "angels") {
     return ANGELS_SPREAD_META[spreadId] ?? fallback;
+  }
+  if (deckId === "golden") {
+    return GOLDEN_SPREAD_META[spreadId] ?? fallback;
   }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
@@ -408,6 +552,8 @@ const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"])
       ? MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP]
       : deckId === "angels"
       ? ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]
+      : deckId === "golden"
+      ? GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]
       : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
   const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
@@ -514,8 +660,23 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
 
+  const goldenBlocks = useMemo(() => {
+    if (deck.id !== "golden") return [];
+    return GOLDEN_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]?.title ?? spreadId,
+          description: GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
   const nonRwsSpreads = useMemo(() => {
-    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels") return [];
+    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels" || deck.id === "golden")
+      return [];
     const normalized = query.trim().toLowerCase();
     if (!normalized) return deck.spreads;
     return deck.spreads.filter((spread) => `${spread.title} ${spread.description}`.toLowerCase().includes(normalized));
@@ -674,6 +835,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {angelsBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : deck.id === "golden" ? (
+        <div className="space-y-6">
+          {goldenBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {goldenBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               Ничего не найдено. Попробуйте запрос по теме или количеству карт.
             </Card>
@@ -1394,11 +1588,143 @@ const ANGELS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const GOLDEN_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  golden_crown_opportunities: {
+    subtitle: "Форма короны",
+    metaLine: "5 карт · рост · статус · стратегический результат",
+    header: "Корона возможностей (5 карт)",
+    purpose: ["👑 Увидеть вашу текущую позицию в иерархии", "🔍 Найти скрытую точку роста", "🎯 Получить итог при верной стратегии"],
+    howItWorks: ["🃏 Верхние карты показывают возможность и барьер, центр и бока — ресурс и вектор.", "Расклад помогает выбрать наиболее сильную траекторию роста."],
+    forWhom: ["✓ Для карьерных решений", "✓ Когда важно усилить влияние"]
+  },
+  golden_big_game: {
+    subtitle: "Шахматная логика",
+    metaLine: "7 карт · стратегия · конкуренция · исход",
+    header: "Большая игра (7 карт)",
+    purpose: ["♟ Разобрать расстановку сил", "🧭 Найти рабочую стратегию", "🏁 Оценить вероятный исход"],
+    howItWorks: ["🃏 Верхний ряд — контекст и игроки, центр — ключевая стратегия, нижний — риск/поддержка/финал.", "Даёт системную картину перед важным шагом."],
+    forWhom: ["✓ Для амбициозных целей", "✓ Для сложных проектов"]
+  },
+  golden_path_success: {
+    subtitle: "Стрела вверх",
+    metaLine: "6 карт · ускорение · ресурс · рост",
+    header: "Путь к успеху (6 карт)",
+    purpose: ["🚀 Понять, что ускоряет продвижение", "🧱 Найти слабое место", "📈 Прогнозировать итог текущей траектории"],
+    howItWorks: ["🃏 Верхняя карта — главный ресурс, центральный блок — шаги и ускоритель, нижняя — результат.", "Расклад собирает путь роста в понятную последовательность."],
+    forWhom: ["✓ Для карьерного ускорения", "✓ Когда нужен конкретный план"]
+  },
+  golden_influence_resources: {
+    subtitle: "Пентагон силы",
+    metaLine: "5 карт · авторитет · связи · рычаги",
+    header: "Ресурсы влияния (5 карт)",
+    purpose: ["🧠 Оценить личные рычаги", "🤝 Увидеть силу социальных связей", "💼 Определить основной ресурс давления"],
+    howItWorks: ["🃏 Центр отражает главный рычаг, стороны — 4 типа ресурсов.", "Показывает, на что опереться для усиления позиции."],
+    forWhom: ["✓ Для управленцев и лидеров", "✓ Для усиления переговорной позиции"]
+  },
+  golden_money_flow: {
+    subtitle: "Движение денег",
+    metaLine: "5 карт · доход · утечки · усиление",
+    header: "Денежный поток (5 карт)",
+    purpose: ["💰 Понять источник и направление денег", "⚠️ Найти утечку", "📈 Определить точку усиления дохода"],
+    howItWorks: ["🃏 Линейная схема показывает движение от источника к итогу периода.", "Хорошо читается как финансовая причинно-следственная цепочка."],
+    forWhom: ["✓ Для практичных финансовых вопросов", "✓ Когда нужен быстрый аудит потока"]
+  },
+  golden_investment: {
+    subtitle: "Баланс вложений",
+    metaLine: "6 карт · потенциал · риски · рекомендация",
+    header: "Инвестиция (6 карт)",
+    purpose: ["📊 Оценить перспективу вложения", "⚠️ Выявить скрытые риски", "🧭 Получить итоговую рекомендацию"],
+    howItWorks: ["🃏 Верхний блок — потенциал и риски, середина — срок и фактор, низ — результат и рекомендация.", "Подходит для оценки проекта до старта."],
+    forWhom: ["✓ Перед инвестрешением", "✓ Для оценки сделки или идеи"]
+  },
+  golden_financial_forecast: {
+    subtitle: "Дуга времени",
+    metaLine: "7 карт · тенденции · риски · рост · итог",
+    header: "Финансовый прогноз (7 карт)",
+    purpose: ["📅 Считать период по деньгам", "📉 Выявить риск-узел", "📈 Понять, где окно роста"],
+    howItWorks: ["🃏 Верхний ряд — стартовые условия, центр — тема периода, нижний — развитие и итог.", "Расклад даёт цельный прогноз на ближайший горизонт."],
+    forWhom: ["✓ Для планирования 1-3 месяцев", "✓ Для финансовых стратегий"]
+  },
+  golden_risk_reward: {
+    subtitle: "Весы",
+    metaLine: "4 карты · выгода · риск · итоговый баланс",
+    header: "Риск и выгода (4 карты)",
+    purpose: ["⚖️ Сравнить прибыль и риск", "🔎 Проверить реалистичность ожиданий", "✅ Принять взвешенное решение"],
+    howItWorks: ["🃏 Левая сторона — выгода, правая — риск, нижний ряд — подтверждение и финальный баланс.", "Компактный и точный расклад для быстрой оценки."],
+    forWhom: ["✓ Для быстрых финансовых решений", "✓ Когда нужно решить «входить или нет»"]
+  },
+  golden_strong_decision: {
+    subtitle: "Центр власти",
+    metaLine: "5 карт · стратегия · ресурс · решение",
+    header: "Сильное решение (5 карт)",
+    purpose: ["🎯 Найти точку контроля", "🧩 Понять давление и скрытые факторы", "🛡 Определить оптимальный ход"],
+    howItWorks: ["🃏 Центр — ключевое решение, верх/низ — скрытый фактор и ресурс, бока — текущая позиция и сопротивление.", "Помогает собраться в решающий момент."],
+    forWhom: ["✓ Для сложных управленческих шагов", "✓ Когда нужен сильный выбор"]
+  },
+  golden_competitive_field: {
+    subtitle: "Круг влияния",
+    metaLine: "6 карт · конкуренты · союзники · результат",
+    header: "Конкурентная среда (6 карт)",
+    purpose: ["🕸 Разобрать окружение вокруг вас", "⚔️ Выделить главного оппонента", "🤝 Увидеть потенциальную поддержку"],
+    howItWorks: ["🃏 Верх задаёт конкурента, центр и стороны показывают роли игроков, низ — итог взаимодействия.", "Даёт карту сил перед действиями."],
+    forWhom: ["✓ Для бизнеса и карьеры", "✓ Перед выходом в конкурентное поле"]
+  },
+  golden_negotiations: {
+    subtitle: "Две стороны + центр",
+    metaLine: "5 карт · позиции сторон · итог переговоров",
+    header: "Переговоры (5 карт)",
+    purpose: ["💬 Уточнить позиции сторон", "🔍 Понять скрытый фактор сделки", "🤝 Оценить реальный итог диалога"],
+    howItWorks: ["🃏 Верхний ряд — стороны, центр — суть, нижний — скрытый фактор и итог.", "Расклад показывает где у вас сильная точка в разговоре."],
+    forWhom: ["✓ Для сделок и важных разговоров", "✓ Перед сложными переговорами"]
+  },
+  golden_leadership: {
+    subtitle: "Вертикаль власти",
+    metaLine: "6 карт · влияние · авторитет · итог",
+    header: "Лидерство (6 карт)",
+    purpose: ["👤 Оценить лидерский контур", "📣 Понять, как вас считывает окружение", "🏁 Получить итог по позиции в структуре"],
+    howItWorks: ["🃏 Карты читаются по вертикали сверху вниз как шкала лидерства.", "Показывает путь от личного влияния к финальной позиции."],
+    forWhom: ["✓ Для руководителей", "✓ Для оценки своей роли в команде"]
+  },
+  golden_abundance_level: {
+    subtitle: "Круг изобилия",
+    metaLine: "5 карт · потенциал · ограничения · максимум",
+    header: "Уровень изобилия (5 карт)",
+    purpose: ["💎 Понять текущий потолок дохода", "🧠 Выявить внутренние ограничения", "📈 Найти точку расширения"],
+    howItWorks: ["🃏 Центр показывает реальный поток периода, стороны — барьеры и возможности роста.", "Расклад помогает перейти от ограничений к практическому усилению."],
+    forWhom: ["✓ Для финансового роста", "✓ Когда упёрлись в «потолок»"]
+  },
+  golden_new_level: {
+    subtitle: "Лестница роста",
+    metaLine: "7 карт · рост · барьер · переход",
+    header: "Новый уровень (7 карт)",
+    purpose: ["🪜 Понять, что мешает переходу", "🧭 Увидеть ресурсы и переломный момент", "✨ Зафиксировать следующий уровень"],
+    howItWorks: ["🃏 Вертикальная схема читается как ступени от текущей точки к новому этапу.", "Каждая позиция уточняет этап трансформации."],
+    forWhom: ["✓ Для переходных периодов", "✓ Для роста статуса и дохода"]
+  },
+  golden_image_reputation: {
+    subtitle: "Зеркало восприятия",
+    metaLine: "5 карт · восприятие · сильные и слабые стороны",
+    header: "Имидж и репутация (5 карт)",
+    purpose: ["🪞 Понять внешний и скрытый образ", "⭐ Выделить сильную сторону имиджа", "⚠️ Найти уязвимость репутации"],
+    howItWorks: ["🃏 Центр — ядро репутации, боковые позиции — внешнее восприятие и его слабые места.", "Расклад показывает, как корректировать образ стратегически."],
+    forWhom: ["✓ Для публичных задач", "✓ Для личного бренда и карьеры"]
+  },
+  golden_long_term_perspective: {
+    subtitle: "Стратегическая матрица 3×3",
+    metaLine: "9 карт · стратегия · развитие · итог года",
+    header: "Долгосрочная перспектива (9 карт)",
+    purpose: ["🧭 Построить стратегию на год", "📌 Увидеть ресурс, барьер и вектор развития", "🏆 Получить прогноз конечного результата"],
+    howItWorks: ["🃏 Верхний ряд — старт и контекст, центр — стратегия года, нижний — развитие и итог.", "Даёт объёмный долгосрочный план действий."],
+    forWhom: ["✓ Для амбициозных долгих целей", "✓ Для планирования крупного цикла"]
+  }
+};
+
 const getSpreadById = (spreadId: string) =>
   RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
   LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP] ??
   MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP] ??
-  ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP];
+  ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP] ??
+  GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP];
 
 function extractCardsCount(spread: DeckSpread): number {
   const mapped = getSpreadById(spread.id);
@@ -1416,6 +1742,8 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
       ? MANARA_SPREAD_DETAILS[spread.id]
       : deckId === "angels"
       ? ANGELS_SPREAD_DETAILS[spread.id]
+      : deckId === "golden"
+      ? GOLDEN_SPREAD_DETAILS[spread.id]
       : RWS_SPREAD_DETAILS[spread.id];
   const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);
@@ -1715,7 +2043,14 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     angels_vector: 48,
     angels_relationship_support: 50,
     angels_union_harmony: 44,
-    angels_higher_connection_meaning: 44
+    angels_higher_connection_meaning: 44,
+    golden_big_game: 42,
+    golden_path_success: 40,
+    golden_money_flow: 46,
+    golden_financial_forecast: 42,
+    golden_leadership: 40,
+    golden_new_level: 40,
+    golden_long_term_perspective: 36
   };
   const customSize = customSizeById[spread.id] ?? null;
   const cardSize =

@@ -9,6 +9,8 @@ import { createShare, getReading, type ReadingResponse, type ViewReadingResponse
 import { DECKS } from "@/data/decks";
 import { ANGELS_ALL_LIST } from "@/data/angels_deck";
 import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
+import { GOLDEN_ALL_LIST } from "@/data/golden_deck";
+import { GOLDEN_SPREADS_MAP } from "@/data/golden_spreads";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_ALL } from "@/data/manara_deck";
@@ -199,33 +201,25 @@ export default function InterpretationPage() {
   const [shareError, setShareError] = useState<string | null>(null);
   const shareRef = useRef<HTMLDivElement | null>(null);
 
-  const cardNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    RWS_ALL.forEach((name) => {
-      const code = mapCardNameToCode(name, "rws");
-      if (code) {
-        map.set(code, name);
-      }
-    });
-    LENORMAND_ALL.forEach((name) => {
-      const code = mapCardNameToCode(name, "lenormand");
-      if (code) {
-        map.set(code, name);
-      }
-    });
-    MANARA_ALL.forEach((name) => {
-      const code = mapCardNameToCode(name, "manara");
-      if (code) {
-        map.set(code, name);
-      }
-    });
-    ANGELS_ALL_LIST.forEach((name) => {
-      const code = mapCardNameToCode(name, "angels");
-      if (code) {
-        map.set(code, name);
-      }
-    });
-    return map;
+  const cardNameMapByDeck = useMemo(() => {
+    const buildMap = (deckId: "rws" | "lenormand" | "manara" | "angels" | "golden", cards: string[]) => {
+      const map = new Map<string, string>();
+      cards.forEach((name) => {
+        const code = mapCardNameToCode(name, deckId);
+        if (code) {
+          map.set(code, name);
+        }
+      });
+      return map;
+    };
+
+    return {
+      rws: buildMap("rws", RWS_ALL),
+      lenormand: buildMap("lenormand", LENORMAND_ALL),
+      manara: buildMap("manara", MANARA_ALL),
+      angels: buildMap("angels", ANGELS_ALL_LIST),
+      golden: buildMap("golden", GOLDEN_ALL_LIST)
+    } as const;
   }, []);
 
   const fetchReading = useCallback(
@@ -274,8 +268,8 @@ export default function InterpretationPage() {
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
   const resolvedDeckId = useMemo(() => {
-    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true }) {
-      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels";
+    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true, golden: true }) {
+      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels" | "golden";
     }
     const spreadId = inputMeta?.spreadId;
     if (spreadId && spreadId in SPREAD_SCHEMAS) {
@@ -289,6 +283,9 @@ export default function InterpretationPage() {
     }
     if (cards.some((card) => card.card_code.startsWith("ANGELS_"))) {
       return "angels";
+    }
+    if (cards.some((card) => card.card_code.startsWith("GOLDEN_"))) {
+      return "golden";
     }
     return "rws";
   }, [cards, inputMeta?.deckId, inputMeta?.spreadId]);
@@ -305,6 +302,9 @@ export default function InterpretationPage() {
     }
     if (spreadId && spreadId in ANGELS_SPREADS_MAP) {
       return ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]?.title ?? "Расклад";
+    }
+    if (spreadId && spreadId in GOLDEN_SPREADS_MAP) {
+      return GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]?.title ?? "Расклад";
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
@@ -323,8 +323,10 @@ export default function InterpretationPage() {
     return map;
   }, [inputMeta?.spreadId]);
 
+  const activeDeckCardNameMap = cardNameMapByDeck[resolvedDeckId];
+
   const cardDisplayList = cards.map((card) => {
-    const assetName = cardNameMap.get(card.card_code) ?? null;
+    const assetName = activeDeckCardNameMap.get(card.card_code) ?? null;
     const friendlyName =
       assetName ??
       card.card_code
@@ -332,6 +334,7 @@ export default function InterpretationPage() {
         .replace(/^LENORMAND_/, "")
         .replace(/^MANARA_/, "")
         .replace(/^ANGELS_/, "")
+        .replace(/^GOLDEN_/, "")
         .replace(/^\d{2}_/, "")
         .replaceAll("_", " ")
         .replace(/\s+/g, " ")

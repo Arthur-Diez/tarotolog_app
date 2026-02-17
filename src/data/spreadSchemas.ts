@@ -1,8 +1,9 @@
 import type { DeckId } from "@/data/decks";
 import { ANGELS_SPREADS } from "@/data/angels_spreads";
+import { GOLDEN_SPREADS } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS } from "@/data/manara_spreads";
-import type { AngelsSpreadId, LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
+import type { AngelsSpreadId, GoldenSpreadId, LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
 
 export interface SpreadPosition {
   id: number;
@@ -15,7 +16,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels">;
+  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels" | "golden">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -574,6 +575,8 @@ const MANARA_LAYOUT_SCALE_X = 5.4;
 const MANARA_LAYOUT_SCALE_Y = 6.8;
 const ANGELS_LAYOUT_SCALE_X = 5.8;
 const ANGELS_LAYOUT_SCALE_Y = 7.2;
+const GOLDEN_LAYOUT_SCALE_X = 5.8;
+const GOLDEN_LAYOUT_SCALE_Y = 7.2;
 
 interface LayoutScaleOptions {
   scaleX?: number;
@@ -702,6 +705,43 @@ const ANGELS_SCHEMAS = ANGELS_SPREADS.reduce((acc, spread) => {
   return acc;
 }, {} as Record<AngelsSpreadId, SpreadSchema>);
 
+const GOLDEN_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<GoldenSpreadId, LayoutScaleOptions>> = {
+  golden_money_flow: {
+    scaleX: 6.4,
+    scaleY: 7.2
+  },
+  golden_leadership: {
+    scaleX: 6,
+    scaleY: 8.2
+  },
+  golden_new_level: {
+    scaleX: 6,
+    scaleY: 8.2
+  },
+  golden_long_term_perspective: {
+    scaleX: 5.6,
+    scaleY: 7.2
+  }
+};
+
+const GOLDEN_SCHEMAS = GOLDEN_SPREADS.reduce((acc, spread) => {
+  const layoutOptions = GOLDEN_LAYOUT_OPTIONS_BY_SPREAD[spread.id as GoldenSpreadId];
+  acc[spread.id as GoldenSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "golden",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: GOLDEN_LAYOUT_SCALE_X, scaleY: GOLDEN_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
+  };
+  return acc;
+}, {} as Record<GoldenSpreadId, SpreadSchema>);
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -738,5 +778,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   soul_purpose: SpreadSoulPurpose,
   ...LENORMAND_SCHEMAS,
   ...MANARA_SCHEMAS,
-  ...ANGELS_SCHEMAS
+  ...ANGELS_SCHEMAS,
+  ...GOLDEN_SCHEMAS
 };

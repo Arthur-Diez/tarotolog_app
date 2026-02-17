@@ -72,7 +72,25 @@ export type AngelsSpreadId =
   | "angels_union_harmony"
   | "angels_higher_connection_meaning";
 
-export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId;
+export type GoldenSpreadId =
+  | "golden_crown_opportunities"
+  | "golden_big_game"
+  | "golden_path_success"
+  | "golden_influence_resources"
+  | "golden_money_flow"
+  | "golden_investment"
+  | "golden_financial_forecast"
+  | "golden_risk_reward"
+  | "golden_strong_decision"
+  | "golden_competitive_field"
+  | "golden_negotiations"
+  | "golden_leadership"
+  | "golden_abundance_level"
+  | "golden_new_level"
+  | "golden_image_reputation"
+  | "golden_long_term_perspective";
+
+export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId | GoldenSpreadId;
 
 export interface SpreadPosition {
   index: number;

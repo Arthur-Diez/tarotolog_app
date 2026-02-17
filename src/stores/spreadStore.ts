@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { ANGELS_ALL_LIST } from "@/data/angels_deck";
+import { GOLDEN_ALL_LIST } from "@/data/golden_deck";
 import type { SpreadSchema } from "@/data/spreadSchemas";
 import { SpreadOneCard } from "@/data/spreadSchemas";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
@@ -33,7 +34,8 @@ const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
   rws: RWS_ALL,
   lenormand: LENORMAND_ALL,
   manara: MANARA_ALL,
-  angels: ANGELS_ALL_LIST
+  angels: ANGELS_ALL_LIST,
+  golden: GOLDEN_ALL_LIST
 };
 
 interface SpreadStoreState {
