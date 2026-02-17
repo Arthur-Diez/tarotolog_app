@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
+import { GOLDEN_ALL_LIST } from "@/data/golden_deck";
 import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 
@@ -72,6 +73,7 @@ const ANGELS_FLOW_FACE_CARDS = [
 ];
 
 const ANGELS_FLOW_CARD_URLS = ANGELS_FLOW_FACE_CARDS.map((name) => faceUrl("angels", name));
+const GOLDEN_FLOW_CARD_URLS = GOLDEN_ALL_LIST.slice(0, 8).map((name) => faceUrl("golden", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
@@ -214,6 +216,8 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             <ManaraDeckFlowPreview isActive={animationActive} />
           ) : deck.id === "angels" ? (
             <AngelsDeckFlowPreview isActive={animationActive} />
+          ) : deck.id === "golden" ? (
+            <GoldenDeckFlowPreview isActive={animationActive} />
           ) : (
             <StaticDeckPreview />
           )}
@@ -304,6 +308,19 @@ function AngelsDeckFlowPreview({ isActive }: { isActive: boolean }) {
   return (
     <DeckShowcaseAnimation
       cards={ANGELS_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={12000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
+  );
+}
+
+function GoldenDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  return (
+    <DeckShowcaseAnimation
+      cards={GOLDEN_FLOW_CARD_URLS}
       isActive={isActive}
       speedMs={12000}
       overlapPx={10}
