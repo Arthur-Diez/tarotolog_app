@@ -84,6 +84,18 @@ const GOLDEN_FLOW_FACE_CARDS = [
 ];
 
 const GOLDEN_FLOW_CARD_URLS = GOLDEN_FLOW_FACE_CARDS.map((name) => faceUrl("golden", name));
+const SILA_RODA_FLOW_FACE_CARDS = [
+  "0 Проявление себя",
+  "1 Мудрость",
+  "2 Единение",
+  "5 Сила гармонии",
+  "7 Сила Рода",
+  "21 Изобилие",
+  "34 Предназначение",
+  "37 Успех"
+];
+
+const SILA_RODA_FLOW_CARD_URLS = SILA_RODA_FLOW_FACE_CARDS.map((name) => faceUrl("sila_roda", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
@@ -228,6 +240,8 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             <AngelsDeckFlowPreview isActive={animationActive} />
           ) : deck.id === "golden" ? (
             <GoldenDeckFlowPreview isActive={animationActive} />
+          ) : deck.id === "ancestry" ? (
+            <SilaRodaDeckFlowPreview isActive={animationActive} />
           ) : (
             <StaticDeckPreview />
           )}
@@ -331,6 +345,19 @@ function GoldenDeckFlowPreview({ isActive }: { isActive: boolean }) {
   return (
     <DeckShowcaseAnimation
       cards={GOLDEN_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={12000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
+  );
+}
+
+function SilaRodaDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  return (
+    <DeckShowcaseAnimation
+      cards={SILA_RODA_FLOW_CARD_URLS}
       isActive={isActive}
       speedMs={12000}
       overlapPx={10}
