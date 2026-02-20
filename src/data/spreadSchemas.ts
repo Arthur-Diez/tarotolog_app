@@ -3,7 +3,15 @@ import { ANGELS_SPREADS } from "@/data/angels_spreads";
 import { GOLDEN_SPREADS } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS } from "@/data/manara_spreads";
-import type { AngelsSpreadId, GoldenSpreadId, LenormandSpreadId, ManaraSpreadId, SpreadId } from "@/data/rws_spreads";
+import { SILA_RODA_SPREADS } from "@/data/sila_roda_spreads";
+import type {
+  AngelsSpreadId,
+  GoldenSpreadId,
+  LenormandSpreadId,
+  ManaraSpreadId,
+  SilaRodaSpreadId,
+  SpreadId
+} from "@/data/rws_spreads";
 
 export interface SpreadPosition {
   id: number;
@@ -16,7 +24,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels" | "golden">;
+  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -577,6 +585,8 @@ const ANGELS_LAYOUT_SCALE_X = 5.8;
 const ANGELS_LAYOUT_SCALE_Y = 7.2;
 const GOLDEN_LAYOUT_SCALE_X = 5.8;
 const GOLDEN_LAYOUT_SCALE_Y = 7.2;
+const SILA_RODA_LAYOUT_SCALE_X = 6.4;
+const SILA_RODA_LAYOUT_SCALE_Y = 8;
 
 interface LayoutScaleOptions {
   scaleX?: number;
@@ -742,6 +752,39 @@ const GOLDEN_SCHEMAS = GOLDEN_SPREADS.reduce((acc, spread) => {
   return acc;
 }, {} as Record<GoldenSpreadId, SpreadSchema>);
 
+const SILA_RODA_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<SilaRodaSpreadId, LayoutScaleOptions>> = {
+  sila_roda_ancestors_message: {
+    scaleX: 7.2,
+    scaleY: 8.8
+  },
+  sila_roda_male_line: {
+    scaleX: 7,
+    scaleY: 8.4
+  },
+  sila_roda_abundance_stream: {
+    scaleX: 7.2,
+    scaleY: 8.6
+  }
+};
+
+const SILA_RODA_SCHEMAS = SILA_RODA_SPREADS.reduce((acc, spread) => {
+  const layoutOptions = SILA_RODA_LAYOUT_OPTIONS_BY_SPREAD[spread.id as SilaRodaSpreadId];
+  acc[spread.id as SilaRodaSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "ancestry",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: SILA_RODA_LAYOUT_SCALE_X, scaleY: SILA_RODA_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
+  };
+  return acc;
+}, {} as Record<SilaRodaSpreadId, SpreadSchema>);
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -779,5 +822,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   ...LENORMAND_SCHEMAS,
   ...MANARA_SCHEMAS,
   ...ANGELS_SCHEMAS,
-  ...GOLDEN_SCHEMAS
+  ...GOLDEN_SCHEMAS,
+  ...SILA_RODA_SCHEMAS
 };

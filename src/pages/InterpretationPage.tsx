@@ -16,6 +16,8 @@ import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_ALL } from "@/data/manara_deck";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
+import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
+import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
@@ -203,7 +205,7 @@ export default function InterpretationPage() {
   const shareRef = useRef<HTMLDivElement | null>(null);
 
   const cardNameMapByDeck = useMemo(() => {
-    const buildMap = (deckId: "rws" | "lenormand" | "manara" | "angels" | "golden", cards: string[]) => {
+    const buildMap = (deckId: "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry", cards: string[]) => {
       const map = new Map<string, string>();
       cards.forEach((name) => {
         const code = mapCardNameToCode(name, deckId);
@@ -219,7 +221,8 @@ export default function InterpretationPage() {
       lenormand: buildMap("lenormand", LENORMAND_ALL),
       manara: buildMap("manara", MANARA_ALL),
       angels: buildMap("angels", ANGELS_ALL_LIST),
-      golden: buildMap("golden", GOLDEN_ALL_LIST)
+      golden: buildMap("golden", GOLDEN_ALL_LIST),
+      ancestry: buildMap("ancestry", SILA_RODA_ALL_LIST)
     } as const;
   }, []);
 
@@ -269,8 +272,8 @@ export default function InterpretationPage() {
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
   const resolvedDeckId = useMemo(() => {
-    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true, golden: true }) {
-      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels" | "golden";
+    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true, golden: true, ancestry: true }) {
+      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry";
     }
     const spreadId = inputMeta?.spreadId;
     if (spreadId && spreadId in SPREAD_SCHEMAS) {
@@ -287,6 +290,9 @@ export default function InterpretationPage() {
     }
     if (cards.some((card) => card.card_code.startsWith("GOLDEN_"))) {
       return "golden";
+    }
+    if (cards.some((card) => card.card_code.startsWith("SILA_RODA_"))) {
+      return "ancestry";
     }
     return "rws";
   }, [cards, inputMeta?.deckId, inputMeta?.spreadId]);
@@ -306,6 +312,9 @@ export default function InterpretationPage() {
     }
     if (spreadId && spreadId in GOLDEN_SPREADS_MAP) {
       return GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]?.title ?? "Расклад";
+    }
+    if (spreadId && spreadId in SILA_RODA_SPREADS_MAP) {
+      return SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.title ?? "Расклад";
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
@@ -336,6 +345,7 @@ export default function InterpretationPage() {
         .replace(/^MANARA_/, "")
         .replace(/^ANGELS_/, "")
         .replace(/^GOLDEN_/, "")
+        .replace(/^SILA_RODA_/, "")
         .replace(/^\d{2}_/, "")
         .replaceAll("_", " ")
         .replace(/\s+/g, " ")

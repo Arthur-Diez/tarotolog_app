@@ -35,6 +35,7 @@ import { MANARA_SPREADS } from "./manara_spreads";
 import { RWS_SPREADS } from "./rws_spreads";
 import { ANGELS_SPREADS } from "./angels_spreads";
 import { GOLDEN_SPREADS } from "./golden_spreads";
+import { SILA_RODA_SPREADS } from "./sila_roda_spreads";
 
 export const DECKS: Deck[] = [
   {
@@ -97,7 +98,11 @@ export const DECKS: Deck[] = [
     title: "Сила Рода",
     subtitle: "Корни, родовые сценарии",
     description: "Про наследуемые паттерны и ресурс предков.",
-    spreads: createSpreads()
+    spreads: SILA_RODA_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   },
   {
     id: "metaphoric",

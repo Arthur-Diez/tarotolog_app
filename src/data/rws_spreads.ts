@@ -90,7 +90,21 @@ export type GoldenSpreadId =
   | "golden_image_reputation"
   | "golden_long_term_perspective";
 
-export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId | GoldenSpreadId;
+export type SilaRodaSpreadId =
+  | "sila_roda_roots_tree"
+  | "sila_roda_lineage_flow"
+  | "sila_roda_ancestors_message"
+  | "sila_roda_ancestral_scenario"
+  | "sila_roda_karmic_knot"
+  | "sila_roda_inherited_patterns"
+  | "sila_roda_power_within"
+  | "sila_roda_protection"
+  | "sila_roda_abundance_stream"
+  | "sila_roda_healing"
+  | "sila_roda_female_line"
+  | "sila_roda_male_line";
+
+export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId | GoldenSpreadId | SilaRodaSpreadId;
 
 export interface SpreadPosition {
   index: number;

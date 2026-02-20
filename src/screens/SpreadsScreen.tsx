@@ -13,6 +13,7 @@ import { GOLDEN_SPREADS_MAP } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
+import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 
 interface SpreadsScreenProps {
@@ -190,6 +191,30 @@ const GOLDEN_SPREAD_BLOCKS: SpreadBlock[] = [
     title: "🌟 Высокий уровень жизни",
     badge: "👑 Премиум",
     spreadIds: ["golden_abundance_level", "golden_new_level", "golden_image_reputation", "golden_long_term_perspective"]
+  }
+];
+
+const SILA_RODA_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "popular",
+    title: "🌳 Род и предки",
+    badge: "🔥 Основной блок",
+    spreadIds: ["sila_roda_roots_tree", "sila_roda_lineage_flow", "sila_roda_ancestors_message"]
+  },
+  {
+    id: "self_growth",
+    title: "🧬 Родовые сценарии",
+    spreadIds: ["sila_roda_ancestral_scenario", "sila_roda_karmic_knot", "sila_roda_inherited_patterns"]
+  },
+  {
+    id: "work_finance",
+    title: "✨ Сила рода",
+    spreadIds: ["sila_roda_power_within", "sila_roda_protection", "sila_roda_abundance_stream"]
+  },
+  {
+    id: "premium",
+    title: "🌿 Исцеление",
+    spreadIds: ["sila_roda_healing", "sila_roda_female_line", "sila_roda_male_line"]
   }
 ];
 
@@ -512,6 +537,93 @@ const GOLDEN_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   }
 };
 
+const SILA_RODA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  sila_roda_roots_tree: {
+    category: "popular",
+    tags: ["корни", "предки", "ресурс"],
+    energyCost: 16,
+    popularityScore: 90,
+    keywords: ["дерево", "род"]
+  },
+  sila_roda_lineage_flow: {
+    category: "popular",
+    tags: ["поколения", "поток", "линия"],
+    energyCost: 18,
+    popularityScore: 88,
+    keywords: ["родовая линия"]
+  },
+  sila_roda_ancestors_message: {
+    category: "popular",
+    tags: ["послание", "предки", "подсказка"],
+    energyCost: 10,
+    popularityScore: 92,
+    keywords: ["луч света"]
+  },
+  sila_roda_ancestral_scenario: {
+    category: "self_growth",
+    tags: ["сценарий", "цикл", "выход"],
+    energyCost: 17,
+    popularityScore: 86,
+    keywords: ["замкнутый цикл"]
+  },
+  sila_roda_karmic_knot: {
+    category: "self_growth",
+    tags: ["карма", "узел", "развязка"],
+    energyCost: 16,
+    popularityScore: 87,
+    keywords: ["перекресток"]
+  },
+  sila_roda_inherited_patterns: {
+    category: "self_growth",
+    tags: ["установки", "убеждения", "трансформация"],
+    energyCost: 15,
+    popularityScore: 84,
+    keywords: ["зеркало рода"]
+  },
+  sila_roda_power_within: {
+    category: "work_finance",
+    tags: ["талант", "дар", "раскрытие"],
+    energyCost: 15,
+    popularityScore: 85,
+    keywords: ["родовая звезда"]
+  },
+  sila_roda_protection: {
+    category: "work_finance",
+    tags: ["защита", "уязвимость", "усиление"],
+    energyCost: 15,
+    popularityScore: 83,
+    keywords: ["щит"]
+  },
+  sila_roda_abundance_stream: {
+    category: "work_finance",
+    tags: ["деньги", "поток", "блоки"],
+    energyCost: 18,
+    popularityScore: 89,
+    keywords: ["изобилие"]
+  },
+  sila_roda_healing: {
+    category: "premium",
+    tags: ["исцеление", "трансформация", "поддержка"],
+    energyCost: 20,
+    popularityScore: 82,
+    keywords: ["спираль"]
+  },
+  sila_roda_female_line: {
+    category: "premium",
+    tags: ["женская линия", "урок", "исцеление"],
+    energyCost: 16,
+    popularityScore: 84,
+    keywords: ["лунная дуга"]
+  },
+  sila_roda_male_line: {
+    category: "premium",
+    tags: ["мужская линия", "опора", "сила"],
+    energyCost: 16,
+    popularityScore: 84,
+    keywords: ["столб рода"]
+  }
+};
+
 const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
@@ -531,6 +643,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"])
   }
   if (deckId === "golden") {
     return GOLDEN_SPREAD_META[spreadId] ?? fallback;
+  }
+  if (deckId === "ancestry") {
+    return SILA_RODA_SPREAD_META[spreadId] ?? fallback;
   }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
@@ -554,6 +669,8 @@ const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"])
       ? ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP]
       : deckId === "golden"
       ? GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]
+      : deckId === "ancestry"
+      ? SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]
       : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
   const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
@@ -674,8 +791,22 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
 
+  const silaRodaBlocks = useMemo(() => {
+    if (deck.id !== "ancestry") return [];
+    return SILA_RODA_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.title ?? spreadId,
+          description: SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.description ?? ""
+        }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
   const nonRwsSpreads = useMemo(() => {
-    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels" || deck.id === "golden")
+    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels" || deck.id === "golden" || deck.id === "ancestry")
       return [];
     const normalized = query.trim().toLowerCase();
     if (!normalized) return deck.spreads;
@@ -868,6 +999,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {goldenBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : deck.id === "ancestry" ? (
+        <div className="space-y-6">
+          {silaRodaBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {silaRodaBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               Ничего не найдено. Попробуйте запрос по теме или количеству карт.
             </Card>
@@ -1719,12 +1883,112 @@ const GOLDEN_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const SILA_RODA_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  sila_roda_roots_tree: {
+    subtitle: "Дерево рода: исток, ветви и корневой ресурс",
+    metaLine: "5 карт · предки · женская/мужская ветвь · энергия рода",
+    header: "Корни рода — 🌳 «Дерево»",
+    purpose: ["🌳 Найти главный ресурс рода", "👩‍🦰 Понять вклад женской ветви", "👨 Увидеть влияние мужской ветви"],
+    howItWorks: ["🃏 Верх — высшие предки, центр — энергия рода, низ — корневой ресурс.", "Боковые карты показывают баланс двух родовых ветвей."],
+    forWhom: ["✓ Для базовой диагностики рода", "✓ Когда не хватает опоры и ресурса"]
+  },
+  sila_roda_lineage_flow: {
+    subtitle: "Поток поколений и передача влияния",
+    metaLine: "7 карт · дальний род · вы · что передаётся дальше",
+    header: "Родовая линия — 👥 «Поток поколений»",
+    purpose: ["🌊 Проследить движение влияния через поколения", "🧬 Понять, что вы несёте из рода", "🔮 Увидеть итог текущей линии"],
+    howItWorks: ["🃏 Верхний ряд — предки и родители, середина — вы и текущее влияние, низ — итог линии.", "Расклад читается как родовой поток во времени."],
+    forWhom: ["✓ Для межпоколенческих вопросов", "✓ Для понимания родовой преемственности"]
+  },
+  sila_roda_ancestors_message: {
+    subtitle: "Луч света от предков",
+    metaLine: "3 карты · послание · понимание · применение",
+    header: "Послание предков — ✨ «Луч света»",
+    purpose: ["✨ Получить ясное родовое послание", "🧭 Понять, как его расшифровать сейчас", "🌿 Применить подсказку в жизни"],
+    howItWorks: ["🃏 Вертикаль из трёх карт: послание сверху → смысл → практический шаг.", "Короткий расклад для точной и мягкой навигации."],
+    forWhom: ["✓ Для быстрых вопросов", "✓ Когда нужен знак и направление"]
+  },
+  sila_roda_ancestral_scenario: {
+    subtitle: "Замкнутый цикл и точка выхода",
+    metaLine: "6 карт · сценарий · повторение · выход",
+    header: "Родовой сценарий — 🔄 «Замкнутый цикл»",
+    purpose: ["🔄 Выявить повторяющийся паттерн рода", "🧠 Понять эмоциональный механизм цикла", "🚪 Найти рабочую точку выхода"],
+    howItWorks: ["🃏 Верх задаёт источник, боковые карты — начало и повторение, низ — итог цикла.", "Отдельная позиция показывает путь размыкания сценария."],
+    forWhom: ["✓ Для повторяющихся жизненных ситуаций", "✓ Для выхода из родового «круга»"]
+  },
+  sila_roda_karmic_knot: {
+    subtitle: "Перекрёсток кармических влияний",
+    metaLine: "5 карт · корень · узел · проявление · развязка",
+    header: "Кармический узел — 🪢 «Перекрёсток»",
+    purpose: ["🧭 Определить кармический корень", "🔗 Увидеть центральный узел влияния", "✂️ Найти сценарий развязки"],
+    howItWorks: ["🃏 Крест из пяти позиций: верх — источник, центр — узел, низ — итог.", "Боковые карты показывают прошлое влияние и текущее проявление."],
+    forWhom: ["✓ Для тем кармы и судьбоносных развилок", "✓ Когда нужно понять, «где завязалось»"]
+  },
+  sila_roda_inherited_patterns: {
+    subtitle: "Зеркало родовых установок",
+    metaLine: "5 карт · женская/мужская установка · новая опора",
+    header: "Наследуемые установки — 🧠 «Зеркало рода»",
+    purpose: ["🔎 Распознать унаследованные убеждения", "⚖️ Сравнить женскую и мужскую программы", "🌱 Сформировать новую опорную установку"],
+    howItWorks: ["🃏 Верх — родовые установки, центр — базовое убеждение, низ — личная трансформация.", "Расклад помогает отделить «моё» от «унаследованного»."],
+    forWhom: ["✓ Для работы с убеждениями", "✓ Для личной психологической трансформации"]
+  },
+  sila_roda_power_within: {
+    subtitle: "Родовая звезда потенциала",
+    metaLine: "5 карт · дар · талант · поддержка · раскрытие",
+    header: "Сила рода во мне — ⭐ «Родовая звезда»",
+    purpose: ["⭐ Найти главный дар рода", "🧩 Увидеть скрытый талант", "🚀 Понять, как раскрыть силу в действиях"],
+    howItWorks: ["🃏 Верх — ключевой дар, боковые — талант и поддержка, центр — основная сила.", "Нижняя карта показывает практический способ включить потенциал."],
+    forWhom: ["✓ Для раскрытия талантов", "✓ Когда хочется усилить уверенность и опору"]
+  },
+  sila_roda_protection: {
+    subtitle: "Щит рода: уровни защиты и уязвимость",
+    metaLine: "5 карт · защита · уязвимость · усиление",
+    header: "Родовая защита — 🛡️ «Щит»",
+    purpose: ["🛡️ Оценить текущий контур защиты", "⚠️ Найти уязвимую зону", "💪 Усилить защитный ресурс рода"],
+    howItWorks: ["🃏 Верх — главный щит, середина — эмоциональная и духовная защита.", "Нижний ряд показывает уязвимость и точку усиления."],
+    forWhom: ["✓ Для периодов нестабильности", "✓ Когда нужно чувство безопасности"]
+  },
+  sila_roda_abundance_stream: {
+    subtitle: "Спираль денежного потока рода",
+    metaLine: "6 карт · источник · блок · рост · итог",
+    header: "Поток изобилия — 💫 «Спираль потока»",
+    purpose: ["💰 Понять родовой источник денег", "🔒 Выявить блокирующий сценарий", "📈 Увидеть итоговый финансовый поток"],
+    howItWorks: ["🃏 Карты читаются по спирали: от источника через блок к точке роста.", "Расклад показывает, как перестроить родовой финансовый контур."],
+    forWhom: ["✓ Для вопросов дохода и изобилия", "✓ Когда повторяются финансовые блоки"]
+  },
+  sila_roda_healing: {
+    subtitle: "Спираль трансформации и восстановление",
+    metaLine: "7 карт · боль · исцеление · поддержка · результат",
+    header: "Исцеление рода — 🌀 «Спираль трансформации»",
+    purpose: ["🩹 Найти корень родовой боли", "🌿 Определить точку исцеления", "🤝 Опереться на поддержку рода"],
+    howItWorks: ["🃏 Верхний блок раскрывает происхождение боли, центр — ключ исцеления.", "Нижние карты показывают шаг, поддержку и итог трансформации."],
+    forWhom: ["✓ Для глубокой родовой терапии", "✓ В период эмоционального восстановления"]
+  },
+  sila_roda_female_line: {
+    subtitle: "Лунная дуга женской ветви",
+    metaLine: "5 карт · материнская энергия · урок · исцеление",
+    header: "Женская линия — 🌙 «Лунная дуга»",
+    purpose: ["🌙 Исследовать энергию женской ветви", "🧠 Понять тень и урок по женской линии", "💗 Найти путь исцеления"],
+    howItWorks: ["🃏 Верхний ряд — три аспекта женской линии, низ — урок и исцеление.", "Расклад показывает, как восстановить связь с женским ресурсом рода."],
+    forWhom: ["✓ Для тем матери, дочери, женской идентичности", "✓ Для мягкой внутренней настройки"]
+  },
+  sila_roda_male_line: {
+    subtitle: "Столб опоры мужской линии",
+    metaLine: "5 карт · сила · ответственность · итог",
+    header: "Мужская линия — 🗿 «Столб рода»",
+    purpose: ["🗿 Понять опору мужской ветви", "⚙️ Увидеть родовой урок ответственности", "🏁 Зафиксировать итог силовой линии"],
+    howItWorks: ["🃏 Вертикальная схема читается сверху вниз как «столб рода».", "Каждая карта раскрывает следующий уровень устойчивости и опоры."],
+    forWhom: ["✓ Для тем отца и мужского рода", "✓ Когда нужно усилить внутренний стержень"]
+  }
+};
+
 const getSpreadById = (spreadId: string) =>
   RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
   LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP] ??
   MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP] ??
   ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP] ??
-  GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP];
+  GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP] ??
+  SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP];
 
 function extractCardsCount(spread: DeckSpread): number {
   const mapped = getSpreadById(spread.id);
@@ -1744,6 +2008,8 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
       ? ANGELS_SPREAD_DETAILS[spread.id]
       : deckId === "golden"
       ? GOLDEN_SPREAD_DETAILS[spread.id]
+      : deckId === "ancestry"
+      ? SILA_RODA_SPREAD_DETAILS[spread.id]
       : RWS_SPREAD_DETAILS[spread.id];
   const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);

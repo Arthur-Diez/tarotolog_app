@@ -1,3 +1,5 @@
+import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
+
 const MAJOR_ARCANA_MAP: Record<string, string> = {
   "Шут (0)": "RWS_THE_FOOL",
   "Маг (1)": "RWS_THE_MAGICIAN",
@@ -361,7 +363,18 @@ const EN_MAJOR_ARCANA_MAP: Record<string, string> = {
   WORLD: "RWS_THE_WORLD"
 };
 
-type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels" | "golden";
+const SILA_RODA_NAME_TO_CODE: Record<string, string> = {};
+const SILA_RODA_INDEX_TO_CODE: Record<number, string> = {};
+
+SILA_RODA_ALL_LIST.forEach((cardName, index) => {
+  const code = `SILA_RODA_${String(index).padStart(2, "0")}`;
+  const normalizedName = cardName.trim().replace(/\s+/g, " ");
+  SILA_RODA_NAME_TO_CODE[cardName] = code;
+  SILA_RODA_NAME_TO_CODE[normalizedName] = code;
+  SILA_RODA_INDEX_TO_CODE[index] = code;
+});
+
+type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry";
 
 const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
 
@@ -485,6 +498,10 @@ function mapGoldenCardNameToCode(name: string): string | null {
   }
 
   return null;
+}
+
+function mapSilaRodaCardNameToCode(name: string): string | null {
+  return SILA_RODA_NAME_TO_CODE[name] ?? SILA_RODA_NAME_TO_CODE[normalizeCardName(name)] ?? null;
 }
 
 function normalizeEnglishCardName(value: string): string {
@@ -627,6 +644,20 @@ function normalizeGoldenCode(rawCode: string): string | null {
   return null;
 }
 
+function normalizeSilaRodaCode(rawCode: string): string | null {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!normalized.startsWith("SILA_RODA_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^SILA_RODA_(\d{1,2})(?:_|$)/);
+  if (!byNumberMatch) {
+    return null;
+  }
+  const index = Number(byNumberMatch[1]);
+  return SILA_RODA_INDEX_TO_CODE[index] ?? null;
+}
+
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
   const trimmed = normalizeCardName(name);
   if (!trimmed) return null;
@@ -651,12 +682,17 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     return mapGoldenCardNameToCode(trimmed) ?? mapEnglishCardNameToCode(trimmed);
   }
 
+  if (deckId === "ancestry") {
+    return mapSilaRodaCardNameToCode(trimmed);
+  }
+
   return (
     mapRwsCardNameToCode(trimmed) ??
     mapLenormandCardNameToCode(trimmed) ??
     mapManaraCardNameToCode(trimmed) ??
     mapAngelsCardNameToCode(trimmed) ??
     mapGoldenCardNameToCode(trimmed) ??
+    mapSilaRodaCardNameToCode(trimmed) ??
     mapEnglishCardNameToCode(trimmed)
   );
 }
@@ -687,6 +723,11 @@ export function mapCardValueToCode(value: string): string | null {
   const goldenCode = normalizeGoldenCode(raw);
   if (goldenCode) {
     return goldenCode;
+  }
+
+  const silaRodaCode = normalizeSilaRodaCode(raw);
+  if (silaRodaCode) {
+    return silaRodaCode;
   }
 
   return mapCardNameToCode(raw);

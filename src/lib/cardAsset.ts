@@ -1,7 +1,12 @@
-export const faceUrl = (deckId: string, name: string): string =>
-  `/assets/tarot/${deckId}/faces/${encodeURIComponent(name)}.png`;
+const resolveDeckAssetId = (deckId: string): string => {
+  if (deckId === "ancestry") return "sila_roda";
+  return deckId;
+};
 
-export const backUrl = (deckId: string): string => `/assets/tarot/${deckId}/back.png`;
+export const faceUrl = (deckId: string, name: string): string =>
+  `/assets/tarot/${resolveDeckAssetId(deckId)}/faces/${encodeURIComponent(name)}.png`;
+
+export const backUrl = (deckId: string): string => `/assets/tarot/${resolveDeckAssetId(deckId)}/back.png`;
 
 const buildCardNameVariants = (name: string): string[] => {
   const variants = new Set<string>();

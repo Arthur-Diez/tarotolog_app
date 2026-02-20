@@ -7,6 +7,7 @@ import { SpreadOneCard } from "@/data/spreadSchemas";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { MANARA_ALL } from "@/data/manara_deck";
 import { RWS_ALL } from "@/data/rws_deck";
+import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
 import type { BackendReadingStatus, ReadingOutputPayload } from "@/lib/api";
 
 export type SpreadStage = "fan" | "collecting" | "shuffling" | "dealing" | "await_open" | "done";
@@ -35,7 +36,8 @@ const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
   lenormand: LENORMAND_ALL,
   manara: MANARA_ALL,
   angels: ANGELS_ALL_LIST,
-  golden: GOLDEN_ALL_LIST
+  golden: GOLDEN_ALL_LIST,
+  ancestry: SILA_RODA_ALL_LIST
 };
 
 interface SpreadStoreState {
