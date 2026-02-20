@@ -72,10 +72,24 @@ function createInitialFlow(cardCount: number): FlowState {
     return value;
   };
 
+  const left = Array.from({ length: STACK_CARD_COUNT }, () => take());
+  const moving = Array.from({ length: MOVING_CARD_COUNT }, () => take());
+  const right = Array.from({ length: STACK_CARD_COUNT }, () => take());
+
+  // Avoid duplicate in the first visible frame:
+  // the right-most moving card should not match the top card of the right deck.
+  if (cardCount > 1) {
+    const movingRightCard = moving[MOVING_CARD_COUNT - 1];
+    const rightTopIndex = right.length - 1;
+    if (right[rightTopIndex] === movingRightCard) {
+      right[rightTopIndex] = (movingRightCard + 1) % cardCount;
+    }
+  }
+
   return {
-    left: Array.from({ length: STACK_CARD_COUNT }, () => take()),
-    moving: Array.from({ length: MOVING_CARD_COUNT }, () => take()),
-    right: Array.from({ length: STACK_CARD_COUNT }, () => take()),
+    left,
+    moving,
+    right,
     nextSeed: seed,
     dockCount: 0
   };
