@@ -96,6 +96,18 @@ const SILA_RODA_FLOW_FACE_CARDS = [
 ];
 
 const SILA_RODA_FLOW_CARD_URLS = SILA_RODA_FLOW_FACE_CARDS.map((name) => faceUrl("sila_roda", name));
+const METAPHORICAL_FLOW_FACE_CARDS = [
+  "Быть искренним",
+  "Верить в себя",
+  "Взять ответственность",
+  "Взять паузу",
+  "Вспомнить себя настоящего",
+  "Вырастить крылья",
+  "Дать волю фантазии",
+  "Дать место спонтанности"
+];
+
+const METAPHORICAL_FLOW_CARD_URLS = METAPHORICAL_FLOW_FACE_CARDS.map((name) => faceUrl("metaphoric", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
@@ -242,6 +254,8 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             <GoldenDeckFlowPreview isActive={animationActive} />
           ) : deck.id === "ancestry" ? (
             <SilaRodaDeckFlowPreview isActive={animationActive} />
+          ) : deck.id === "metaphoric" ? (
+            <MetaphoricalDeckFlowPreview isActive={animationActive} />
           ) : (
             <StaticDeckPreview />
           )}
@@ -358,6 +372,19 @@ function SilaRodaDeckFlowPreview({ isActive }: { isActive: boolean }) {
   return (
     <DeckShowcaseAnimation
       cards={SILA_RODA_FLOW_CARD_URLS}
+      isActive={isActive}
+      speedMs={12000}
+      overlapPx={10}
+      scaleMoving={1.08}
+      scaleDeck={1}
+    />
+  );
+}
+
+function MetaphoricalDeckFlowPreview({ isActive }: { isActive: boolean }) {
+  return (
+    <DeckShowcaseAnimation
+      cards={METAPHORICAL_FLOW_CARD_URLS}
       isActive={isActive}
       speedMs={12000}
       overlapPx={10}

@@ -1,5 +1,6 @@
 const resolveDeckAssetId = (deckId: string): string => {
   if (deckId === "ancestry") return "sila_roda";
+  if (deckId === "metaphoric") return "metaphorical";
   return deckId;
 };
 
