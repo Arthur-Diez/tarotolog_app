@@ -6,6 +6,7 @@ import type { SpreadSchema } from "@/data/spreadSchemas";
 import { SpreadOneCard } from "@/data/spreadSchemas";
 import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { MANARA_ALL } from "@/data/manara_deck";
+import { METAPHORIC_ALL_LIST } from "@/data/metaphoric_deck";
 import { RWS_ALL } from "@/data/rws_deck";
 import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
 import type { BackendReadingStatus, ReadingOutputPayload } from "@/lib/api";
@@ -37,7 +38,8 @@ const DECK_CARDS: Record<SpreadSchema["deckType"], string[]> = {
   manara: MANARA_ALL,
   angels: ANGELS_ALL_LIST,
   golden: GOLDEN_ALL_LIST,
-  ancestry: SILA_RODA_ALL_LIST
+  ancestry: SILA_RODA_ALL_LIST,
+  metaphoric: METAPHORIC_ALL_LIST
 };
 
 interface SpreadStoreState {

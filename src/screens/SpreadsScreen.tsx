@@ -12,6 +12,7 @@ import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
 import { GOLDEN_SPREADS_MAP } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
+import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
@@ -215,6 +216,56 @@ const SILA_RODA_SPREAD_BLOCKS: SpreadBlock[] = [
     id: "premium",
     title: "🌿 Исцеление",
     spreadIds: ["sila_roda_healing", "sila_roda_female_line", "sila_roda_male_line"]
+  }
+];
+
+const METAPHORIC_SPREAD_BLOCKS: SpreadBlock[] = [
+  {
+    id: "popular",
+    title: "🌿 1. Быстрые расклады (Quick Insight)",
+    badge: "🔥 Часто выбирают",
+    spreadIds: [
+      "metaphoric_card_of_day",
+      "metaphoric_moment_emotion",
+      "metaphoric_quick_advice",
+      "metaphoric_check_in",
+      "metaphoric_energy_obstacle_advice",
+      "metaphoric_thoughts_feelings_actions",
+      "metaphoric_self_world_next_step",
+      "metaphoric_strength_heart_challenge",
+      "metaphoric_situation_cause_solution"
+    ]
+  },
+  {
+    id: "self_growth",
+    title: "🔥 2. Основные расклады (Self-Discovery)",
+    spreadIds: [
+      "metaphoric_old_story_new_story_action",
+      "metaphoric_inner_conflict",
+      "metaphoric_new_stage",
+      "metaphoric_personal_decision",
+      "metaphoric_life_balance",
+      "metaphoric_self_reflection",
+      "metaphoric_relationships_without_masks"
+    ]
+  },
+  {
+    id: "premium",
+    title: "🧠 3. Глубокие расклады (Deep Inner Work)",
+    badge: "👑 Премиум",
+    spreadIds: [
+      "metaphoric_dialogue_with_subconscious",
+      "metaphoric_transformation_path",
+      "metaphoric_release",
+      "metaphoric_inner_resource",
+      "metaphoric_reality_vs_perception",
+      "metaphoric_horseshoe_guidance"
+    ]
+  },
+  {
+    id: "forecast",
+    title: "🖼️ 4. Авторские / WOW-расклады (Signature)",
+    spreadIds: ["metaphoric_dialogue_with_self", "metaphoric_life_reboot", "metaphoric_personality_archetype"]
   }
 ];
 
@@ -624,6 +675,148 @@ const SILA_RODA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   }
 };
 
+const METAPHORIC_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
+  metaphoric_card_of_day: { category: "popular", tags: ["день", "фокус", "инсайт"], energyCost: 5, popularityScore: 95, keywords: ["карта дня"] },
+  metaphoric_moment_emotion: {
+    category: "popular",
+    tags: ["эмоция", "момент", "состояние"],
+    energyCost: 5,
+    popularityScore: 92,
+    keywords: ["эмоция момента"]
+  },
+  metaphoric_quick_advice: { category: "popular", tags: ["совет", "быстро", "ориентир"], energyCost: 5, popularityScore: 90, keywords: ["быстрый совет"] },
+  metaphoric_check_in: { category: "popular", tags: ["check-in", "состояние", "настройка"], energyCost: 9, popularityScore: 89, keywords: ["проверка состояния"] },
+  metaphoric_energy_obstacle_advice: {
+    category: "popular",
+    tags: ["энергия", "препятствие", "совет"],
+    energyCost: 9,
+    popularityScore: 90,
+    keywords: ["ресурс", "блок"]
+  },
+  metaphoric_thoughts_feelings_actions: {
+    category: "popular",
+    tags: ["мысли", "чувства", "действия"],
+    energyCost: 9,
+    popularityScore: 88,
+    keywords: ["внутренний конфликт"]
+  },
+  metaphoric_self_world_next_step: {
+    category: "popular",
+    tags: ["я", "мир", "следующий шаг"],
+    energyCost: 9,
+    popularityScore: 87,
+    keywords: ["контекст", "шаг"]
+  },
+  metaphoric_strength_heart_challenge: {
+    category: "popular",
+    tags: ["сила", "сердце", "вызов"],
+    energyCost: 9,
+    popularityScore: 86,
+    keywords: ["смелость"]
+  },
+  metaphoric_situation_cause_solution: {
+    category: "popular",
+    tags: ["ситуация", "причина", "решение"],
+    energyCost: 9,
+    popularityScore: 88,
+    keywords: ["анализ"]
+  },
+  metaphoric_old_story_new_story_action: {
+    category: "self_growth",
+    tags: ["старая история", "новая история", "действие"],
+    energyCost: 10,
+    popularityScore: 85,
+    keywords: ["переписывание сценария"]
+  },
+  metaphoric_inner_conflict: {
+    category: "self_growth",
+    tags: ["конфликт", "выбор", "интеграция"],
+    energyCost: 15,
+    popularityScore: 86,
+    keywords: ["самоисследование"]
+  },
+  metaphoric_new_stage: { category: "self_growth", tags: ["этап", "переход", "рост"], energyCost: 15, popularityScore: 84, keywords: ["новый этап"] },
+  metaphoric_personal_decision: {
+    category: "self_growth",
+    tags: ["решение", "риск", "поддержка"],
+    energyCost: 15,
+    popularityScore: 85,
+    keywords: ["личное решение"]
+  },
+  metaphoric_life_balance: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: 15, popularityScore: 86, keywords: ["баланс жизни"] },
+  metaphoric_self_reflection: {
+    category: "self_growth",
+    tags: ["саморефлексия", "зеркало", "вывод"],
+    energyCost: 15,
+    popularityScore: 83,
+    keywords: ["self-reflection"]
+  },
+  metaphoric_relationships_without_masks: {
+    category: "self_growth",
+    tags: ["отношения", "честность", "маски"],
+    energyCost: 18,
+    popularityScore: 84,
+    keywords: ["без масок"]
+  },
+  metaphoric_dialogue_with_subconscious: {
+    category: "premium",
+    tags: ["подсознание", "диалог", "глубина"],
+    energyCost: 21,
+    popularityScore: 82,
+    keywords: ["deep inner work"]
+  },
+  metaphoric_transformation_path: {
+    category: "premium",
+    tags: ["трансформация", "этапы", "изменения"],
+    energyCost: 21,
+    popularityScore: 81,
+    keywords: ["путь трансформации"]
+  },
+  metaphoric_release: { category: "premium", tags: ["освобождение", "отпускание", "очищение"], energyCost: 21, popularityScore: 80, keywords: ["release"] },
+  metaphoric_inner_resource: {
+    category: "premium",
+    tags: ["ресурс", "энергия", "опора"],
+    energyCost: 21,
+    popularityScore: 83,
+    keywords: ["внутренний ресурс"]
+  },
+  metaphoric_reality_vs_perception: {
+    category: "premium",
+    tags: ["реальность", "восприятие", "контраст"],
+    energyCost: 21,
+    popularityScore: 82,
+    keywords: ["reality vs perception"]
+  },
+  metaphoric_horseshoe_guidance: {
+    category: "premium",
+    tags: ["подкова", "путеводитель", "путь"],
+    energyCost: 21,
+    popularityScore: 81,
+    keywords: ["guidance"]
+  },
+  metaphoric_dialogue_with_self: {
+    category: "forecast",
+    tags: ["авторский", "диалог", "глубина"],
+    energyCost: 27,
+    popularityScore: 80,
+    keywords: ["signature"]
+  },
+  metaphoric_life_reboot: {
+    category: "forecast",
+    tags: ["перезагрузка", "переосмысление", "перезапуск"],
+    energyCost: 27,
+    popularityScore: 79,
+    keywords: ["wow расклад"]
+  },
+  metaphoric_personality_archetype: {
+    category: "forecast",
+    tags: ["архетип", "личность", "паттерны"],
+    energyCost: 27,
+    popularityScore: 78,
+    keywords: ["signature"]
+  }
+};
+
 const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"]): SpreadMeta => {
   const fallback: SpreadMeta = {
     category: "popular",
@@ -646,6 +839,9 @@ const getSpreadMeta = (spreadId: string, cardsCount: number, deckId: Deck["id"])
   }
   if (deckId === "ancestry") {
     return SILA_RODA_SPREAD_META[spreadId] ?? fallback;
+  }
+  if (deckId === "metaphoric") {
+    return METAPHORIC_SPREAD_META[spreadId] ?? fallback;
   }
   return RWS_SPREAD_META[spreadId] ?? fallback;
 };
@@ -671,6 +867,8 @@ const matchesSpreadQuery = (spreadId: string, query: string, deckId: Deck["id"])
       ? GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP]
       : deckId === "ancestry"
       ? SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]
+      : deckId === "metaphoric"
+      ? METAPHORIC_SPREADS_MAP[spreadId as keyof typeof METAPHORIC_SPREADS_MAP]
       : RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP];
   if (!spread) return false;
   const meta = getSpreadMeta(spreadId, spread.cardsCount, deckId);
@@ -801,12 +999,34 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
           id: spreadId,
           title: SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.title ?? spreadId,
           description: SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.description ?? ""
+      }))
+    })).filter((block) => block.spreads.length > 0);
+  }, [deck.id, query]);
+
+  const metaphoricBlocks = useMemo(() => {
+    if (deck.id !== "metaphoric") return [];
+    return METAPHORIC_SPREAD_BLOCKS.map((block) => ({
+      ...block,
+      spreads: block.spreadIds
+        .filter((spreadId) => matchesSpreadQuery(spreadId, query, deck.id))
+        .map((spreadId) => ({
+          id: spreadId,
+          title: METAPHORIC_SPREADS_MAP[spreadId as keyof typeof METAPHORIC_SPREADS_MAP]?.title ?? spreadId,
+          description: METAPHORIC_SPREADS_MAP[spreadId as keyof typeof METAPHORIC_SPREADS_MAP]?.description ?? ""
         }))
     })).filter((block) => block.spreads.length > 0);
   }, [deck.id, query]);
 
   const nonRwsSpreads = useMemo(() => {
-    if (deck.id === "rws" || deck.id === "lenormand" || deck.id === "manara" || deck.id === "angels" || deck.id === "golden" || deck.id === "ancestry")
+    if (
+      deck.id === "rws" ||
+      deck.id === "lenormand" ||
+      deck.id === "manara" ||
+      deck.id === "angels" ||
+      deck.id === "golden" ||
+      deck.id === "ancestry" ||
+      deck.id === "metaphoric"
+    )
       return [];
     const normalized = query.trim().toLowerCase();
     if (!normalized) return deck.spreads;
@@ -1032,6 +1252,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {silaRodaBlocks.length === 0 ? (
+            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+            </Card>
+          ) : null}
+        </div>
+      ) : deck.id === "metaphoric" ? (
+        <div className="space-y-6">
+          {metaphoricBlocks.map((block) => (
+            <section key={block.id} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
+                {block.badge ? (
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                    {block.badge}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-3">
+                {block.spreads.map((spread) => (
+                  <SpreadCard
+                    key={spread.id}
+                    spread={spread}
+                    deckId={deck.id}
+                    expanded={Boolean(expandedSpreads[spread.id])}
+                    onToggle={() => toggleSpread(spread.id)}
+                    onSelect={() => handleSelectSpread(spread.id)}
+                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          {metaphoricBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               Ничего не найдено. Попробуйте запрос по теме или количеству карт.
             </Card>
@@ -1982,13 +2235,126 @@ const SILA_RODA_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   }
 };
 
+const metaphoricDetails = (header: string, subtitle: string, metaLine: string): SpreadDetailsContent => ({
+  header,
+  subtitle,
+  metaLine,
+  purpose: ["🧠 Увидеть скрытый внутренний контекст", "🎯 Выделить практичный фокус действий", "🌿 Получить мягкий инсайт без жёстких оценок"],
+  howItWorks: [
+    "🃏 Карты читаются последовательно как цепочка смыслов.",
+    "Метафорические образы помогают заметить то, что обычно ускользает."
+  ],
+  forWhom: ["✓ Для саморефлексии", "✓ Для бережной внутренней работы"]
+});
+
+const METAPHORIC_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
+  metaphoric_card_of_day: metaphoricDetails("Карта дня", "Быстрый фокус на текущий день", "1 карта · фокус · инсайт"),
+  metaphoric_moment_emotion: metaphoricDetails("Эмоция момента", "Эмоциональный срез прямо сейчас", "1 карта · эмоция · состояние"),
+  metaphoric_quick_advice: metaphoricDetails("Быстрый совет", "Ключевая подсказка для текущей ситуации", "1 карта · совет · ориентир"),
+  metaphoric_check_in: metaphoricDetails("Проверка состояния (Check-In)", "Короткая диагностика себя в моменте", "3 карты · состояние · фокус · шаг"),
+  metaphoric_energy_obstacle_advice: metaphoricDetails(
+    "Энергия — Препятствие — Совет",
+    "Ресурс, блок и практичный ход",
+    "3 карты · ресурс · препятствие · совет"
+  ),
+  metaphoric_thoughts_feelings_actions: metaphoricDetails(
+    "Мысли — Чувства — Действия",
+    "Согласованность внутреннего и внешнего",
+    "3 карты · мысли · чувства · действия"
+  ),
+  metaphoric_self_world_next_step: metaphoricDetails(
+    "Я — Мир — Следующий шаг",
+    "Позиция в контексте и ближайший шаг",
+    "3 карты · я · контекст · шаг"
+  ),
+  metaphoric_strength_heart_challenge: metaphoricDetails(
+    "Сила — Сердце — Вызов",
+    "Точка опоры, чувствительность и вызов",
+    "3 карты · сила · сердце · вызов"
+  ),
+  metaphoric_situation_cause_solution: metaphoricDetails(
+    "Ситуация — Причина — Решение",
+    "Разбор причины и рабочего выхода",
+    "3 карты · ситуация · причина · решение"
+  ),
+  metaphoric_old_story_new_story_action: metaphoricDetails(
+    "Старая история — Новая история — Действие",
+    "Переход от старого сценария к новому",
+    "3 карты · сценарий · трансформация · действие"
+  ),
+  metaphoric_inner_conflict: metaphoricDetails(
+    "Внутренний конфликт",
+    "Понять противоречие и собрать целостность",
+    "5 карт · конфликт · причина · интеграция"
+  ),
+  metaphoric_new_stage: metaphoricDetails("Новый этап", "Переход на следующий жизненный шаг", "5 карт · этап · ресурс · закрепление"),
+  metaphoric_personal_decision: metaphoricDetails(
+    "Личное решение",
+    "Опора для сложного выбора",
+    "5 карт · выбор · риск · поддержка"
+  ),
+  metaphoric_life_balance: metaphoricDetails("Баланс жизни", "Где перекос и что выравнивать", "5 карт · сферы · баланс · фокус"),
+  metaphoric_self_reflection: metaphoricDetails(
+    "Саморефлексия (Self-Reflection)",
+    "Зеркало состояния и внутренней честности",
+    "5 карт · отражение · осознание · вывод"
+  ),
+  metaphoric_relationships_without_masks: metaphoricDetails(
+    "Отношения без масок",
+    "Честный взгляд на взаимодействие",
+    "6 карт · контакт · динамика · итог"
+  ),
+  metaphoric_dialogue_with_subconscious: metaphoricDetails(
+    "Диалог с подсознанием",
+    "Глубинная работа с внутренними смыслами",
+    "7 карт · подсознание · сигналы · интеграция"
+  ),
+  metaphoric_transformation_path: metaphoricDetails(
+    "Путь трансформации",
+    "Этапы изменения и точка сдвига",
+    "7 карт · путь · этапы · результат"
+  ),
+  metaphoric_release: metaphoricDetails("Освобождение", "Отпускание лишнего и высвобождение энергии", "7 карт · отпускание · очищение · ресурс"),
+  metaphoric_inner_resource: metaphoricDetails(
+    "Внутренний ресурс",
+    "Поиск опоры и включение энергии",
+    "7 карт · ресурс · поддержка · активация"
+  ),
+  metaphoric_reality_vs_perception: metaphoricDetails(
+    "Реальность и восприятие (Reality vs Perception)",
+    "Сравнение фактов и личной интерпретации",
+    "7 карт · реальность · восприятие · синтез"
+  ),
+  metaphoric_horseshoe_guidance: metaphoricDetails(
+    "Подкова (Путеводный расклад)",
+    "Траектория вопроса и ориентир на выход",
+    "7 карт · путь · развилка · итог"
+  ),
+  metaphoric_dialogue_with_self: metaphoricDetails(
+    "Диалог с собой",
+    "Большой авторский расклад для внутренней ясности",
+    "9 карт · многослойный самоанализ"
+  ),
+  metaphoric_life_reboot: metaphoricDetails(
+    "Перезагрузка жизни",
+    "Перезапуск фокуса, решений и энергии",
+    "9 карт · перезагрузка · стратегия · вектор"
+  ),
+  metaphoric_personality_archetype: metaphoricDetails(
+    "Архетип личности",
+    "Ключевые поведенческие паттерны и опоры",
+    "9 карт · архетип · проявления · интеграция"
+  )
+};
+
 const getSpreadById = (spreadId: string) =>
   RWS_SPREADS_MAP[spreadId as keyof typeof RWS_SPREADS_MAP] ??
   LENORMAND_SPREADS_MAP[spreadId as keyof typeof LENORMAND_SPREADS_MAP] ??
   MANARA_SPREADS_MAP[spreadId as keyof typeof MANARA_SPREADS_MAP] ??
   ANGELS_SPREADS_MAP[spreadId as keyof typeof ANGELS_SPREADS_MAP] ??
   GOLDEN_SPREADS_MAP[spreadId as keyof typeof GOLDEN_SPREADS_MAP] ??
-  SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP];
+  SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP] ??
+  METAPHORIC_SPREADS_MAP[spreadId as keyof typeof METAPHORIC_SPREADS_MAP];
 
 function extractCardsCount(spread: DeckSpread): number {
   const mapped = getSpreadById(spread.id);
@@ -2010,6 +2376,8 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
       ? GOLDEN_SPREAD_DETAILS[spread.id]
       : deckId === "ancestry"
       ? SILA_RODA_SPREAD_DETAILS[spread.id]
+      : deckId === "metaphoric"
+      ? METAPHORIC_SPREAD_DETAILS[spread.id]
       : RWS_SPREAD_DETAILS[spread.id];
   const hasDetailedContent = Boolean(details);
   const cardsCount = extractCardsCount(spread);

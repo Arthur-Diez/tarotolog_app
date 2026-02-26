@@ -757,7 +757,7 @@ export default function SpreadPlayPage() {
                           </div>
                         </div>
                       )}
-                      {card?.isOpen && <p className="mt-2 text-xs text-white/70">{position.label}</p>}
+                      {card?.isOpen && position.label.trim() ? <p className="mt-2 text-xs text-white/70">{position.label}</p> : null}
                     </div>
                   );
                 })}

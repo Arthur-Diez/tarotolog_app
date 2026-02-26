@@ -22,20 +22,13 @@ export interface Deck {
   spreads: DeckSpread[];
 }
 
-function createSpreads(): DeckSpread[] {
-  return Array.from({ length: 7 }).map((_, index) => ({
-    id: `spread-${index + 1}`,
-    title: `Расклад ${index + 1}`,
-    description: "Краткое описание расклада. Заглушка."
-  }));
-}
-
 import { LENORMAND_SPREADS } from "./lenormand_spreads";
 import { MANARA_SPREADS } from "./manara_spreads";
 import { RWS_SPREADS } from "./rws_spreads";
 import { ANGELS_SPREADS } from "./angels_spreads";
 import { GOLDEN_SPREADS } from "./golden_spreads";
 import { SILA_RODA_SPREADS } from "./sila_roda_spreads";
+import { METAPHORIC_SPREADS } from "./metaphoric_spreads";
 
 export const DECKS: Deck[] = [
   {
@@ -109,6 +102,10 @@ export const DECKS: Deck[] = [
     title: "Метафорические карты",
     subtitle: "Ассоциации, инсайты",
     description: "Проекции и художественные метафоры для саморефлексии.",
-    spreads: createSpreads()
+    spreads: METAPHORIC_SPREADS.map((spread) => ({
+      id: spread.id,
+      title: spread.title,
+      description: spread.description
+    }))
   }
 ];

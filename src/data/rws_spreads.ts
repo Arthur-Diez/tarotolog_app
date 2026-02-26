@@ -104,7 +104,41 @@ export type SilaRodaSpreadId =
   | "sila_roda_female_line"
   | "sila_roda_male_line";
 
-export type SpreadId = RwsSpreadId | LenormandSpreadId | ManaraSpreadId | AngelsSpreadId | GoldenSpreadId | SilaRodaSpreadId;
+export type MetaphoricSpreadId =
+  | "metaphoric_card_of_day"
+  | "metaphoric_moment_emotion"
+  | "metaphoric_quick_advice"
+  | "metaphoric_check_in"
+  | "metaphoric_energy_obstacle_advice"
+  | "metaphoric_thoughts_feelings_actions"
+  | "metaphoric_self_world_next_step"
+  | "metaphoric_strength_heart_challenge"
+  | "metaphoric_situation_cause_solution"
+  | "metaphoric_old_story_new_story_action"
+  | "metaphoric_inner_conflict"
+  | "metaphoric_new_stage"
+  | "metaphoric_personal_decision"
+  | "metaphoric_life_balance"
+  | "metaphoric_self_reflection"
+  | "metaphoric_relationships_without_masks"
+  | "metaphoric_dialogue_with_subconscious"
+  | "metaphoric_transformation_path"
+  | "metaphoric_release"
+  | "metaphoric_inner_resource"
+  | "metaphoric_reality_vs_perception"
+  | "metaphoric_horseshoe_guidance"
+  | "metaphoric_dialogue_with_self"
+  | "metaphoric_life_reboot"
+  | "metaphoric_personality_archetype";
+
+export type SpreadId =
+  | RwsSpreadId
+  | LenormandSpreadId
+  | ManaraSpreadId
+  | AngelsSpreadId
+  | GoldenSpreadId
+  | SilaRodaSpreadId
+  | MetaphoricSpreadId;
 
 export interface SpreadPosition {
   index: number;

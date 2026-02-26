@@ -1,4 +1,5 @@
 import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
+import { METAPHORIC_ALL_LIST } from "@/data/metaphoric_deck";
 
 const MAJOR_ARCANA_MAP: Record<string, string> = {
   "Шут (0)": "RWS_THE_FOOL",
@@ -374,7 +375,18 @@ SILA_RODA_ALL_LIST.forEach((cardName, index) => {
   SILA_RODA_INDEX_TO_CODE[index] = code;
 });
 
-type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry";
+const METAPHORIC_NAME_TO_CODE: Record<string, string> = {};
+const METAPHORIC_INDEX_TO_CODE: Record<number, string> = {};
+
+METAPHORIC_ALL_LIST.forEach((cardName, index) => {
+  const code = `METAPHORIC_${String(index).padStart(2, "0")}`;
+  const normalizedName = cardName.trim().replace(/\s+/g, " ");
+  METAPHORIC_NAME_TO_CODE[cardName] = code;
+  METAPHORIC_NAME_TO_CODE[normalizedName] = code;
+  METAPHORIC_INDEX_TO_CODE[index] = code;
+});
+
+type SupportedDeckId = "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry" | "metaphoric";
 
 const normalizeCardName = (value: string): string => value.trim().replace(/\s+/g, " ");
 
@@ -502,6 +514,10 @@ function mapGoldenCardNameToCode(name: string): string | null {
 
 function mapSilaRodaCardNameToCode(name: string): string | null {
   return SILA_RODA_NAME_TO_CODE[name] ?? SILA_RODA_NAME_TO_CODE[normalizeCardName(name)] ?? null;
+}
+
+function mapMetaphoricCardNameToCode(name: string): string | null {
+  return METAPHORIC_NAME_TO_CODE[name] ?? METAPHORIC_NAME_TO_CODE[normalizeCardName(name)] ?? null;
 }
 
 function normalizeEnglishCardName(value: string): string {
@@ -658,6 +674,20 @@ function normalizeSilaRodaCode(rawCode: string): string | null {
   return SILA_RODA_INDEX_TO_CODE[index] ?? null;
 }
 
+function normalizeMetaphoricCode(rawCode: string): string | null {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, "_").replace(/^METAPHORICAL_/, "METAPHORIC_");
+  if (!normalized.startsWith("METAPHORIC_")) {
+    return null;
+  }
+
+  const byNumberMatch = normalized.match(/^METAPHORIC_(\d{1,2})(?:_|$)/);
+  if (!byNumberMatch) {
+    return null;
+  }
+  const index = Number(byNumberMatch[1]);
+  return METAPHORIC_INDEX_TO_CODE[index] ?? null;
+}
+
 export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): string | null {
   const trimmed = normalizeCardName(name);
   if (!trimmed) return null;
@@ -686,6 +716,10 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     return mapSilaRodaCardNameToCode(trimmed);
   }
 
+  if (deckId === "metaphoric") {
+    return mapMetaphoricCardNameToCode(trimmed);
+  }
+
   return (
     mapRwsCardNameToCode(trimmed) ??
     mapLenormandCardNameToCode(trimmed) ??
@@ -693,6 +727,7 @@ export function mapCardNameToCode(name: string, deckId?: SupportedDeckId): strin
     mapAngelsCardNameToCode(trimmed) ??
     mapGoldenCardNameToCode(trimmed) ??
     mapSilaRodaCardNameToCode(trimmed) ??
+    mapMetaphoricCardNameToCode(trimmed) ??
     mapEnglishCardNameToCode(trimmed)
   );
 }
@@ -728,6 +763,11 @@ export function mapCardValueToCode(value: string): string | null {
   const silaRodaCode = normalizeSilaRodaCode(raw);
   if (silaRodaCode) {
     return silaRodaCode;
+  }
+
+  const metaphoricCode = normalizeMetaphoricCode(raw);
+  if (metaphoricCode) {
+    return metaphoricCode;
   }
 
   return mapCardNameToCode(raw);

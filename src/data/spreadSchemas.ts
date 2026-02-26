@@ -3,12 +3,14 @@ import { ANGELS_SPREADS } from "@/data/angels_spreads";
 import { GOLDEN_SPREADS } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS } from "@/data/manara_spreads";
+import { METAPHORIC_SPREADS } from "@/data/metaphoric_spreads";
 import { SILA_RODA_SPREADS } from "@/data/sila_roda_spreads";
 import type {
   AngelsSpreadId,
   GoldenSpreadId,
   LenormandSpreadId,
   ManaraSpreadId,
+  MetaphoricSpreadId,
   SilaRodaSpreadId,
   SpreadId
 } from "@/data/rws_spreads";
@@ -24,7 +26,7 @@ export interface SpreadSchema {
   id: SpreadId;
   name: string;
   cardCount: number;
-  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry">;
+  deckType: Extract<DeckId, "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry" | "metaphoric">;
   openingRules: "in-order" | "any-order";
   openOrder: number[];
   positions: SpreadPosition[];
@@ -587,6 +589,8 @@ const GOLDEN_LAYOUT_SCALE_X = 5.8;
 const GOLDEN_LAYOUT_SCALE_Y = 7.2;
 const SILA_RODA_LAYOUT_SCALE_X = 6.4;
 const SILA_RODA_LAYOUT_SCALE_Y = 8;
+const METAPHORIC_LAYOUT_SCALE_X = 6.2;
+const METAPHORIC_LAYOUT_SCALE_Y = 7.8;
 
 interface LayoutScaleOptions {
   scaleX?: number;
@@ -785,6 +789,55 @@ const SILA_RODA_SCHEMAS = SILA_RODA_SPREADS.reduce((acc, spread) => {
   return acc;
 }, {} as Record<SilaRodaSpreadId, SpreadSchema>);
 
+const METAPHORIC_LAYOUT_OPTIONS_BY_SPREAD: Partial<Record<MetaphoricSpreadId, LayoutScaleOptions>> = {
+  metaphoric_card_of_day: {
+    scaleX: 6.8,
+    scaleY: 8
+  },
+  metaphoric_moment_emotion: {
+    scaleX: 6.8,
+    scaleY: 8
+  },
+  metaphoric_quick_advice: {
+    scaleX: 6.8,
+    scaleY: 8
+  },
+  metaphoric_check_in: {
+    scaleX: 7,
+    scaleY: 8
+  },
+  metaphoric_energy_obstacle_advice: {
+    scaleX: 7,
+    scaleY: 8
+  },
+  metaphoric_thoughts_feelings_actions: {
+    scaleX: 7,
+    scaleY: 8
+  },
+  metaphoric_old_story_new_story_action: {
+    scaleX: 7,
+    scaleY: 8
+  }
+};
+
+const METAPHORIC_SCHEMAS = METAPHORIC_SPREADS.reduce((acc, spread) => {
+  const layoutOptions = METAPHORIC_LAYOUT_OPTIONS_BY_SPREAD[spread.id as MetaphoricSpreadId];
+  acc[spread.id as MetaphoricSpreadId] = {
+    id: spread.id,
+    name: spread.title,
+    cardCount: spread.cardsCount,
+    deckType: "metaphoric",
+    openingRules: "in-order",
+    openOrder: spread.openOrder,
+    positions: toScaledPositions(
+      spread.positions,
+      { scaleX: METAPHORIC_LAYOUT_SCALE_X, scaleY: METAPHORIC_LAYOUT_SCALE_Y },
+      layoutOptions
+    )
+  };
+  return acc;
+}, {} as Record<MetaphoricSpreadId, SpreadSchema>);
+
 export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   one_card: SpreadOneCard,
   yes_no: SpreadYesNo,
@@ -823,5 +876,6 @@ export const SPREAD_SCHEMAS: Record<SpreadId, SpreadSchema> = {
   ...MANARA_SCHEMAS,
   ...ANGELS_SCHEMAS,
   ...GOLDEN_SCHEMAS,
-  ...SILA_RODA_SCHEMAS
+  ...SILA_RODA_SCHEMAS,
+  ...METAPHORIC_SCHEMAS
 };

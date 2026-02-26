@@ -16,6 +16,8 @@ import { LENORMAND_ALL } from "@/data/lenormand_deck";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_ALL } from "@/data/manara_deck";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
+import { METAPHORIC_ALL_LIST } from "@/data/metaphoric_deck";
+import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
 import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
 import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
@@ -205,7 +207,10 @@ export default function InterpretationPage() {
   const shareRef = useRef<HTMLDivElement | null>(null);
 
   const cardNameMapByDeck = useMemo(() => {
-    const buildMap = (deckId: "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry", cards: string[]) => {
+    const buildMap = (
+      deckId: "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry" | "metaphoric",
+      cards: string[]
+    ) => {
       const map = new Map<string, string>();
       cards.forEach((name) => {
         const code = mapCardNameToCode(name, deckId);
@@ -222,7 +227,8 @@ export default function InterpretationPage() {
       manara: buildMap("manara", MANARA_ALL),
       angels: buildMap("angels", ANGELS_ALL_LIST),
       golden: buildMap("golden", GOLDEN_ALL_LIST),
-      ancestry: buildMap("ancestry", SILA_RODA_ALL_LIST)
+      ancestry: buildMap("ancestry", SILA_RODA_ALL_LIST),
+      metaphoric: buildMap("metaphoric", METAPHORIC_ALL_LIST)
     } as const;
   }, []);
 
@@ -272,8 +278,11 @@ export default function InterpretationPage() {
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
   const resolvedDeckId = useMemo(() => {
-    if (inputMeta?.deckId && inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true, golden: true, ancestry: true }) {
-      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry";
+    if (
+      inputMeta?.deckId &&
+      inputMeta.deckId in { rws: true, lenormand: true, manara: true, angels: true, golden: true, ancestry: true, metaphoric: true }
+    ) {
+      return inputMeta.deckId as "rws" | "lenormand" | "manara" | "angels" | "golden" | "ancestry" | "metaphoric";
     }
     const spreadId = inputMeta?.spreadId;
     if (spreadId && spreadId in SPREAD_SCHEMAS) {
@@ -293,6 +302,9 @@ export default function InterpretationPage() {
     }
     if (cards.some((card) => card.card_code.startsWith("SILA_RODA_"))) {
       return "ancestry";
+    }
+    if (cards.some((card) => card.card_code.startsWith("METAPHORIC_"))) {
+      return "metaphoric";
     }
     return "rws";
   }, [cards, inputMeta?.deckId, inputMeta?.spreadId]);
@@ -315,6 +327,9 @@ export default function InterpretationPage() {
     }
     if (spreadId && spreadId in SILA_RODA_SPREADS_MAP) {
       return SILA_RODA_SPREADS_MAP[spreadId as keyof typeof SILA_RODA_SPREADS_MAP]?.title ?? "Расклад";
+    }
+    if (spreadId && spreadId in METAPHORIC_SPREADS_MAP) {
+      return METAPHORIC_SPREADS_MAP[spreadId as keyof typeof METAPHORIC_SPREADS_MAP]?.title ?? "Расклад";
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
@@ -346,6 +361,7 @@ export default function InterpretationPage() {
         .replace(/^ANGELS_/, "")
         .replace(/^GOLDEN_/, "")
         .replace(/^SILA_RODA_/, "")
+        .replace(/^METAPHORIC_/, "")
         .replace(/^\d{2}_/, "")
         .replaceAll("_", " ")
         .replace(/\s+/g, " ")
@@ -507,33 +523,33 @@ export default function InterpretationPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
           {cardDisplayList.length > 0 ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
-              {cardDisplayList.map((card) => (
-                <div
-                  key={`${card.position}-${card.card_code}`}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3 text-center"
-                >
-                  {card.assetName ? (
-                    <CardFaceImage
-                      deckId={resolvedDeckId}
-                      cardName={card.assetName}
-                      alt={card.displayName}
-                      className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-28 w-20 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-[10px] text-white/70">
-                      {card.displayName}
+              {cardDisplayList.map((card) => {
+                const metaLine = [card.positionLabel, card.reversed ? "Перевёрнута" : ""].filter(Boolean).join(" • ");
+                return (
+                  <div
+                    key={`${card.position}-${card.card_code}`}
+                    className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3 text-center"
+                  >
+                    {card.assetName ? (
+                      <CardFaceImage
+                        deckId={resolvedDeckId}
+                        cardName={card.assetName}
+                        alt={card.displayName}
+                        className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-28 w-20 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-[10px] text-white/70">
+                        {card.displayName}
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">{card.displayName}</p>
+                      {metaLine ? <p className="text-[11px] text-[var(--text-secondary)]">{metaLine}</p> : null}
                     </div>
-                  )}
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-[var(--text-primary)]">{card.displayName}</p>
-                    <p className="text-[11px] text-[var(--text-secondary)]">
-                      {card.positionLabel}
-                      {card.reversed ? " • Перевёрнута" : ""}
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--text-secondary)]">Карты пока не доступны.</p>
