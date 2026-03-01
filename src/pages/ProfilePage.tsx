@@ -1219,5 +1219,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-aboba = 15
