@@ -181,11 +181,8 @@ export default function SpreadPlayPage() {
   useDeckTheme(schema.deckType);
 
   const isFocusMode =
-    isRunning ||
-    isCinematicPause ||
-    stage === "collecting" ||
-    stage === "shuffling" ||
-    stage === "dealing";
+    isCinematicPause || stage === "collecting" || stage === "shuffling" || stage === "dealing";
+  const shouldBlockInteractions = isFocusMode && stage !== "await_open" && stage !== "done";
 
   useEffect(() => {
     setSchema(schema);
@@ -779,7 +776,7 @@ export default function SpreadPlayPage() {
             display: "flex",
             justifyContent: "center",
             marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
-            pointerEvents: isFocusMode ? "none" : "auto"
+            pointerEvents: shouldBlockInteractions ? "none" : "auto"
           }}
         >
           <div
@@ -995,7 +992,7 @@ export default function SpreadPlayPage() {
         {viewError && <p className="text-center text-sm text-amber-300">{viewError}</p>}
 
       </div>
-      {isFocusMode ? <div className="ritual-focus-blocker" aria-hidden /> : null}
+      {shouldBlockInteractions ? <div className="ritual-focus-blocker" aria-hidden /> : null}
       {isViewLoading && (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6 backdrop-blur">
           <LoadingTarot
