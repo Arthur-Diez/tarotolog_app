@@ -20,6 +20,7 @@ import { useAutoTimezone } from "@/hooks/useAutoTimezone";
 import { DecksScreen } from "@/screens/DecksScreen";
 import { SpreadsScreen } from "@/screens/SpreadsScreen";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
+import { DeckTransitionOverlay } from "@/ui/DeckTransitionOverlay";
 
 export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
@@ -139,6 +140,7 @@ export default function App() {
         </AnimatePresence>
       </main>
       <TabBar routes={routes} />
+      <DeckTransitionOverlay />
     </div>
   );
 }

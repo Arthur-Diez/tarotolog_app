@@ -63,13 +63,16 @@
 .deck-portal-card {
   position: relative;
   overflow: hidden;
+  --deck-accent: rgba(214, 176, 118, 0.92);
+  --deck-glow: rgba(214, 176, 118, 0.16);
+  --deck-preview-glow: var(--deck-glow);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(22px);
   box-shadow:
     0 20px 40px rgba(0, 0, 0, 0.35),
     inset 0 1px 1px rgba(255, 255, 255, 0.05),
-    0 0 40px rgb(var(--deck-accent-rgb) / 0.14);
+    0 0 40px var(--deck-glow);
   transition:
     transform 320ms ease,
     box-shadow 320ms ease,
@@ -82,7 +85,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 20% 20%, rgb(var(--deck-accent-rgb) / 0.18) 0%, rgba(255, 255, 255, 0) 58%);
+  background: radial-gradient(circle at 20% 20%, var(--deck-glow) 0%, rgba(255, 255, 255, 0) 58%);
 }
 
 .deck-portal-card::after {
@@ -94,17 +97,17 @@
   height: 2px;
   border-radius: 999px;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgb(var(--deck-accent-rgb) / 0.82), rgba(255, 255, 255, 0));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--deck-accent), rgba(255, 255, 255, 0));
   opacity: 0.9;
   animation: deckAuraBreathing 7s ease-in-out infinite;
 }
 
 .deck-portal-card.isExpanded {
-  border-color: rgb(var(--deck-accent-rgb) / 0.4);
+  border-color: var(--deck-glow);
   box-shadow:
     0 24px 44px rgba(0, 0, 0, 0.42),
     inset 0 1px 1px rgba(255, 255, 255, 0.06),
-    0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+    0 0 40px var(--deck-glow);
 }
 
 .deck-portal-card.isInteractive:active {
@@ -116,8 +119,8 @@
   box-shadow:
     0 24px 44px rgba(0, 0, 0, 0.42),
     inset 0 1px 1px rgba(255, 255, 255, 0.08),
-    0 0 0 2px rgb(var(--deck-accent-rgb) / 0.38),
-    0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+    0 0 0 2px var(--deck-accent),
+    0 0 40px var(--deck-glow);
 }
 
 .deck-card-toggle {
@@ -140,7 +143,16 @@
   outline: none;
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.16),
-    0 0 0 4px rgb(var(--deck-accent-rgb) / 0.28);
+    0 0 0 4px var(--deck-glow);
+}
+
+.deck-card-chevron {
+  display: inline-flex;
+  transition: transform 300ms ease;
+}
+
+.deck-card-chevron.isExpanded {
+  transform: rotate(180deg);
 }
 
 .deck-expanded {
@@ -161,7 +173,7 @@
   position: absolute;
   inset: -20%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(var(--deck-preview-rgb) / 0.24) 0%, rgba(255, 255, 255, 0) 66%);
+  background: radial-gradient(circle, var(--deck-preview-glow) 0%, rgba(255, 255, 255, 0) 66%);
   filter: blur(14px);
   pointer-events: none;
 }
@@ -171,7 +183,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow:
     0 18px 34px rgba(0, 0, 0, 0.44),
-    0 0 24px rgb(var(--deck-preview-rgb) / 0.18),
+    0 0 24px var(--deck-preview-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -237,7 +249,7 @@
   box-shadow:
     0 20px 40px rgba(14, 11, 20, 0.12),
     inset 0 1px 1px rgba(255, 255, 255, 0.68),
-    0 0 38px rgb(var(--deck-accent-rgb) / 0.16);
+    0 0 38px var(--deck-glow);
 }
 
 .tg-light .deck-expanded {
@@ -267,11 +279,11 @@
 @media (hover: hover) and (pointer: fine) {
   .deck-portal-card.isInteractive:hover {
     transform: translateY(-6px) scale(1.01);
-    border-color: rgb(var(--deck-accent-rgb) / 0.34);
+    border-color: var(--deck-glow);
     box-shadow:
       0 24px 46px rgba(0, 0, 0, 0.44),
       inset 0 1px 1px rgba(255, 255, 255, 0.06),
-      0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+      0 0 40px var(--deck-glow);
   }
 }
 

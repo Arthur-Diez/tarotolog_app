@@ -1,0 +1,240 @@
+.spreads-screen {
+  position: relative;
+  isolation: isolate;
+  --deck-accent: rgba(214, 176, 118, 0.92);
+  --deck-glow: rgba(214, 176, 118, 0.16);
+  --deck-bg-a: rgba(214, 176, 118, 0.14);
+  --deck-bg-b: rgba(153, 126, 89, 0.1);
+}
+
+.spreads-screen::before,
+.spreads-screen::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spreads-screen::before {
+  z-index: -2;
+  background:
+    radial-gradient(circle at 20% 15%, var(--deck-bg-a) 0%, transparent 46%),
+    radial-gradient(circle at 80% 35%, var(--deck-bg-b) 0%, transparent 48%),
+    radial-gradient(circle at 50% 110%, rgba(255, 255, 255, 0.05) 0%, transparent 40%),
+    #0b0b12;
+  transform: translate3d(0, 0, 0) scale(1.02);
+  animation: spreadsBgMove 28s ease-in-out infinite alternate;
+}
+
+.spreads-screen::after {
+  z-index: -1;
+  opacity: 0.03;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.spread-reveal {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0);
+  animation: spreadReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.spreads-back-button:focus-visible,
+.spreads-search-input:focus-visible,
+.spread-toggle-button:focus-visible,
+.spread-cta-button:focus-visible,
+.ritualCard:focus-within {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 0 3px var(--deck-glow);
+}
+
+.spreads-search-input {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 24px var(--deck-glow);
+}
+
+.spreads-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ritualCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    0 0 44px var(--deck-glow);
+  opacity: 0;
+  transform: translate3d(0, 12px, 0) scale(0.995);
+  animation: spreadCardReveal 540ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--card-delay, 240ms);
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms ease;
+}
+
+.ritualCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 20%, var(--deck-bg-a) 0%, rgba(255, 255, 255, 0) 58%);
+}
+
+.ritualCard::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 0;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--deck-accent), rgba(255, 255, 255, 0));
+  opacity: 0.75;
+}
+
+.spread-energy-badge {
+  box-shadow:
+    0 0 18px var(--deck-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.spread-toggle-button {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spread-chevron {
+  display: inline-flex;
+  transition: transform 260ms ease;
+}
+
+.spread-chevron.isExpanded {
+  transform: rotate(180deg);
+}
+
+.spread-cta-button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--deck-accent), rgba(255, 255, 255, 0.2));
+  box-shadow: 0 0 24px var(--deck-glow);
+}
+
+.spread-expanded-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(11, 13, 21, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.spread-preview-float {
+  transform: rotate(var(--preview-rotate, 0deg));
+  animation: spreadPreviewFloat 2.6s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ritualCard:hover {
+    transform: translate3d(0, -6px, 0) scale(1.01);
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    box-shadow:
+      0 24px 48px rgba(0, 0, 0, 0.42),
+      inset 0 1px 1px rgba(255, 255, 255, 0.06),
+      0 0 56px var(--deck-glow);
+  }
+}
+
+.ritualCard:active {
+  transform: translate3d(0, -4px, 0) scale(1.008);
+}
+
+.tg-light .spreads-screen::before {
+  background:
+    radial-gradient(circle at 20% 15%, var(--deck-bg-a) 0%, transparent 46%),
+    radial-gradient(circle at 80% 35%, var(--deck-bg-b) 0%, transparent 48%),
+    radial-gradient(circle at 50% 110%, rgba(18, 14, 23, 0.06) 0%, transparent 40%),
+    #f2eff7;
+}
+
+.tg-light .spreads-search-input {
+  border-color: rgba(18, 14, 23, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.tg-light .ritualCard {
+  border-color: rgba(18, 14, 23, 0.08) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  box-shadow:
+    0 20px 40px rgba(14, 11, 20, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    0 0 44px var(--deck-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spreads-screen::before,
+  .spread-preview-float,
+  .spread-reveal,
+  .ritualCard {
+    animation: none !important;
+  }
+
+  .spread-reveal,
+  .ritualCard {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ritualCard,
+  .spread-chevron,
+  .spread-toggle-button,
+  .spread-cta-button {
+    transition: none !important;
+  }
+}
+
+@keyframes spreadsBgMove {
+  0% {
+    transform: translate3d(-1%, -1%, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(1%, 1%, 0) scale(1.05);
+  }
+}
+
+@keyframes spreadReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes spreadCardReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes spreadPreviewFloat {
+  0%,
+  100% {
+    transform: rotate(var(--preview-rotate, 0deg)) translateY(0);
+  }
+  50% {
+    transform: rotate(var(--preview-rotate, 0deg)) translateY(-2px);
+  }
+}

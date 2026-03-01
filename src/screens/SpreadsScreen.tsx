@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,9 @@ import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
+import { endTransition } from "@/ui/deckTransitionStore";
+import { useDeckTheme } from "@/ui/useDeckTheme";
+import "./SpreadsScreen.css";
 
 interface SpreadsScreenProps {
   deck: Deck;
@@ -41,6 +43,28 @@ interface SpreadBlock {
   title: string;
   badge?: string;
   spreadIds: string[];
+}
+
+interface SpreadBlockResolved extends SpreadBlock {
+  spreads: DeckSpread[];
+}
+
+function usePrefersReducedMotion(): boolean {
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return reducedMotion;
 }
 
 const RWS_SPREAD_BLOCKS: SpreadBlock[] = [
@@ -901,6 +925,15 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
   const [expandedSpreads, setExpandedSpreads] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  useDeckTheme(deck.id);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      endTransition();
+    }, 40);
+    return () => window.clearTimeout(timer);
+  }, [deck.id]);
 
   const toggleSpread = (spreadId: string) => {
     setExpandedSpreads((prev) => ({
@@ -1033,14 +1066,39 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
     return deck.spreads.filter((spread) => `${spread.title} ${spread.description}`.toLowerCase().includes(normalized));
   }, [deck.id, deck.spreads, query]);
 
+  const groupedBlocks: SpreadBlockResolved[] | null =
+    deck.id === "rws"
+      ? rwsBlocks
+      : deck.id === "lenormand"
+      ? lenormandBlocks
+      : deck.id === "manara"
+      ? manaraBlocks
+      : deck.id === "angels"
+      ? angelsBlocks
+      : deck.id === "golden"
+      ? goldenBlocks
+      : deck.id === "ancestry"
+      ? silaRodaBlocks
+      : deck.id === "metaphoric"
+      ? metaphoricBlocks
+      : null;
+
+  const emptyMessage = deck.id === "rws"
+    ? "Ничего не найдено. Попробуйте запрос по названию, теме или количеству карт."
+    : groupedBlocks
+    ? "Ничего не найдено. Попробуйте запрос по теме или количеству карт."
+    : "Ничего не найдено. Уточните запрос.";
+
+  let spreadRevealIndex = 0;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="spreads-screen spreads-cinematic space-y-4">
+      <div className="spread-reveal flex items-center justify-between" style={{ ["--reveal-delay" as string]: "80ms" } as CSSProperties}>
         <div>
           <button
             type="button"
             onClick={onBack}
-            className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
+            className="spreads-back-button text-xs font-semibold uppercase tracking-[0.35em] text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
           >
             ← Назад
           </button>
@@ -1048,21 +1106,30 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
           {deck.subtitle ? <p className="text-xs text-[var(--text-secondary)]">{deck.subtitle}</p> : null}
         </div>
       </div>
-      <div className="relative">
+
+      <div className="spread-reveal relative" style={{ ["--reveal-delay" as string]: "140ms" } as CSSProperties}>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Поиск: любовь, деньги, кризис, 3 карты..."
-          className="h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] pl-10 pr-4 text-sm text-[var(--text-primary)] shadow-[0_0_24px_rgba(140,90,255,0.2)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
+          className="spreads-search-input h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] pl-10 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none"
         />
       </div>
 
-      {deck.id === "rws" ? (
+      {groupedBlocks ? (
         <div className="space-y-6">
-          {rwsBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
+          {groupedBlocks.map((block, blockIndex) => (
+            <section
+              key={block.id}
+              className="spread-reveal spreads-section space-y-3"
+              style={
+                {
+                  ["--reveal-delay" as string]: prefersReducedMotion ? "0ms" : `${200 + blockIndex * 60}ms`
+                } as CSSProperties
+              }
+            >
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
                 {block.badge ? (
@@ -1072,240 +1139,52 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
                 ) : null}
               </div>
               <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
+                {block.spreads.map((spread) => {
+                  const revealDelay = prefersReducedMotion ? 0 : 240 + spreadRevealIndex * 60;
+                  spreadRevealIndex += 1;
+                  return (
+                    <SpreadCard
+                      key={spread.id}
+                      spread={spread}
+                      deckId={deck.id}
+                      expanded={Boolean(expandedSpreads[spread.id])}
+                      revealDelay={revealDelay}
+                      onToggle={() => toggleSpread(spread.id)}
+                      onSelect={() => handleSelectSpread(spread.id)}
+                      canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+                    />
+                  );
+                })}
               </div>
             </section>
           ))}
-          {rwsBlocks.length === 0 ? (
+          {groupedBlocks.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по названию, теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "lenormand" ? (
-        <div className="space-y-6">
-          {lenormandBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {lenormandBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "manara" ? (
-        <div className="space-y-6">
-          {manaraBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {manaraBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "angels" ? (
-        <div className="space-y-6">
-          {angelsBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {angelsBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "golden" ? (
-        <div className="space-y-6">
-          {goldenBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {goldenBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "ancestry" ? (
-        <div className="space-y-6">
-          {silaRodaBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {silaRodaBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
-            </Card>
-          ) : null}
-        </div>
-      ) : deck.id === "metaphoric" ? (
-        <div className="space-y-6">
-          {metaphoricBlocks.map((block) => (
-            <section key={block.id} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
-                {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
-                    {block.badge}
-                  </span>
-                ) : null}
-              </div>
-              <div className="space-y-3">
-                {block.spreads.map((spread) => (
-                  <SpreadCard
-                    key={spread.id}
-                    spread={spread}
-                    deckId={deck.id}
-                    expanded={Boolean(expandedSpreads[spread.id])}
-                    onToggle={() => toggleSpread(spread.id)}
-                    onSelect={() => handleSelectSpread(spread.id)}
-                    canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          {metaphoricBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Попробуйте запрос по теме или количеству карт.
+              {emptyMessage}
             </Card>
           ) : null}
         </div>
       ) : (
         <div className="space-y-3">
-          {nonRwsSpreads.map((spread) => (
-            <SpreadCard
-              key={spread.id}
-              spread={spread}
-              deckId={deck.id}
-              expanded={Boolean(expandedSpreads[spread.id])}
-              onToggle={() => toggleSpread(spread.id)}
-              onSelect={() => handleSelectSpread(spread.id)}
-              canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
-            />
-          ))}
+          {nonRwsSpreads.map((spread) => {
+            const revealDelay = prefersReducedMotion ? 0 : 240 + spreadRevealIndex * 60;
+            spreadRevealIndex += 1;
+            return (
+              <SpreadCard
+                key={spread.id}
+                spread={spread}
+                deckId={deck.id}
+                expanded={Boolean(expandedSpreads[spread.id])}
+                revealDelay={revealDelay}
+                onToggle={() => toggleSpread(spread.id)}
+                onSelect={() => handleSelectSpread(spread.id)}
+                canSelect={isSpreadAvailableForDeck(deck.id, spread.id)}
+              />
+            );
+          })}
           {nonRwsSpreads.length === 0 ? (
             <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
-              Ничего не найдено. Уточните запрос.
+              {emptyMessage}
             </Card>
           ) : null}
         </div>
@@ -1318,6 +1197,7 @@ interface SpreadCardProps {
   spread: DeckSpread;
   deckId: Deck["id"];
   expanded: boolean;
+  revealDelay: number;
   onToggle: () => void;
   onSelect: () => void;
   canSelect: boolean;
@@ -2364,7 +2244,7 @@ function extractCardsCount(spread: DeckSpread): number {
   return 3;
 }
 
-function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }: SpreadCardProps) {
+function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect, canSelect }: SpreadCardProps) {
   const details =
     deckId === "lenormand"
       ? LENORMAND_SPREAD_DETAILS[spread.id]
@@ -2390,7 +2270,14 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
   const title = hasDetailedContent ? details.header : spread.title;
 
   return (
-    <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)]">
+    <Card
+      className="ritualCard rounded-[24px] p-4"
+      style={
+        {
+          ["--card-delay" as string]: `${Math.max(0, revealDelay)}ms`
+        } as CSSProperties
+      }
+    >
       <div className="space-y-3">
         <div className="space-y-1">
           <h3 className="truncate text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
@@ -2398,28 +2285,28 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
           <p className="truncate text-sm text-[var(--text-secondary)]">{metaLine}</p>
         </div>
         <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2">
-          <span className="inline-flex h-9 min-w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white/95 shadow-[0_0_18px_rgba(140,90,255,0.22)]">
+          <span className="spread-energy-badge inline-flex h-9 min-w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white/95">
             {energyText}
           </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
+            className="spread-toggle-button h-9 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`spread-desc-${spread.id}`}
           >
             Подробнее
-            <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.25 }}>
+            <span className={`spread-chevron ${expanded ? "isExpanded" : ""}`}>
               <ChevronDown className="h-4 w-4" />
-            </motion.span>
+            </span>
           </Button>
           <Button
             type="button"
             size="sm"
             variant="primary"
-            className="h-9 text-xs text-white"
+            className="spread-cta-button h-9 text-xs text-white"
             onClick={onSelect}
             disabled={!canSelect}
           >
@@ -2429,7 +2316,7 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
       </div>
       <Expander isOpen={expanded} ariaId={`spread-desc-${spread.id}`}>
         {hasDetailedContent ? (
-          <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
+          <div className="spread-expanded-panel mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
             <SpreadPreviewByLayout spreadId={spread.id} />
             <div>
               <h4 className="text-base font-semibold text-[var(--text-primary)]">{details.header}</h4>
@@ -2458,7 +2345,7 @@ function SpreadCard({ spread, deckId, expanded, onToggle, onSelect, canSelect }:
             </Button>
           </div>
         ) : (
-          <p>{spread.description}</p>
+          <p className="text-sm text-[var(--text-secondary)]">{spread.description}</p>
         )}
       </Expander>
     </Card>
@@ -2708,13 +2595,17 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
               zIndex: position.z ?? idx + 1
             }}
           >
-            <motion.div
-              style={{ rotate: position.rotate ?? 0 }}
-              animate={{ y: [0, -2, 0] }}
-              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", delay: idx * 0.08 }}
+            <div
+              className="spread-preview-float"
+              style={
+                {
+                  ["--float-delay" as string]: `${idx * 0.08}s`,
+                  ["--preview-rotate" as string]: `${position.rotate ?? 0}deg`
+                } as CSSProperties
+              }
             >
               <CardBack size={cardSize} />
-            </motion.div>
+            </div>
           </div>
         );
       })}

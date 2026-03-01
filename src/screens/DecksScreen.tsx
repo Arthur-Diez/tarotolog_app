@@ -1,6 +1,5 @@
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +7,9 @@ import { Expander } from "@/components/Expander";
 import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
 import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
+import { resolveDeckTheme } from "@/ui/deckTheme";
+import { startTransition } from "@/ui/deckTransitionStore";
+import { applyDeckThemeVariables } from "@/ui/useDeckTheme";
 import "./DecksScreen.css";
 
 interface DecksScreenProps {
@@ -20,14 +22,6 @@ interface DeckContent {
   purpose: string[];
   features: string[];
   animationCaption: string;
-}
-
-interface DeckUiMeta {
-  accentRgb: string;
-  chips: string[];
-  previewStyle?: {
-    glowRgb: string;
-  };
 }
 
 const RWS_FLOW_FACE_CARDS = [
@@ -137,44 +131,6 @@ const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   }
 };
 
-const DECK_UI_META: Record<DeckId, DeckUiMeta> = {
-  rws: {
-    accentRgb: "218 186 126",
-    chips: ["Архетипы", "Саморефлексия"],
-    previewStyle: { glowRgb: "228 197 142" }
-  },
-  lenormand: {
-    accentRgb: "118 164 234",
-    chips: ["События", "Факты"],
-    previewStyle: { glowRgb: "122 177 255" }
-  },
-  manara: {
-    accentRgb: "205 95 138",
-    chips: ["Отношения", "Желания"],
-    previewStyle: { glowRgb: "220 108 152" }
-  },
-  angels: {
-    accentRgb: "141 172 220",
-    chips: ["Поддержка", "Гармония"],
-    previewStyle: { glowRgb: "164 196 240" }
-  },
-  golden: {
-    accentRgb: "231 174 89",
-    chips: ["Классика", "Ясность"],
-    previewStyle: { glowRgb: "237 187 105" }
-  },
-  ancestry: {
-    accentRgb: "187 143 84",
-    chips: ["Род", "Гармония"],
-    previewStyle: { glowRgb: "203 159 102" }
-  },
-  metaphoric: {
-    accentRgb: "165 138 219",
-    chips: ["Саморефлексия", "Инсайты"],
-    previewStyle: { glowRgb: "178 150 232" }
-  }
-};
-
 function getDeckContent(deck: Deck): DeckContent {
   const custom = DECK_CONTENT[deck.id];
   if (custom) return custom;
@@ -185,10 +141,6 @@ function getDeckContent(deck: Deck): DeckContent {
     features: [`• ${deck.spreads.length} раскладов`, "• Интуитивная работа с образами"],
     animationCaption: "Выберите колоду, которая откликается сейчас."
   };
-}
-
-function getDeckUiMeta(deckId: DeckId): DeckUiMeta {
-  return DECK_UI_META[deckId];
 }
 
 function usePageVisibility(): boolean {
@@ -209,15 +161,53 @@ function usePageVisibility(): boolean {
 
 export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   const [expandedDeck, setExpandedDeck] = useState<DeckId | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const isPageVisible = usePageVisibility();
+  const deckRefs = useRef<Partial<Record<DeckId, HTMLDivElement | null>>>({});
+  const transitionTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleDeck = (deckId: DeckId) => {
     setExpandedDeck((prev) => (prev === deckId ? null : deckId));
     navigator.vibrate?.(10);
   };
 
-  const handleSelectDeck = (deckId: DeckId) => {
-    onSelectDeck(deckId);
+  const handleSelectDeck = (deck: Deck, sourceElement?: HTMLElement | null) => {
+    if (isTransitioning) return;
+
+    const rectSource = sourceElement ?? deckRefs.current[deck.id] ?? null;
+    const theme = resolveDeckTheme(deck.id);
+    const reducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
+
+    if (!rectSource || reducedMotion) {
+      applyDeckThemeVariables(theme);
+      onSelectDeck(deck.id);
+      return;
+    }
+
+    const rect = rectSource.getBoundingClientRect();
+    applyDeckThemeVariables(theme);
+    startTransition({
+      deckId: deck.id,
+      title: deck.title,
+      rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height }
+    });
+
+    setIsTransitioning(true);
+    transitionTimerRef.current = window.setTimeout(() => {
+      onSelectDeck(deck.id);
+      setIsTransitioning(false);
+    }, 480);
   };
 
   return (
@@ -237,8 +227,11 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
             content={getDeckContent(deck)}
             expanded={expandedDeck === deck.id}
             animationActive={expandedDeck === deck.id && isPageVisible}
+            cardRef={(node) => {
+              deckRefs.current[deck.id] = node;
+            }}
             onToggle={() => toggleDeck(deck.id)}
-            onSelect={() => handleSelectDeck(deck.id)}
+            onSelect={(sourceElement) => handleSelectDeck(deck, sourceElement)}
           />
         ))}
       </div>
@@ -251,28 +244,31 @@ interface DeckCardProps {
   content: DeckContent;
   expanded: boolean;
   animationActive: boolean;
+  cardRef?: (node: HTMLDivElement | null) => void;
   onToggle: () => void;
-  onSelect: () => void;
+  onSelect: (sourceElement?: HTMLElement | null) => void;
 }
 
-function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect }: DeckCardProps) {
-  const uiMeta = getDeckUiMeta(deck.id);
+function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle, onSelect }: DeckCardProps) {
+  const theme = resolveDeckTheme(deck.id);
   const portalStyle = {
-    ["--deck-accent-rgb" as string]: uiMeta.accentRgb,
-    ["--deck-preview-rgb" as string]: uiMeta.previewStyle?.glowRgb ?? uiMeta.accentRgb
+    ["--deck-accent" as string]: theme.accent,
+    ["--deck-glow" as string]: theme.glow,
+    ["--deck-preview-glow" as string]: theme.glow
   } as CSSProperties;
 
   return (
     <Card
       className={`deck-portal-card isInteractive cursor-pointer rounded-[24px] p-4 transition active:opacity-95 ${expanded ? "isExpanded" : ""}`}
+      ref={cardRef}
       style={portalStyle}
       role="button"
       tabIndex={0}
-      onClick={onSelect}
+      onClick={(event) => onSelect(event.currentTarget)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect();
+          onSelect(event.currentTarget);
         }
       }}
     >
@@ -294,9 +290,9 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
           aria-controls={`deck-desc-${deck.id}`}
         >
           Подробнее
-          <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>
+          <span className={`deck-card-chevron ${expanded ? "isExpanded" : ""}`}>
             <ChevronDown className="h-4 w-4" />
-          </motion.span>
+          </span>
         </Button>
       </div>
 
@@ -324,7 +320,7 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
           <p className="text-center text-xs text-[var(--text-tertiary)]">{content.animationCaption}</p>
 
           <div className="deck-chip-row" aria-label="Характер колоды">
-            {uiMeta.chips.map((chip) => (
+            {theme.chips.filter(Boolean).map((chip) => (
               <span key={`${deck.id}-chip-${chip}`} className="deck-chip">
                 {chip}
               </span>
@@ -351,7 +347,14 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             ))}
           </div>
 
-          <Button type="button" className="w-full" onClick={onSelect}>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect((event.currentTarget.closest(".deck-portal-card") as HTMLElement | null) ?? event.currentTarget);
+            }}
+          >
             Исследовать расклады этой колоды
           </Button>
         </div>
