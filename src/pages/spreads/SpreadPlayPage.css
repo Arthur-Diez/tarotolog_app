@@ -1,0 +1,334 @@
+.ritual-screen {
+  --ritual-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  background: #0b0b12;
+}
+
+.ritual-screen::before,
+.ritual-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ritual-screen::before {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 20% 14%, var(--deck-bg-a, rgba(214, 176, 118, 0.14)) 0%, rgba(255, 255, 255, 0) 48%),
+    radial-gradient(circle at 80% 30%, var(--deck-bg-b, rgba(153, 126, 89, 0.1)) 0%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 36%);
+}
+
+.ritual-screen::after {
+  z-index: 1;
+  opacity: 0.034;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.ritual-environment {
+  z-index: 2;
+}
+
+.ritual-haze {
+  position: absolute;
+  inset: -14% -6%;
+  background:
+    radial-gradient(circle at 30% 30%, var(--deck-bg-a, rgba(214, 176, 118, 0.14)) 0%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(circle at 70% 65%, var(--deck-bg-b, rgba(153, 126, 89, 0.1)) 0%, rgba(255, 255, 255, 0) 60%);
+  opacity: 0.42;
+  filter: blur(18px);
+  animation: ritual-haze-drift 40s ease-in-out infinite alternate;
+}
+
+.ritual-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.35) 100%);
+  opacity: 0.9;
+  transition: opacity 380ms var(--ritual-ease);
+}
+
+.ritual-stardust {
+  position: absolute;
+  inset: 0;
+}
+
+.ritual-stardust-dot {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0) 70%);
+  filter: blur(16px);
+  opacity: 0.04;
+  animation: ritual-stardust-pulse 9s ease-in-out infinite;
+}
+
+.ritual-stardust-dot.dot-1 {
+  top: 10%;
+  left: 8%;
+  animation-delay: 0s;
+}
+
+.ritual-stardust-dot.dot-2 {
+  top: 16%;
+  right: 6%;
+  animation-delay: 0.8s;
+}
+
+.ritual-stardust-dot.dot-3 {
+  top: 38%;
+  left: 14%;
+  animation-delay: 1.6s;
+}
+
+.ritual-stardust-dot.dot-4 {
+  top: 48%;
+  right: 12%;
+  animation-delay: 2.2s;
+}
+
+.ritual-stardust-dot.dot-5 {
+  bottom: 22%;
+  left: 18%;
+  animation-delay: 2.8s;
+}
+
+.ritual-stardust-dot.dot-6 {
+  bottom: 12%;
+  right: 16%;
+  animation-delay: 3.4s;
+}
+
+.ritual-shell {
+  z-index: 5;
+}
+
+.ritual-topbar {
+  transition:
+    opacity 360ms var(--ritual-ease),
+    transform 360ms var(--ritual-ease),
+    filter 360ms var(--ritual-ease);
+}
+
+.ritual-topbar-inner {
+  backdrop-filter: blur(16px);
+}
+
+.ritual-energy-icon {
+  color: var(--deck-accent, rgba(214, 176, 118, 0.92));
+  text-shadow: 0 0 12px var(--deck-glow, rgba(214, 176, 118, 0.16));
+}
+
+.ritual-topbar-inner.is-flash {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 30px var(--deck-glow, rgba(214, 176, 118, 0.16));
+}
+
+.ritual-scene {
+  transition:
+    transform 380ms var(--ritual-ease),
+    filter 380ms var(--ritual-ease);
+}
+
+.ritual-scene-frame {
+  transition:
+    transform 420ms var(--ritual-ease),
+    filter 420ms var(--ritual-ease);
+}
+
+.ritual-scene-halo {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(560px, 92vw);
+  height: min(420px, 68vh);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--deck-glow, rgba(214, 176, 118, 0.16)) 0%, rgba(255, 255, 255, 0) 68%);
+  filter: blur(16px);
+  opacity: 0.84;
+  transition:
+    opacity 340ms var(--ritual-ease),
+    transform 340ms var(--ritual-ease),
+    filter 340ms var(--ritual-ease);
+}
+
+.ritual-deck-shell {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.38));
+  transition: filter 340ms var(--ritual-ease);
+}
+
+.ritual-burst-layer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ritual-burst {
+  width: min(440px, 80vw);
+  height: min(440px, 80vw);
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--deck-accent, rgba(214, 176, 118, 0.92)) 0%, rgba(255, 255, 255, 0) 68%);
+  opacity: 0;
+  transform: scale(0.98);
+  animation: ritual-soft-burst 380ms var(--ritual-ease) forwards;
+}
+
+.ritual-bottom-panel {
+  transition:
+    opacity 360ms var(--ritual-ease),
+    transform 360ms var(--ritual-ease),
+    filter 360ms var(--ritual-ease);
+}
+
+.ritual-question-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    0 0 38px var(--deck-glow, rgba(214, 176, 118, 0.16));
+  backdrop-filter: blur(24px);
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.ritual-question-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 18% 18%, var(--deck-bg-a, rgba(214, 176, 118, 0.14)) 0%, rgba(255, 255, 255, 0) 58%);
+}
+
+.ritual-action-panel {
+  padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+}
+
+.ritual-question-input {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.ritual-question-input:focus-visible {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 0 3px var(--deck-glow, rgba(214, 176, 118, 0.16));
+}
+
+.ritual-focus-blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.001);
+}
+
+.ritual-screen.focusMode .ritual-topbar {
+  opacity: 0.28;
+  transform: translateY(-8px);
+  filter: blur(0.4px);
+}
+
+.ritual-screen.focusMode .ritual-bottom-panel {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
+.ritual-screen.focusMode .ritual-scene-frame {
+  transform: translate3d(0, -6px, 0) scale(1.02);
+}
+
+.ritual-screen.focusMode .ritual-scene-halo {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.18);
+  filter: blur(20px);
+}
+
+.ritual-screen.focusMode .ritual-deck-shell {
+  filter:
+    drop-shadow(0 20px 40px rgba(0, 0, 0, 0.48))
+    drop-shadow(0 0 26px var(--deck-glow, rgba(214, 176, 118, 0.16)));
+}
+
+.ritual-screen.focusMode .ritual-vignette {
+  opacity: 1;
+}
+
+.ritual-screen.cinematicPause .ritual-vignette {
+  opacity: 1;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.04) 30%, rgba(0, 0, 0, 0.52) 100%);
+}
+
+.ritual-screen.cinematicPause .ritual-scene-halo {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ritual-haze,
+  .ritual-stardust-dot,
+  .ritual-burst {
+    animation: none !important;
+  }
+
+  .ritual-haze,
+  .ritual-stardust-dot {
+    opacity: 0.03;
+  }
+
+  .ritual-screen.focusMode .ritual-scene-frame {
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .ritual-topbar,
+  .ritual-bottom-panel,
+  .ritual-scene,
+  .ritual-scene-frame,
+  .ritual-scene-halo,
+  .ritual-vignette,
+  .ritual-deck-shell {
+    transition: none !important;
+  }
+}
+
+@keyframes ritual-haze-drift {
+  0% {
+    transform: translate3d(-1%, -1%, 0) scale(1.01);
+  }
+  100% {
+    transform: translate3d(1.6%, 1.4%, 0) scale(1.05);
+  }
+}
+
+@keyframes ritual-stardust-pulse {
+  0%,
+  100% {
+    opacity: 0.025;
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+
+@keyframes ritual-soft-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  34% {
+    opacity: 0.14;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}

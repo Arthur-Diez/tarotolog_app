@@ -25,6 +25,8 @@ import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 import type { SpreadId } from "@/data/rws_spreads";
 import { DECKS } from "@/data/decks";
+import { useDeckTheme } from "@/ui/useDeckTheme";
+import "./SpreadPlayPage.css";
 
 const DEAL_OFFSET = 96;
 const COLLECT_DURATION = 2.8;
@@ -66,6 +68,24 @@ const normalizeLocale = (value: string | null | undefined): string => {
   const short = normalized.split(/[-_]/)[0];
   return short || "ru";
 };
+
+function usePrefersReducedMotion(): boolean {
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return reducedMotion;
+}
 
 const STATUS_TEXT: Record<BackendReadingStatus, string> = {
   pending: "Готовим расклад",
@@ -111,6 +131,10 @@ export default function SpreadPlayPage() {
 
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
+  const [isCinematicPause, setIsCinematicPause] = useState(false);
+  const [burstVisible, setBurstVisible] = useState(false);
+  const [burstKey, setBurstKey] = useState(0);
+  const [energyFlash, setEnergyFlash] = useState(false);
   const [deckKey, setDeckKey] = useState(0);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isLongWait, setIsLongWait] = useState(false);
@@ -125,6 +149,10 @@ export default function SpreadPlayPage() {
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
+  const pauseTimerRef = useRef<number | null>(null);
+  const burstTimerRef = useRef<number | null>(null);
+  const energyFlashTimerRef = useRef<number | null>(null);
+  const prevEnergyRef = useRef<number | null>(null);
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
   const navigate = useNavigate();
@@ -133,6 +161,7 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const showQuestionBubble = showForm;
+  const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const availableWidth = Math.max(
     MIN_AVAILABLE_WIDTH,
@@ -149,9 +178,47 @@ export default function SpreadPlayPage() {
       ? clamp(fanOuterScale, FAN_STAGE_MIN_SCALE, FAN_STAGE_MAX_SCALE)
       : dealOuterScale;
 
+  useDeckTheme(schema.deckType);
+
+  const isFocusMode =
+    isRunning ||
+    isCinematicPause ||
+    stage === "collecting" ||
+    stage === "shuffling" ||
+    stage === "dealing";
+
   useEffect(() => {
     setSchema(schema);
   }, [schema, setSchema]);
+
+  useEffect(() => {
+    return () => {
+      if (pauseTimerRef.current !== null) {
+        window.clearTimeout(pauseTimerRef.current);
+      }
+      if (burstTimerRef.current !== null) {
+        window.clearTimeout(burstTimerRef.current);
+      }
+      if (energyFlashTimerRef.current !== null) {
+        window.clearTimeout(energyFlashTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof energy !== "number") return;
+    if (prevEnergyRef.current !== null && energy < prevEnergyRef.current) {
+      setEnergyFlash(true);
+      if (energyFlashTimerRef.current !== null) {
+        window.clearTimeout(energyFlashTimerRef.current);
+      }
+      energyFlashTimerRef.current = window.setTimeout(() => {
+        setEnergyFlash(false);
+        energyFlashTimerRef.current = null;
+      }, 420);
+    }
+    prevEnergyRef.current = energy;
+  }, [energy]);
 
   const finishReading = useCallback(
     (response: ViewReadingResponse) => {
@@ -181,6 +248,26 @@ export default function SpreadPlayPage() {
     bubble.style.transform = "";
   };
 
+  const clearCinematicPause = useCallback(() => {
+    if (pauseTimerRef.current !== null) {
+      window.clearTimeout(pauseTimerRef.current);
+      pauseTimerRef.current = null;
+    }
+    setIsCinematicPause(false);
+  }, []);
+
+  const triggerBurst = useCallback(() => {
+    setBurstKey((value) => value + 1);
+    setBurstVisible(true);
+    if (burstTimerRef.current !== null) {
+      window.clearTimeout(burstTimerRef.current);
+    }
+    burstTimerRef.current = window.setTimeout(() => {
+      setBurstVisible(false);
+      burstTimerRef.current = null;
+    }, prefersReducedMotion ? 120 : 380);
+  }, [prefersReducedMotion]);
+
   const stopActiveAnimation = useCallback(() => {
     if (!activeAnimationRef.current) return;
     activeAnimationRef.current.stop();
@@ -200,7 +287,8 @@ export default function SpreadPlayPage() {
     timelineTokenRef.current += 1;
     stopActiveAnimation();
     setIsRunning(false);
-  }, [stopActiveAnimation]);
+    clearCinematicPause();
+  }, [clearCinematicPause, stopActiveAnimation]);
 
   const resetDealHost = useCallback(() => {
     const host = scope.current?.querySelector(".deal-host") as HTMLElement | null;
@@ -231,6 +319,7 @@ export default function SpreadPlayPage() {
     setOrderWarning(null);
     setIsLongWait(false);
     setIsViewLoading(false);
+    setBurstVisible(false);
     resetQuestionBubble();
     resetDealHost();
     resetHint();
@@ -345,15 +434,23 @@ export default function SpreadPlayPage() {
       await wait(WAIT_AFTER_DEAL);
       if (!isActive()) return;
 
+      if (!prefersReducedMotion) {
+        setIsCinematicPause(true);
+        await wait(320);
+        if (!isActive()) return;
+        setIsCinematicPause(false);
+      }
+
       setStage("await_open");
       await animateAndTrack("#flipHint", { opacity: 1, y: 0 }, { duration: HINT_DURATION, ease: "easeOut" });
     } finally {
       if (isActive()) {
         setIsRunning(false);
+        setIsCinematicPause(false);
         activeAnimationRef.current = null;
       }
     }
-  }, [animateAndTrack, dissolveQuestion, runDealSequence, scope, setStage, trimmedQuestion]);
+  }, [animateAndTrack, dissolveQuestion, prefersReducedMotion, runDealSequence, scope, setStage, trimmedQuestion]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
@@ -381,7 +478,8 @@ export default function SpreadPlayPage() {
     await runTimeline();
   };
 
-  const handleCardClick = (positionIndex: number) => {
+  const handleCardClick = async (positionIndex: number) => {
+    if (isCinematicPause) return;
     if (stage !== "await_open" && stage !== "done") return;
     const { allowed, expected } = checkOpeningAllowed(positionIndex);
     if (!allowed) {
@@ -401,6 +499,15 @@ export default function SpreadPlayPage() {
       disableHighlight();
     }
     setOrderWarning(null);
+
+    if (!prefersReducedMotion) {
+      clearCinematicPause();
+      setIsCinematicPause(true);
+      await wait(320);
+      setIsCinematicPause(false);
+    }
+
+    triggerBurst();
     openCard(positionIndex);
   };
 
@@ -624,26 +731,32 @@ export default function SpreadPlayPage() {
   }, [adsgram, hasSubscription, isViewLoading]);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] text-white">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.12) 0%, transparent 40%), radial-gradient(circle at 80% 0%, rgba(177,111,255,0.25) 0%, transparent 45%)",
-          filter: scale < 0.85 ? "blur(1.5px)" : undefined
-        }}
-      />
+    <div
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""}`}
+    >
+      <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
+        <div className="ritual-haze" />
+        <div className="ritual-vignette" />
+        <div className="ritual-stardust">
+          <span className="ritual-stardust-dot dot-1" />
+          <span className="ritual-stardust-dot dot-2" />
+          <span className="ritual-stardust-dot dot-3" />
+          <span className="ritual-stardust-dot dot-4" />
+          <span className="ritual-stardust-dot dot-5" />
+          <span className="ritual-stardust-dot dot-6" />
+        </div>
+      </div>
       <div
         ref={scope}
-        className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
+        className="ritual-shell relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
           perspective: "1200px",
           gap: formGap
         }}
       >
-        <div className="w-full">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-inner">
-            Энергия: {energyLabel} ⚡
+        <div className="ritual-topbar w-full">
+          <div className={`ritual-topbar-inner rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-inner ${energyFlash ? "is-flash" : ""}`}>
+            Энергия: {energyLabel} <span className="ritual-energy-icon">⚡</span>
             {energyError && (
               <button
                 type="button"
@@ -660,26 +773,27 @@ export default function SpreadPlayPage() {
         </div>
         <div
           ref={spreadAreaRef}
-          className="relative"
+          className="ritual-scene relative"
           style={{
             width: "100%",
             display: "flex",
             justifyContent: "center",
             marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
-            pointerEvents: isRunning ? "none" : "auto"
+            pointerEvents: isFocusMode ? "none" : "auto"
           }}
         >
           <div
-            className="relative flex w-full flex-col items-center"
+            className="ritual-scene-frame relative flex w-full flex-col items-center"
             style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
+            <div className="ritual-scene-halo" aria-hidden />
             <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
               <div
-                className="deck-outer"
+                className="deck-outer ritual-deck-shell"
                 style={{ transform: `scale(${deckBaseScale})`, transformOrigin: "center top" }}
               >
-            <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
-          </div>
+                <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+              </div>
             </div>
             <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
               <motion.div
@@ -763,6 +877,11 @@ export default function SpreadPlayPage() {
                 })}
               </motion.div>
             </div>
+            {burstVisible ? (
+              <div className="ritual-burst-layer pointer-events-none absolute inset-0 z-[1120]" aria-hidden>
+                <span key={burstKey} className="ritual-burst" />
+              </div>
+            ) : null}
           </div>
           <div className="pointer-events-none absolute inset-0 z-[1250]">
             <div
@@ -826,7 +945,7 @@ export default function SpreadPlayPage() {
           </div>
         </div>
         {showActionButtons && (
-          <div className="w-full space-y-3" style={{ marginTop: `${actionButtonsOffsetPx}px` }}>
+          <div className="ritual-bottom-panel ritual-action-panel w-full space-y-3" style={{ marginTop: `${actionButtonsOffsetPx}px` }}>
             <Button
               variant="outline"
               className="w-full"
@@ -848,7 +967,7 @@ export default function SpreadPlayPage() {
           <div
             id="questionForm"
             ref={questionFormRef}
-            className="w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
+            className="ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
             style={{
               marginTop: "clamp(-10px, -2vh, -4px)"
             }}
@@ -863,7 +982,7 @@ export default function SpreadPlayPage() {
             </div>
             <textarea
               placeholder="Введите ваш вопрос к картам..."
-              className="text-wrap-anywhere h-28 w-full resize-y rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/70"
+              className="ritual-question-input text-wrap-anywhere h-28 w-full resize-y rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
             />
@@ -876,6 +995,7 @@ export default function SpreadPlayPage() {
         {viewError && <p className="text-center text-sm text-amber-300">{viewError}</p>}
 
       </div>
+      {isFocusMode ? <div className="ritual-focus-blocker" aria-hidden /> : null}
       {isViewLoading && (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6 backdrop-blur">
           <LoadingTarot
