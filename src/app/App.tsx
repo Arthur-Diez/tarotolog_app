@@ -103,7 +103,7 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden px-4 pb-28 pt-8 text-[var(--text-primary)]">
+    <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden px-4 pt-8 text-[var(--text-primary)]">
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -112,7 +112,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="space-y-6 pb-6"
+            className="app-scroll space-y-6"
           >
             <Routes location={location}>
               <Route path="/" element={<HomeScreen telegramUser={telegramUser} />} />

@@ -8,6 +8,7 @@ import { Expander } from "@/components/Expander";
 import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
 import { faceUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
+import "./DecksScreen.css";
 
 interface DecksScreenProps {
   onSelectDeck: (deckId: DeckId) => void;
@@ -19,6 +20,14 @@ interface DeckContent {
   purpose: string[];
   features: string[];
   animationCaption: string;
+}
+
+interface DeckUiMeta {
+  accentRgb: string;
+  chips: string[];
+  previewStyle?: {
+    glowRgb: string;
+  };
 }
 
 const RWS_FLOW_FACE_CARDS = [
@@ -128,6 +137,44 @@ const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   }
 };
 
+const DECK_UI_META: Record<DeckId, DeckUiMeta> = {
+  rws: {
+    accentRgb: "218 186 126",
+    chips: ["Архетипы", "Саморефлексия"],
+    previewStyle: { glowRgb: "228 197 142" }
+  },
+  lenormand: {
+    accentRgb: "118 164 234",
+    chips: ["События", "Факты"],
+    previewStyle: { glowRgb: "122 177 255" }
+  },
+  manara: {
+    accentRgb: "205 95 138",
+    chips: ["Отношения", "Желания"],
+    previewStyle: { glowRgb: "220 108 152" }
+  },
+  angels: {
+    accentRgb: "141 172 220",
+    chips: ["Поддержка", "Гармония"],
+    previewStyle: { glowRgb: "164 196 240" }
+  },
+  golden: {
+    accentRgb: "231 174 89",
+    chips: ["Классика", "Ясность"],
+    previewStyle: { glowRgb: "237 187 105" }
+  },
+  ancestry: {
+    accentRgb: "187 143 84",
+    chips: ["Род", "Гармония"],
+    previewStyle: { glowRgb: "203 159 102" }
+  },
+  metaphoric: {
+    accentRgb: "165 138 219",
+    chips: ["Саморефлексия", "Инсайты"],
+    previewStyle: { glowRgb: "178 150 232" }
+  }
+};
+
 function getDeckContent(deck: Deck): DeckContent {
   const custom = DECK_CONTENT[deck.id];
   if (custom) return custom;
@@ -138,6 +185,10 @@ function getDeckContent(deck: Deck): DeckContent {
     features: [`• ${deck.spreads.length} раскладов`, "• Интуитивная работа с образами"],
     animationCaption: "Выберите колоду, которая откликается сейчас."
   };
+}
+
+function getDeckUiMeta(deckId: DeckId): DeckUiMeta {
+  return DECK_UI_META[deckId];
 }
 
 function usePageVisibility(): boolean {
@@ -170,10 +221,12 @@ export function DecksScreen({ onSelectDeck }: DecksScreenProps) {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Колоды Таро</h1>
-        <p className="text-sm text-[var(--text-secondary)]">Выберите стиль чтения и исследуйте подходящие расклады.</p>
+    <div className="decks-screen space-y-5">
+      <div className="decks-hero space-y-2">
+        <h1 className="decks-hero-title text-2xl font-semibold text-[var(--text-primary)]">Колоды Таро</h1>
+        <p className="decks-hero-subtitle text-sm text-[var(--text-secondary)]">
+          Выберите стиль чтения и исследуйте подходящие расклады.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -203,9 +256,16 @@ interface DeckCardProps {
 }
 
 function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect }: DeckCardProps) {
+  const uiMeta = getDeckUiMeta(deck.id);
+  const portalStyle = {
+    ["--deck-accent-rgb" as string]: uiMeta.accentRgb,
+    ["--deck-preview-rgb" as string]: uiMeta.previewStyle?.glowRgb ?? uiMeta.accentRgb
+  } as CSSProperties;
+
   return (
     <Card
-      className="cursor-pointer rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-4 shadow-[0_25px_50px_rgba(0,0,0,0.55)] transition active:opacity-95"
+      className={`deck-portal-card isInteractive cursor-pointer rounded-[24px] p-4 transition active:opacity-95 ${expanded ? "isExpanded" : ""}`}
+      style={portalStyle}
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -225,7 +285,7 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
           type="button"
           variant="outline"
           size="sm"
-          className="shrink-0 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
+          className="deck-card-toggle shrink-0 gap-1 text-[var(--text-primary)]"
           onClick={(event) => {
             event.stopPropagation();
             onToggle();
@@ -234,32 +294,42 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
           aria-controls={`deck-desc-${deck.id}`}
         >
           Подробнее
-          <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.25 }}>
+          <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.3, ease: "easeInOut" }}>
             <ChevronDown className="h-4 w-4" />
           </motion.span>
         </Button>
       </div>
 
       <Expander isOpen={expanded} ariaId={`deck-desc-${deck.id}`}>
-        <div className="mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
-          {deck.id === "rws" ? (
-            <RwsDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "lenormand" ? (
-            <LenormandDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "manara" ? (
-            <ManaraDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "angels" ? (
-            <AngelsDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "golden" ? (
-            <GoldenDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "ancestry" ? (
-            <SilaRodaDeckFlowPreview isActive={animationActive} />
-          ) : deck.id === "metaphoric" ? (
-            <MetaphoricalDeckFlowPreview isActive={animationActive} />
-          ) : (
-            <StaticDeckPreview />
-          )}
+        <div className="deck-expanded mt-4 space-y-4 rounded-[22px] p-4">
+          <div className="deck-preview-shell">
+            {deck.id === "rws" ? (
+              <RwsDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "lenormand" ? (
+              <LenormandDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "manara" ? (
+              <ManaraDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "angels" ? (
+              <AngelsDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "golden" ? (
+              <GoldenDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "ancestry" ? (
+              <SilaRodaDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : deck.id === "metaphoric" ? (
+              <MetaphoricalDeckFlowPreview isActive={animationActive} className="deck-preview-frame" />
+            ) : (
+              <StaticDeckPreview className="deck-preview-frame" />
+            )}
+          </div>
           <p className="text-center text-xs text-[var(--text-tertiary)]">{content.animationCaption}</p>
+
+          <div className="deck-chip-row" aria-label="Характер колоды">
+            {uiMeta.chips.map((chip) => (
+              <span key={`${deck.id}-chip-${chip}`} className="deck-chip">
+                {chip}
+              </span>
+            ))}
+          </div>
 
           <div className="space-y-2 text-sm text-[var(--text-secondary)]">
             {content.description.map((paragraph) => (
@@ -267,15 +337,15 @@ function DeckCard({ deck, content, expanded, animationActive, onToggle, onSelect
             ))}
           </div>
 
-          <div className="space-y-1 text-sm text-[var(--text-secondary)]">
-            <p className="text-sm font-medium text-[var(--text-primary)]">Для чего подходит</p>
+          <div className="deck-section space-y-1 text-sm text-[var(--text-secondary)]">
+            <p className="deck-section-title">Для чего подходит</p>
             {content.purpose.map((line) => (
               <p key={`${deck.id}-purpose-${line}`}>{line}</p>
             ))}
           </div>
 
-          <div className="space-y-1 text-sm text-[var(--text-secondary)]">
-            <p className="text-sm font-medium text-[var(--text-primary)]">Особенности</p>
+          <div className="deck-section space-y-1 text-sm text-[var(--text-secondary)]">
+            <p className="deck-section-title">Особенности</p>
             {content.features.map((line) => (
               <p key={`${deck.id}-feature-${line}`}>{line}</p>
             ))}
@@ -295,7 +365,7 @@ function FaceCard({ name, size = 56, className = "", style }: { name: string; si
     <img
       src={faceUrl("rws", name)}
       alt={name}
-      className={`rounded-[10px] object-cover shadow-[0_14px_24px_rgba(0,0,0,0.4)] ${className}`}
+      className={`rounded-[10px] object-cover shadow-[0_14px_24px_rgba(0,0,0,0.4)] deck-preview-card ${className}`}
       style={{ width: `${size}px`, height: `${Math.round(size * 1.5)}px`, ...style }}
       draggable={false}
       loading="eager"
@@ -303,7 +373,7 @@ function FaceCard({ name, size = 56, className = "", style }: { name: string; si
   );
 }
 
-function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function RwsDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={RWS_FLOW_CARD_URLS}
@@ -312,11 +382,12 @@ function RwsDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function LenormandDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function LenormandDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={LENORMAND_FLOW_CARD_URLS}
@@ -325,11 +396,12 @@ function LenormandDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function ManaraDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function ManaraDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={MANARA_FLOW_CARD_URLS}
@@ -338,11 +410,12 @@ function ManaraDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function AngelsDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function AngelsDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={ANGELS_FLOW_CARD_URLS}
@@ -351,11 +424,12 @@ function AngelsDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function GoldenDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function GoldenDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={GOLDEN_FLOW_CARD_URLS}
@@ -364,11 +438,12 @@ function GoldenDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function SilaRodaDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function SilaRodaDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={SILA_RODA_FLOW_CARD_URLS}
@@ -377,11 +452,12 @@ function SilaRodaDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function MetaphoricalDeckFlowPreview({ isActive }: { isActive: boolean }) {
+function MetaphoricalDeckFlowPreview({ isActive, className = "" }: { isActive: boolean; className?: string }) {
   return (
     <DeckShowcaseAnimation
       cards={METAPHORICAL_FLOW_CARD_URLS}
@@ -390,13 +466,14 @@ function MetaphoricalDeckFlowPreview({ isActive }: { isActive: boolean }) {
       overlapPx={10}
       scaleMoving={1.08}
       scaleDeck={1}
+      className={className}
     />
   );
 }
 
-function StaticDeckPreview() {
+function StaticDeckPreview({ className = "" }: { className?: string }) {
   return (
-    <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+    <div className={`relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 ${className}`}>
       <div className="absolute h-24 w-24 rounded-full bg-[rgba(140,90,255,0.2)] blur-2xl" />
       <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute -ml-16 opacity-80" />
       <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute" />

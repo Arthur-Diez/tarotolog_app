@@ -189,6 +189,10 @@
 }
 
 @layer utilities {
+  .app-scroll {
+    padding-bottom: calc(var(--tabbar-height, 88px) + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
   .breathing-card {
     animation: breathing-card 2.8s ease-in-out infinite;
   }

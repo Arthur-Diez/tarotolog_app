@@ -1,0 +1,307 @@
+.decks-screen {
+  position: relative;
+  isolation: isolate;
+}
+
+.decks-screen::before,
+.decks-screen::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.decks-screen::before {
+  z-index: -2;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(228, 195, 141, 0.12) 0%, rgba(228, 195, 141, 0) 42%),
+    radial-gradient(circle at 84% 8%, rgba(124, 168, 239, 0.11) 0%, rgba(124, 168, 239, 0) 45%),
+    radial-gradient(circle at 52% 88%, rgba(171, 145, 230, 0.1) 0%, rgba(171, 145, 230, 0) 48%),
+    #0b0b12;
+  background-size: 120% 120%, 130% 130%, 120% 120%, 100% 100%;
+  background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%;
+  animation: decksBackgroundDrift 24s ease-in-out infinite alternate;
+}
+
+.decks-screen::after {
+  z-index: -1;
+  opacity: 0.034;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.decks-hero {
+  position: relative;
+  z-index: 1;
+}
+
+.decks-hero-title {
+  position: relative;
+  width: fit-content;
+  text-shadow:
+    0 0 12px rgba(241, 214, 170, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.decks-hero-title::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  bottom: -6px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(237, 200, 142, 0.24) 0%, rgba(237, 200, 142, 0) 72%);
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.decks-hero-subtitle {
+  max-width: 30rem;
+}
+
+.deck-portal-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(22px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    0 0 40px rgb(var(--deck-accent-rgb) / 0.14);
+  transition:
+    transform 320ms ease,
+    box-shadow 320ms ease,
+    border-color 320ms ease,
+    background-color 320ms ease;
+}
+
+.deck-portal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 20%, rgb(var(--deck-accent-rgb) / 0.18) 0%, rgba(255, 255, 255, 0) 58%);
+}
+
+.deck-portal-card::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 0;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgb(var(--deck-accent-rgb) / 0.82), rgba(255, 255, 255, 0));
+  opacity: 0.9;
+  animation: deckAuraBreathing 7s ease-in-out infinite;
+}
+
+.deck-portal-card.isExpanded {
+  border-color: rgb(var(--deck-accent-rgb) / 0.4);
+  box-shadow:
+    0 24px 44px rgba(0, 0, 0, 0.42),
+    inset 0 1px 1px rgba(255, 255, 255, 0.06),
+    0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+}
+
+.deck-portal-card.isInteractive:active {
+  transform: translateY(-4px) scale(1.008);
+}
+
+.deck-portal-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 24px 44px rgba(0, 0, 0, 0.42),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    0 0 0 2px rgb(var(--deck-accent-rgb) / 0.38),
+    0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+}
+
+.deck-card-toggle {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    color 260ms ease;
+}
+
+.deck-card-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.deck-card-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.16),
+    0 0 0 4px rgb(var(--deck-accent-rgb) / 0.28);
+}
+
+.deck-expanded {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(11, 13, 21, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.deck-preview-shell {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.deck-preview-shell::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--deck-preview-rgb) / 0.24) 0%, rgba(255, 255, 255, 0) 66%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.deck-preview-frame {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.44),
+    0 0 24px rgb(var(--deck-preview-rgb) / 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.deck-preview-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(11, 13, 21, 0.02) 0%, rgba(11, 13, 21, 0.3) 100%);
+}
+
+.deck-preview-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.deck-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.deck-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.deck-section {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.deck-section-title {
+  margin-bottom: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.tg-light .decks-screen::before {
+  background:
+    radial-gradient(circle at 16% 18%, rgba(189, 148, 80, 0.14) 0%, rgba(189, 148, 80, 0) 44%),
+    radial-gradient(circle at 84% 8%, rgba(100, 138, 212, 0.14) 0%, rgba(100, 138, 212, 0) 46%),
+    radial-gradient(circle at 52% 88%, rgba(153, 126, 214, 0.12) 0%, rgba(153, 126, 214, 0) 50%),
+    #f2eff7;
+}
+
+.tg-light .deck-portal-card {
+  border-color: rgba(18, 14, 23, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow:
+    0 20px 40px rgba(14, 11, 20, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.68),
+    0 0 38px rgb(var(--deck-accent-rgb) / 0.16);
+}
+
+.tg-light .deck-expanded {
+  border-color: rgba(18, 14, 23, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.tg-light .deck-card-toggle {
+  border-color: rgba(18, 14, 23, 0.12);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.tg-light .deck-chip {
+  border-color: rgba(18, 14, 23, 0.12);
+  background: rgba(18, 14, 23, 0.06);
+  color: rgba(18, 14, 23, 0.84);
+}
+
+.tg-light .deck-section {
+  border-top-color: rgba(18, 14, 23, 0.12);
+}
+
+.tg-light .deck-section-title {
+  color: rgba(18, 14, 23, 0.9);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .deck-portal-card.isInteractive:hover {
+    transform: translateY(-6px) scale(1.01);
+    border-color: rgb(var(--deck-accent-rgb) / 0.34);
+    box-shadow:
+      0 24px 46px rgba(0, 0, 0, 0.44),
+      inset 0 1px 1px rgba(255, 255, 255, 0.06),
+      0 0 40px rgb(var(--deck-accent-rgb) / 0.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decks-screen::before,
+  .deck-portal-card::after {
+    animation: none !important;
+  }
+
+  .deck-portal-card,
+  .deck-card-toggle {
+    transition: none !important;
+  }
+}
+
+@keyframes decksBackgroundDrift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%;
+  }
+  100% {
+    background-position: 10% 8%, 92% 7%, 45% 94%, 0% 0%;
+  }
+}
+
+@keyframes deckAuraBreathing {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
