@@ -36,8 +36,36 @@ const QUESTION_FLY_DURATION = 0.9;
 const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
 const VIEW_POLL_INTERVAL = 2000;
-const VIEW_POLL_TIMEOUT = 30000;
 const LONG_WAIT_THRESHOLD = 15000;
+const LOADING_HINT_ROTATE_INTERVAL = 4500;
+const INTERPRETATION_LOADING_HINTS = [
+  {
+    message: "Читаем связи между картами",
+    subMessage: "Собираем общий сюжет расклада и ключевые акценты"
+  },
+  {
+    message: "Формируем интерпретацию",
+    subMessage: "Учитываем позиции карт, вопрос и динамику расклада"
+  },
+  {
+    message: "Уточняем практический совет",
+    subMessage: "Подбираем ясные выводы без воды и драматизации"
+  }
+] as const;
+const INTERPRETATION_LOADING_HINTS_LONG_WAIT = [
+  {
+    message: "Интерпретация требует больше времени",
+    subMessage: "Расклад в работе, продолжаем ждать результат"
+  },
+  {
+    message: "Детализируем ответ",
+    subMessage: "Проверяем связность и глубину трактовки карт"
+  },
+  {
+    message: "Почти готово",
+    subMessage: "Скоро откроем финальную интерпретацию расклада"
+  }
+] as const;
 const ADSGRAM_INTERSTITIAL_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
 const DEALT_CARD_HEIGHT = 240;
@@ -138,6 +166,7 @@ export default function SpreadPlayPage() {
   const [deckKey, setDeckKey] = useState(0);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isLongWait, setIsLongWait] = useState(false);
+  const [loadingHintIndex, setLoadingHintIndex] = useState(0);
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
@@ -183,6 +212,8 @@ export default function SpreadPlayPage() {
   const isFocusMode =
     isCinematicPause || stage === "collecting" || stage === "shuffling" || stage === "dealing";
   const shouldBlockInteractions = isFocusMode && stage !== "await_open" && stage !== "done";
+  const interpretationHints = isLongWait ? INTERPRETATION_LOADING_HINTS_LONG_WAIT : INTERPRETATION_LOADING_HINTS;
+  const loadingHint = interpretationHints[loadingHintIndex % interpretationHints.length];
 
   useEffect(() => {
     setSchema(schema);
@@ -216,6 +247,23 @@ export default function SpreadPlayPage() {
     }
     prevEnergyRef.current = energy;
   }, [energy]);
+
+  useEffect(() => {
+    if (!isViewLoading) {
+      setLoadingHintIndex(0);
+      return;
+    }
+    setLoadingHintIndex(0);
+    const timer = window.setInterval(() => {
+      setLoadingHintIndex((value) => value + 1);
+    }, LOADING_HINT_ROTATE_INTERVAL);
+    return () => window.clearInterval(timer);
+  }, [isViewLoading]);
+
+  useEffect(() => {
+    if (!isViewLoading || !isLongWait) return;
+    setLoadingHintIndex(0);
+  }, [isLongWait, isViewLoading]);
 
   const finishReading = useCallback(
     (response: ViewReadingResponse) => {
@@ -514,6 +562,7 @@ export default function SpreadPlayPage() {
     setIsViewLoading(true);
 
     const startedAt = Date.now();
+    let longWaitNotified = false;
     let ensuredReadingId = readingId;
 
     try {
@@ -558,36 +607,32 @@ export default function SpreadPlayPage() {
         throw new Error("Не удалось создать расклад. Попробуйте снова.");
       }
 
-      const deadline = startedAt + VIEW_POLL_TIMEOUT;
-      while (Date.now() < deadline) {
+      while (true) {
         const reading = await getReading(ensuredReadingId);
         setBackendMeta({ backendStatus: reading.status, readingId: ensuredReadingId });
 
-        if (reading.status === "ready" && reading.output_payload) {
+        if (reading.status === "ready") {
           const viewResponse = await viewReading(ensuredReadingId);
-          if (!viewResponse.output_payload) {
-            throw new Error("Интерпретация ещё не готова. Попробуйте позже.");
+          if (viewResponse.output_payload) {
+            finishReading({
+              ...viewResponse,
+              summary_text: viewResponse.summary_text ?? ""
+            });
+            return;
           }
-          finishReading({
-            ...viewResponse,
-            summary_text: viewResponse.summary_text ?? ""
-          });
-          return;
         }
 
         if (reading.status === "error") {
           throw new Error(reading.error || "Произошла ошибка при подготовке расклада");
         }
 
-        if (Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
+        if (!longWaitNotified && Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
+          longWaitNotified = true;
           setIsLongWait(true);
         }
 
         await wait(VIEW_POLL_INTERVAL);
       }
-
-      setIsLongWait(true);
-      setViewError("Расклад готовится дольше обычного. Попробуйте позже.");
     } catch (error) {
       console.error(error);
       setBackendMeta({ backendStatus: "error", readingId: ensuredReadingId });
@@ -996,12 +1041,8 @@ export default function SpreadPlayPage() {
       {isViewLoading && (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6 backdrop-blur">
           <LoadingTarot
-            message={isLongWait ? "Расклад готовится дольше обычного" : "Получаем интерпретацию"}
-            subMessage={
-              isLongWait
-                ? "Колода всё ещё работает... немного терпения"
-                : "Собираем карты и ждём подсказку мастера"
-            }
+            message={loadingHint.message}
+            subMessage={loadingHint.subMessage}
           />
         </div>
       )}
