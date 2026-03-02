@@ -182,6 +182,11 @@
     border-radius: 32px;
   }
 
+  body.spread-play-fullbleed::before,
+  body.spread-play-fullbleed::after {
+    border-radius: 0;
+  }
+
   #root {
     @apply relative min-h-screen;
     z-index: 1;

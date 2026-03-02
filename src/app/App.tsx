@@ -26,6 +26,7 @@ export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
   const settingsTheme = settings?.theme;
   const location = useLocation();
+  const isSpreadPlayRoute = location.pathname.startsWith("/spreads/play/");
   const { loading: profileLoading, error: profileError, profile, refresh } = useProfile();
   const [spreadsView, setSpreadsView] = useState<{ screen: "decks" | "spreads"; deckId?: DeckId }>(
     { screen: "decks" }
@@ -62,6 +63,13 @@ export default function App() {
       setSpreadsView({ screen: "decks" });
     }
   }, [location.pathname, spreadsView.screen]);
+
+  useEffect(() => {
+    document.body.classList.toggle("spread-play-fullbleed", isSpreadPlayRoute);
+    return () => {
+      document.body.classList.remove("spread-play-fullbleed");
+    };
+  }, [isSpreadPlayRoute]);
 
   const isInitLoading = status === "idle" || status === "loading";
   const isProfileLoading = profileLoading && !profile;
@@ -104,7 +112,11 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden px-4 pt-8 text-[var(--text-primary)]">
+    <div
+      className={`mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden text-[var(--text-primary)] ${
+        isSpreadPlayRoute ? "px-0 pt-0" : "px-4 pt-8"
+      }`}
+    >
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -113,7 +125,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="app-scroll space-y-6"
+            className={isSpreadPlayRoute ? "app-scroll" : "app-scroll space-y-6"}
           >
             <Routes location={location}>
               <Route path="/" element={<HomeScreen telegramUser={telegramUser} />} />
