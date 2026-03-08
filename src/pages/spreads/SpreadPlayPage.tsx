@@ -37,7 +37,6 @@ const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
 const VIEW_POLL_INTERVAL = 2000;
 const LONG_WAIT_THRESHOLD = 15000;
-const MAX_INTERPRETATION_WAIT = 8 * 60 * 1000;
 const READY_WITHOUT_PAYLOAD_RETRY_LIMIT = 3;
 const LOADING_HINT_ROTATE_INTERVAL = 4500;
 const INTERPRETATION_LOADING_HINTS = [
@@ -566,55 +565,51 @@ export default function SpreadPlayPage() {
     const startedAt = Date.now();
     let longWaitNotified = false;
     let readyWithoutPayloadRetries = 0;
+    let retriedAfterProcessingTimeout = false;
     let ensuredReadingId = readingId;
 
     try {
-      if (!ensuredReadingId) {
-        const snapshot = useSpreadStore.getState();
-        const deckTitle = DECKS.find((deck) => deck.id === snapshot.schema.deckType)?.title ?? snapshot.schema.deckType;
-        const interfaceLocale = normalizeLocale(
-          window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
-        );
-        const cardsPayload = snapshot.cards.map((card) => {
-          const code = mapCardNameToCode(card.name, snapshot.schema.deckType);
-          if (!code) {
-            throw new Error("Не удалось определить код карты. Попробуйте заново.");
-          }
-          const positionLabel = snapshot.schema.positions.find(
-            (position) => position.id === card.positionIndex
-          )?.label;
-          return {
-            position_index: card.positionIndex,
-            card_code: code,
-            reversed: card.reversed,
-            position_label: positionLabel,
-            card_name: card.name
-          };
-        });
-
-        const response = await createReading({
-          type: "tarot",
-          spread_id: snapshot.schema.id,
-          spread_title: snapshot.schema.name,
-          deck_id: snapshot.schema.deckType,
-          deck_title: deckTitle,
-          question: snapshot.question.trim(),
-          locale: interfaceLocale,
-          cards: cardsPayload
-        });
-        ensuredReadingId = response.id;
-        setBackendMeta({ readingId: response.id, backendStatus: response.status });
-      }
-
-      if (!ensuredReadingId) {
-        throw new Error("Не удалось создать расклад. Попробуйте снова.");
-      }
-
       while (true) {
-        if (Date.now() - startedAt >= MAX_INTERPRETATION_WAIT) {
-          throw new Error(
-            "Интерпретация не получена за длительное время. Проверьте статус сервера и попробуйте снова."
+        if (!ensuredReadingId) {
+          const snapshot = useSpreadStore.getState();
+          const deckTitle =
+            DECKS.find((deck) => deck.id === snapshot.schema.deckType)?.title ?? snapshot.schema.deckType;
+          const interfaceLocale = normalizeLocale(
+            window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
           );
+          const cardsPayload = snapshot.cards.map((card) => {
+            const code = mapCardNameToCode(card.name, snapshot.schema.deckType);
+            if (!code) {
+              throw new Error("Не удалось определить код карты. Попробуйте заново.");
+            }
+            const positionLabel = snapshot.schema.positions.find(
+              (position) => position.id === card.positionIndex
+            )?.label;
+            return {
+              position_index: card.positionIndex,
+              card_code: code,
+              reversed: card.reversed,
+              position_label: positionLabel,
+              card_name: card.name
+            };
+          });
+
+          const response = await createReading({
+            type: "tarot",
+            spread_id: snapshot.schema.id,
+            spread_title: snapshot.schema.name,
+            deck_id: snapshot.schema.deckType,
+            deck_title: deckTitle,
+            question: snapshot.question.trim(),
+            locale: interfaceLocale,
+            cards: cardsPayload
+          });
+          ensuredReadingId = response.id;
+          setBackendMeta({ readingId: response.id, backendStatus: response.status });
+        }
+
+        if (!ensuredReadingId) {
+          throw new Error("Не удалось создать расклад. Попробуйте снова.");
         }
 
         const reading = await getReading(ensuredReadingId);
@@ -640,7 +635,23 @@ export default function SpreadPlayPage() {
         }
 
         if (reading.status === "error") {
-          throw new Error(reading.error || "Произошла ошибка при подготовке расклада");
+          const backendError = (reading.error || "").trim();
+          const normalizedBackendError = backendError.toLowerCase();
+          const isRetryableTimeout =
+            normalizedBackendError === "reading_processing_timeout" ||
+            normalizedBackendError.startsWith("processing_timeout_") ||
+            normalizedBackendError.startsWith("openai_request_timeout_after_");
+
+          if (isRetryableTimeout && !retriedAfterProcessingTimeout) {
+            retriedAfterProcessingTimeout = true;
+            ensuredReadingId = undefined;
+            readyWithoutPayloadRetries = 0;
+            setBackendMeta({ readingId: undefined, backendStatus: "pending" });
+            await wait(900);
+            continue;
+          }
+
+          throw new Error(backendError || "Произошла ошибка при подготовке расклада");
         }
 
         if (!longWaitNotified && Date.now() - startedAt >= LONG_WAIT_THRESHOLD) {
