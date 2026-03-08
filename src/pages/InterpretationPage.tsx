@@ -567,13 +567,13 @@ export default function InterpretationPage() {
           {headlineText ? (
             <div className="space-y-2 rounded-[28px] border border-[var(--accent-pink)]/35 bg-gradient-to-br from-[var(--accent-pink)]/25 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
               <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Ключевой акцент</p>
-              <p className="text-xl font-semibold leading-relaxed">{headlineText}</p>
+              <p className="text-xl font-semibold leading-relaxed whitespace-pre-line break-words">{headlineText}</p>
             </div>
           ) : null}
 
           <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Итоговая интерпретация</p>
-            <p className="text-lg font-semibold leading-relaxed">{summaryText}</p>
+            <p className="text-lg font-semibold leading-relaxed whitespace-pre-line break-words">{summaryText}</p>
           </div>
 
           {analysisSections.length > 0 ? (
@@ -581,7 +581,7 @@ export default function InterpretationPage() {
               {analysisSections.map((section) => (
                 <div key={section.key} className="rounded-2xl border border-white/10 bg-[var(--bg-card)]/80 p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{section.title}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{section.text}</p>
+                  <p className="mt-2 text-sm leading-relaxed whitespace-pre-line break-words text-[var(--text-primary)]">{section.text}</p>
                 </div>
               ))}
             </div>
@@ -619,7 +619,7 @@ export default function InterpretationPage() {
                           {metaLine ? <p className="text-[11px] text-[var(--text-secondary)]">{metaLine}</p> : null}
                         </div>
                       </div>
-                      {card.meaning ? <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{card.meaning}</p> : null}
+                      {card.meaning ? <p className="mt-3 text-sm leading-relaxed whitespace-pre-line break-words text-[var(--text-primary)]">{card.meaning}</p> : null}
                     </div>
                   );
                 })}
