@@ -40,12 +40,20 @@ interface ReadingInputMeta {
 
 interface NormalizedOutputCard {
   position: number;
+  positionLabel: string | null;
   card_code: string;
   reversed: boolean;
+  meaning: string | null;
 }
 
 interface NormalizedOutput {
+  headline: string | null;
   summary: string | null;
+  coreTheme: string | null;
+  dynamics: string | null;
+  risks: string | null;
+  opportunities: string | null;
+  advice: string | null;
   generatedAt?: string;
   cards: NormalizedOutputCard[];
 }
@@ -123,15 +131,32 @@ function coerceObject(payload: unknown): Record<string, unknown> | null {
 function normalizeOutput(payload: unknown): NormalizedOutput {
   const obj = coerceObject(payload);
   if (!obj) {
-    return { summary: null, cards: [] };
+    return {
+      headline: null,
+      summary: null,
+      coreTheme: null,
+      dynamics: null,
+      risks: null,
+      opportunities: null,
+      advice: null,
+      cards: []
+    };
   }
 
-  const summary =
-    typeof obj.summary === "string"
-      ? obj.summary
-      : typeof obj.interpretation === "string"
-      ? obj.interpretation
-      : null;
+  const pickText = (...values: unknown[]): string | null => {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return null;
+  };
+
+  const headline = pickText(obj.headline);
+  const summary = pickText(obj.summary, obj.interpretation);
+  const coreTheme = pickText(obj.core_theme, obj.coreTheme);
+  const dynamics = pickText(obj.dynamics);
+  const risks = pickText(obj.risks);
+  const opportunities = pickText(obj.opportunities);
+  const advice = pickText(obj.advice);
   const generatedAt = typeof obj.generated_at === "string" ? obj.generated_at : undefined;
   const cardsSource =
     (Array.isArray(obj.cards) && obj.cards) ||
@@ -161,13 +186,15 @@ function normalizeOutput(payload: unknown): NormalizedOutput {
           if (!rawCard) return null;
           const cardCode = mapCardValueToCode(rawCard);
           if (!cardCode) return null;
-          const reversed = Boolean(cObj.reversed);
-          return { position, card_code: cardCode, reversed };
+          const reversed = typeof cObj.reversed === "boolean" ? cObj.reversed : cObj.orientation === "reversed";
+          const positionLabel = typeof cObj.position_label === "string" ? cObj.position_label : null;
+          const meaning = pickText(cObj.meaning, cObj.interpretation, cObj.note);
+          return { position, positionLabel, card_code: cardCode, reversed, meaning };
         })
         .filter(Boolean) as NormalizedOutputCard[])
     : [];
 
-  return { summary, generatedAt, cards };
+  return { headline, summary, coreTheme, dynamics, risks, opportunities, advice, generatedAt, cards };
 }
 
 function normalizeSummaryText(raw: string | null): string | null {
@@ -272,8 +299,22 @@ export default function InterpretationPage() {
   }, [fetchReading, id, initialReading]);
 
   const output = useMemo(() => normalizeOutput(reading?.output_payload), [reading?.output_payload]);
+  const outputCardByPosition = useMemo(() => {
+    const map = new Map<number, NormalizedOutputCard>();
+    output.cards.forEach((card) => {
+      map.set(card.position, card);
+    });
+    return map;
+  }, [output.cards]);
   // Source of truth for drawn cards is input_payload; model output can vary in formatting.
-  const cards = inputMeta?.cards?.length ? inputMeta.cards : output.cards;
+  const cards = useMemo(() => {
+    if (inputMeta?.cards?.length) {
+      return [...inputMeta.cards].sort((a, b) => a.position - b.position);
+    }
+    return output.cards
+      .map((card) => ({ position: card.position, card_code: card.card_code, reversed: card.reversed }))
+      .sort((a, b) => a.position - b.position);
+  }, [inputMeta?.cards, output.cards]);
   const questionText = inputMeta?.question ?? "Вопрос не указан";
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
@@ -333,8 +374,15 @@ export default function InterpretationPage() {
     }
     return "Расклад";
   }, [inputMeta?.spreadId]);
-  const summaryText =
-    normalizeSummaryText(output.summary ?? reading?.summary_text ?? null) ?? "Интерпретация готовится...";
+  const headlineText = normalizeSummaryText(output.headline ?? null);
+  const summaryText = normalizeSummaryText(output.summary ?? reading?.summary_text ?? null) ?? "Интерпретация готовится...";
+  const analysisSections = [
+    { key: "core_theme", title: "Главная тема", text: normalizeSummaryText(output.coreTheme) },
+    { key: "dynamics", title: "Динамика ситуации", text: normalizeSummaryText(output.dynamics) },
+    { key: "risks", title: "Риски", text: normalizeSummaryText(output.risks) },
+    { key: "opportunities", title: "Возможности", text: normalizeSummaryText(output.opportunities) },
+    { key: "advice", title: "Практический совет", text: normalizeSummaryText(output.advice) }
+  ].filter((section) => Boolean(section.text));
 
   const positionLabelMap = useMemo(() => {
     const spreadId = inputMeta?.spreadId;
@@ -351,6 +399,7 @@ export default function InterpretationPage() {
   const activeDeckCardNameMap = cardNameMapByDeck[resolvedDeckId];
 
   const cardDisplayList = cards.map((card) => {
+    const outputCard = outputCardByPosition.get(card.position);
     const assetName = activeDeckCardNameMap.get(card.card_code) ?? null;
     const friendlyName =
       assetName ??
@@ -370,7 +419,8 @@ export default function InterpretationPage() {
       ...card,
       displayName: friendlyName,
       assetName,
-      positionLabel: positionLabelMap.get(card.position) ?? `Позиция ${card.position}`
+      positionLabel: outputCard?.positionLabel ?? positionLabelMap.get(card.position) ?? `Позиция ${card.position}`,
+      meaning: normalizeSummaryText(outputCard?.meaning ?? null)
     };
   });
 
@@ -509,52 +559,75 @@ export default function InterpretationPage() {
 
       {!loading && !error && reading && (
         <div className="space-y-5">
-        <div className="space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
-          <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
-          <p className="text-base text-[var(--text-primary)]">{questionText}</p>
-        </div>
+          <div className="space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
+            <p className="text-base text-[var(--text-primary)]">{questionText}</p>
+          </div>
 
-        <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Интерпретация расклада</p>
-          <p className="text-lg font-semibold leading-relaxed">{summaryText}</p>
-        </div>
-
-        <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
-          {cardDisplayList.length > 0 ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {cardDisplayList.map((card) => {
-                const metaLine = [card.positionLabel, card.reversed ? "Перевёрнута" : ""].filter(Boolean).join(" • ");
-                return (
-                  <div
-                    key={`${card.position}-${card.card_code}`}
-                    className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3 text-center"
-                  >
-                    {card.assetName ? (
-                      <CardFaceImage
-                        deckId={resolvedDeckId}
-                        cardName={card.assetName}
-                        alt={card.displayName}
-                        className="h-28 w-20 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-28 w-20 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-[10px] text-white/70">
-                        {card.displayName}
-                      </div>
-                    )}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">{card.displayName}</p>
-                      {metaLine ? <p className="text-[11px] text-[var(--text-secondary)]">{metaLine}</p> : null}
-                    </div>
-                  </div>
-                );
-              })}
+          {headlineText ? (
+            <div className="space-y-2 rounded-[28px] border border-[var(--accent-pink)]/35 bg-gradient-to-br from-[var(--accent-pink)]/25 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Ключевой акцент</p>
+              <p className="text-xl font-semibold leading-relaxed">{headlineText}</p>
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-[var(--text-secondary)]">Карты пока не доступны.</p>
-          )}
-        </div>
+          ) : null}
+
+          <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Итоговая интерпретация</p>
+            <p className="text-lg font-semibold leading-relaxed">{summaryText}</p>
+          </div>
+
+          {analysisSections.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {analysisSections.map((section) => (
+                <div key={section.key} className="rounded-2xl border border-white/10 bg-[var(--bg-card)]/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{section.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{section.text}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
+            {cardDisplayList.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {cardDisplayList.map((card) => {
+                  const metaLine = [`Позиция ${card.position}`, card.positionLabel, card.reversed ? "Перевёрнута" : ""]
+                    .filter(Boolean)
+                    .join(" • ");
+                  return (
+                    <div
+                      key={`${card.position}-${card.card_code}`}
+                      className="rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        {card.assetName ? (
+                          <CardFaceImage
+                            deckId={resolvedDeckId}
+                            cardName={card.assetName}
+                            alt={card.displayName}
+                            className="h-20 w-14 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-14 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-[10px] text-white/70">
+                            {card.displayName}
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">{card.displayName}</p>
+                          {metaLine ? <p className="text-[11px] text-[var(--text-secondary)]">{metaLine}</p> : null}
+                        </div>
+                      </div>
+                      {card.meaning ? <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{card.meaning}</p> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-[var(--text-secondary)]">Карты пока не доступны.</p>
+            )}
+          </div>
 
         <Button
           className="w-full"

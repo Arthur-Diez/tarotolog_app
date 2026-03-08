@@ -23,7 +23,8 @@ export function ReadingResultModal({
   }
 
   const cards = outputPayload?.cards ?? [];
-  const interpretation = outputPayload?.interpretation;
+  const headline = outputPayload?.headline;
+  const interpretation = outputPayload?.summary ?? outputPayload?.interpretation;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
@@ -34,6 +35,7 @@ export function ReadingResultModal({
         </div>
         <div className="space-y-3 rounded-2xl bg-white/5 p-4 text-left">
           <p className="text-sm text-white/70">Краткий итог</p>
+          {headline ? <p className="text-xs text-white/60">{headline}</p> : null}
           <p className="text-base font-medium text-white">
             {summaryText || interpretation || "Скоро здесь появится интерпретация для вашей карты."}
           </p>

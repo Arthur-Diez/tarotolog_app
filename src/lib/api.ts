@@ -247,18 +247,29 @@ export interface HoroscopeFreeTodayResponse {
 
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
 
-export interface ReadingViewCard {
+export interface ReadingOutputCard {
   position_index: number;
   card_code: string;
-  reversed: boolean;
+  position_label?: string | null;
+  meaning?: string | null;
+  reversed?: boolean;
+  card_name?: string | null;
   image_path?: string | null;
 }
 
 export interface ReadingOutputPayload {
-  interpretation: string;
-  cards: ReadingViewCard[];
-  question: string;
-  generated_at: string;
+  headline?: string | null;
+  summary?: string | null;
+  core_theme?: string | null;
+  dynamics?: string | null;
+  risks?: string | null;
+  opportunities?: string | null;
+  advice?: string | null;
+  cards?: ReadingOutputCard[];
+  // legacy compatibility
+  interpretation?: string | null;
+  question?: string | null;
+  generated_at?: string | null;
 }
 
 export interface CreateReadingCardInput {
