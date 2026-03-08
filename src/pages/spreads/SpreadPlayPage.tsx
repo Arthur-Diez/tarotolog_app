@@ -37,6 +37,8 @@ const QUESTION_DISSOLVE_DURATION = 0.6;
 const WAIT_AFTER_DEAL = 150;
 const VIEW_POLL_INTERVAL = 2000;
 const LONG_WAIT_THRESHOLD = 15000;
+const MAX_INTERPRETATION_WAIT = 8 * 60 * 1000;
+const READY_WITHOUT_PAYLOAD_RETRY_LIMIT = 3;
 const LOADING_HINT_ROTATE_INTERVAL = 4500;
 const INTERPRETATION_LOADING_HINTS = [
   {
@@ -563,6 +565,7 @@ export default function SpreadPlayPage() {
 
     const startedAt = Date.now();
     let longWaitNotified = false;
+    let readyWithoutPayloadRetries = 0;
     let ensuredReadingId = readingId;
 
     try {
@@ -608,6 +611,12 @@ export default function SpreadPlayPage() {
       }
 
       while (true) {
+        if (Date.now() - startedAt >= MAX_INTERPRETATION_WAIT) {
+          throw new Error(
+            "Интерпретация не получена за длительное время. Проверьте статус сервера и попробуйте снова."
+          );
+        }
+
         const reading = await getReading(ensuredReadingId);
         setBackendMeta({ backendStatus: reading.status, readingId: ensuredReadingId });
 
@@ -620,6 +629,14 @@ export default function SpreadPlayPage() {
             });
             return;
           }
+          readyWithoutPayloadRetries += 1;
+          if (readyWithoutPayloadRetries >= READY_WITHOUT_PAYLOAD_RETRY_LIMIT) {
+            throw new Error(
+              "Расклад помечен как готовый, но интерпретация пустая. Нажмите «Начать заново» и повторите расклад."
+            );
+          }
+        } else {
+          readyWithoutPayloadRetries = 0;
         }
 
         if (reading.status === "error") {
