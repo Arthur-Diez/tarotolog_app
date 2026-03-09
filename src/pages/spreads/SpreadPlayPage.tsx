@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { backUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
+import { isDeckWithReversals } from "@/lib/tarotOrientation";
 import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 import type { SpreadId } from "@/data/rws_spreads";
@@ -682,6 +683,7 @@ export default function SpreadPlayPage() {
 
   const energyLabel = energyLoading ? "…" : energy ?? "—";
   const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
+  const deckSupportsReversals = isDeckWithReversals(schema.deckType);
 
   const orderMap = useMemo(() => {
     const map = new Map<number, number>();
@@ -941,7 +943,14 @@ export default function SpreadPlayPage() {
                           </div>
                         </div>
                       )}
-                      {card?.isOpen && position.label.trim() ? <p className="mt-2 text-xs text-white/70">{position.label}</p> : null}
+                      {card?.isOpen && position.label.trim() ? (
+                        <div className="mt-2 flex flex-col items-center gap-1">
+                          <p className="text-xs text-white/70">{position.label}</p>
+                          {deckSupportsReversals && card.reversed ? (
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-amber-200/85">Перевёрнутая</p>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -971,7 +980,9 @@ export default function SpreadPlayPage() {
                 transition={{ duration: 0.25 }}
               >
                 <span className="inline-block rounded-full bg-black/55 px-3 py-1 text-base sm:text-lg shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-                  Нажмите на карту, чтобы открыть послание
+                  {deckSupportsReversals
+                    ? "Нажмите на карту, чтобы открыть послание. Перевёрнутые карты учитываются."
+                    : "Нажмите на карту, чтобы открыть послание"}
                 </span>
               </motion.p>
             </div>

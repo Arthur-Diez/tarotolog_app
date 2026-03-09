@@ -53,7 +53,9 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function ShareCard(
                 <img
                   src={card.imageSrc}
                   alt={card.name}
-                  className="h-40 w-28 rounded-xl object-cover shadow-[0_12px_28px_rgba(0,0,0,0.45)]"
+                  className={`h-40 w-28 rounded-xl object-cover shadow-[0_12px_28px_rgba(0,0,0,0.45)] ${
+                    card.reversed ? "rotate-180" : ""
+                  }`}
                 />
               ) : (
                 <div className="flex h-40 w-28 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-xs text-white/60">

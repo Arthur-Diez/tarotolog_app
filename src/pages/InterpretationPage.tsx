@@ -26,6 +26,7 @@ import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { faceUrl } from "@/lib/cardAsset";
 import ShareCard from "@/components/sections/ShareCard";
+import { isDeckWithReversals, normalizeCardReversedForDeck } from "@/lib/tarotOrientation";
 
 interface LocationState {
   reading?: ViewReadingResponse;
@@ -400,6 +401,7 @@ export default function InterpretationPage() {
 
   const cardDisplayList = cards.map((card) => {
     const outputCard = outputCardByPosition.get(card.position);
+    const reversed = normalizeCardReversedForDeck(resolvedDeckId, card.reversed);
     const assetName = activeDeckCardNameMap.get(card.card_code) ?? null;
     const friendlyName =
       assetName ??
@@ -417,6 +419,7 @@ export default function InterpretationPage() {
         .trim();
     return {
       ...card,
+      reversed,
       displayName: friendlyName,
       assetName,
       positionLabel: outputCard?.positionLabel ?? positionLabelMap.get(card.position) ?? `Позиция ${card.position}`,
@@ -428,7 +431,7 @@ export default function InterpretationPage() {
     name: card.displayName,
     positionLabel: card.positionLabel,
     imageSrc: card.assetName ? faceUrl(resolvedDeckId, card.assetName) : null,
-    reversed: card.reversed
+    reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed)
   }));
 
   const [shareHintOpen, setShareHintOpen] = useState(false);
@@ -592,7 +595,11 @@ export default function InterpretationPage() {
             {cardDisplayList.length > 0 ? (
               <div className="mt-4 space-y-3">
                 {cardDisplayList.map((card) => {
-                  const metaLine = [`Позиция ${card.position}`, card.positionLabel, card.reversed ? "Перевёрнута" : ""]
+                  const metaLine = [
+                    `Позиция ${card.position}`,
+                    card.positionLabel,
+                    card.reversed && isDeckWithReversals(resolvedDeckId) ? "Перевёрнута" : ""
+                  ]
                     .filter(Boolean)
                     .join(" • ");
                   return (
@@ -606,7 +613,9 @@ export default function InterpretationPage() {
                             deckId={resolvedDeckId}
                             cardName={card.assetName}
                             alt={card.displayName}
-                            className="h-20 w-14 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)]"
+                            className={`h-20 w-14 rounded-lg object-cover shadow-[0_12px_24px_rgba(0,0,0,0.45)] ${
+                              card.reversed && isDeckWithReversals(resolvedDeckId) ? "rotate-180" : ""
+                            }`}
                             loading="lazy"
                           />
                         ) : (

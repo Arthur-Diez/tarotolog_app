@@ -10,6 +10,7 @@ import { METAPHORIC_ALL_LIST } from "@/data/metaphoric_deck";
 import { RWS_ALL } from "@/data/rws_deck";
 import { SILA_RODA_ALL_LIST } from "@/data/sila_roda_deck";
 import type { BackendReadingStatus, ReadingOutputPayload } from "@/lib/api";
+import { isDeckWithReversals } from "@/lib/tarotOrientation";
 
 export type SpreadStage = "fan" | "collecting" | "shuffling" | "dealing" | "await_open" | "done";
 
@@ -96,10 +97,11 @@ export const useSpreadStore = create<SpreadStoreState>((set, get) => ({
     const { schema } = get();
     const sourceCards = DECK_CARDS[schema.deckType] ?? RWS_ALL;
     const shuffled = [...sourceCards].sort(() => Math.random() - 0.5);
+    const hasReversals = isDeckWithReversals(schema.deckType);
     const cards = schema.positions.map((position, index) => ({
       positionIndex: position.id,
       name: shuffled[index % shuffled.length],
-      reversed: false,
+      reversed: hasReversals ? Math.random() < 0.5 : false,
       isOpen: false
     }));
     set({
