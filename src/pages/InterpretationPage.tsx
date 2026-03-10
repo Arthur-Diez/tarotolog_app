@@ -6,7 +6,7 @@ import { toBlob } from "html-to-image";
 import { Button } from "@/components/ui/button";
 import CardFaceImage from "@/components/tarot/CardFaceImage";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
-import { createShare, getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
+import { ApiError, createShare, getReading, type ReadingResponse, type ViewReadingResponse } from "@/lib/api";
 import { DECKS } from "@/data/decks";
 import { ANGELS_ALL_LIST } from "@/data/angels_deck";
 import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
@@ -58,6 +58,9 @@ interface NormalizedOutput {
   generatedAt?: string;
   cards: NormalizedOutputCard[];
 }
+
+const SHARE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const SHARE_CAPTURE_PIXEL_RATIOS = [1.6, 1.3, 1.1, 1] as const;
 
 function normalizeReading(input: ReadingResponse | ViewReadingResponse | undefined | null): ViewReadingResponse | null {
   if (!input) {
@@ -445,6 +448,35 @@ export default function InterpretationPage() {
   const [shareHintOpen, setShareHintOpen] = useState(false);
   const [pendingShareQuery, setPendingShareQuery] = useState<string | null>(null);
 
+  const buildShareBlob = useCallback(async (): Promise<Blob> => {
+    if (!shareRef.current) {
+      throw new Error("Не удалось подготовить карточку для отправки.");
+    }
+    const height = shareRef.current.scrollHeight || shareRef.current.clientHeight || 1;
+    let fallbackBlob: Blob | null = null;
+
+    for (const pixelRatio of SHARE_CAPTURE_PIXEL_RATIOS) {
+      const blob = await toBlob(shareRef.current, {
+        cacheBust: true,
+        pixelRatio,
+        width: 900,
+        height
+      });
+      if (!blob) {
+        continue;
+      }
+      fallbackBlob = blob;
+      if (blob.size <= SHARE_IMAGE_MAX_BYTES) {
+        return blob;
+      }
+    }
+
+    if (fallbackBlob) {
+      return fallbackBlob;
+    }
+    throw new Error("Не удалось создать изображение.");
+  }, []);
+
   const handleShare = useCallback(async () => {
     if (!reading?.id) {
       setShareError("Не удалось определить расклад для отправки.");
@@ -461,15 +493,9 @@ export default function InterpretationPage() {
     setShareError(null);
 
     try {
-      const height = shareRef.current.scrollHeight || shareRef.current.clientHeight || 1;
-      const blob = await toBlob(shareRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        width: 900,
-        height
-      });
-      if (!blob) {
-        throw new Error("Не удалось создать изображение.");
+      const blob = await buildShareBlob();
+      if (blob.size > SHARE_IMAGE_MAX_BYTES) {
+        throw new Error("Расклад слишком объёмный для отправки изображением. Сократите длину интерпретации и попробуйте снова.");
       }
 
       const response = await createShare({ reading_id: reading.id, image: blob });
@@ -478,11 +504,22 @@ export default function InterpretationPage() {
       setShareHintOpen(true);
       setShareStatus("ready");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
+      let message = err instanceof Error ? err.message : "Не удалось отправить расклад.";
+      if (err instanceof ApiError) {
+        const detail =
+          err.payload && typeof err.payload === "object" && "detail" in (err.payload as Record<string, unknown>)
+            ? (err.payload as Record<string, unknown>).detail
+            : undefined;
+        if (detail === "image_too_large") {
+          message = "Картинка получилась слишком тяжёлой. Попробуйте снова: мы автоматически уменьшим качество.";
+        } else if (detail === "empty_image") {
+          message = "Не удалось сформировать изображение для отправки. Повторите попытку.";
+        }
+      }
       setShareError(message);
       setShareStatus("error");
     }
-  }, [reading?.id]);
+  }, [buildShareBlob, reading?.id]);
 
   const handleShareHintConfirm = useCallback(() => {
     const tg = window.Telegram?.WebApp;

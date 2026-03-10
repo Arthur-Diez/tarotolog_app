@@ -89,9 +89,11 @@ async function handleResponse<T>(res: Response): Promise<T> {
     const msg =
       typeof data === "string"
         ? data
-        : (typeof detail === "object" && detail !== null && typeof (detail as Record<string, unknown>).message === "string"
-            ? ((detail as Record<string, unknown>).message as string)
-            : (maybeObject?.message as string | undefined)) ?? `API Error: ${res.status}`;
+        : (typeof detail === "string"
+            ? detail
+            : typeof detail === "object" && detail !== null && typeof (detail as Record<string, unknown>).message === "string"
+              ? ((detail as Record<string, unknown>).message as string)
+              : (maybeObject?.message as string | undefined)) ?? `API Error: ${res.status}`;
 
     throw new ApiError(msg, { code, status: res.status, payload: data });
   }
