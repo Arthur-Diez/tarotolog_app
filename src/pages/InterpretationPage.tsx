@@ -431,8 +431,16 @@ export default function InterpretationPage() {
     name: card.displayName,
     positionLabel: card.positionLabel,
     imageSrc: card.assetName ? faceUrl(resolvedDeckId, card.assetName) : null,
-    reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed)
+    reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed),
+    meaning: card.meaning
   }));
+
+  const shareSections = analysisSections
+    .map((section) => ({
+      title: section.title,
+      text: section.text ?? ""
+    }))
+    .filter((section) => section.text.trim().length > 0);
 
   const [shareHintOpen, setShareHintOpen] = useState(false);
   const [pendingShareQuery, setPendingShareQuery] = useState<string | null>(null);
@@ -665,7 +673,9 @@ export default function InterpretationPage() {
           spreadTitle={spreadTitle}
           deckTitle={deckTitle}
           question={questionText}
+          headline={headlineText}
           summary={summaryText}
+          sections={shareSections}
           cards={shareCards}
         />
       </div>

@@ -5,17 +5,23 @@ interface ShareCardProps {
   spreadTitle: string;
   deckTitle: string;
   question: string;
+  headline?: string | null;
   summary: string;
+  sections?: Array<{
+    title: string;
+    text: string;
+  }>;
   cards: Array<{
     name: string;
     positionLabel: string;
     imageSrc?: string | null;
     reversed?: boolean;
+    meaning?: string | null;
   }>;
 }
 
 const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function ShareCard(
-  { title, spreadTitle, deckTitle, question, summary, cards },
+  { title, spreadTitle, deckTitle, question, headline, summary, sections = [], cards },
   ref
 ) {
   return (
@@ -37,37 +43,58 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function ShareCard(
       </div>
 
       <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+        {headline ? (
+          <>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/60">Ключевой акцент</p>
+            <p className="mt-2 text-base font-semibold text-white">{headline}</p>
+            <div className="mt-4 border-t border-white/10" />
+          </>
+        ) : null}
         <p className="text-xs uppercase tracking-[0.35em] text-white/60">Интерпретация</p>
         <p className="mt-3 text-lg font-semibold leading-relaxed text-white">{summary}</p>
       </div>
 
+      {sections.length > 0 ? (
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          {sections.map((section) => (
+            <div key={section.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.28em] text-white/60">{section.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/85">{section.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
         <p className="text-xs uppercase tracking-[0.35em] text-white/60">Карты</p>
-        <div className="mt-4 grid grid-cols-3 gap-4">
+        <div className="mt-4 grid grid-cols-1 gap-4">
           {cards.map((card, index) => (
             <div
               key={`${card.name}-${index}`}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-center"
+              className="rounded-2xl border border-white/10 bg-white/5 p-4"
             >
-              {card.imageSrc ? (
-                <img
-                  src={card.imageSrc}
-                  alt={card.name}
-                  className={`h-40 w-28 rounded-xl object-cover shadow-[0_12px_28px_rgba(0,0,0,0.45)] ${
-                    card.reversed ? "rotate-180" : ""
-                  }`}
-                />
-              ) : (
-                <div className="flex h-40 w-28 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-xs text-white/60">
-                  {card.name}
+              <div className="flex gap-4">
+                {card.imageSrc ? (
+                  <img
+                    src={card.imageSrc}
+                    alt={card.name}
+                    className={`h-40 w-28 rounded-xl object-cover shadow-[0_12px_28px_rgba(0,0,0,0.45)] ${
+                      card.reversed ? "rotate-180" : ""
+                    }`}
+                  />
+                ) : (
+                  <div className="flex h-40 w-28 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-xs text-white/60">
+                    {card.name}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold text-white">{card.name}</p>
+                  <p className="mt-1 text-sm text-white/70">
+                    {card.positionLabel}
+                    {card.reversed ? " • Перевёрнута" : ""}
+                  </p>
+                  {card.meaning ? <p className="mt-3 text-sm leading-relaxed text-white/90">{card.meaning}</p> : null}
                 </div>
-              )}
-              <div>
-                <p className="text-sm font-semibold text-white">{card.name}</p>
-                <p className="text-xs text-white/70">
-                  {card.positionLabel}
-                  {card.reversed ? " • Перевёрнута" : ""}
-                </p>
               </div>
             </div>
           ))}
