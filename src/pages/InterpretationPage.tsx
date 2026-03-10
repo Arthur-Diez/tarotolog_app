@@ -59,8 +59,9 @@ interface NormalizedOutput {
   cards: NormalizedOutputCard[];
 }
 
-const SHARE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const SHARE_CAPTURE_PIXEL_RATIOS = [1.6, 1.3, 1.1, 1] as const;
+const SHARE_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+const SHARE_CAPTURE_WIDTH = 1080;
+const SHARE_CAPTURE_PIXEL_RATIOS = [2.4, 2.1, 1.8, 1.6, 1.4, 1.2, 1] as const;
 
 function normalizeReading(input: ReadingResponse | ViewReadingResponse | undefined | null): ViewReadingResponse | null {
   if (!input) {
@@ -459,7 +460,7 @@ export default function InterpretationPage() {
       const blob = await toBlob(shareRef.current, {
         cacheBust: true,
         pixelRatio,
-        width: 900,
+        width: SHARE_CAPTURE_WIDTH,
         height
       });
       if (!blob) {

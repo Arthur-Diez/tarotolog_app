@@ -27,7 +27,7 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function ShareCard(
   return (
     <div
       ref={ref}
-      className="w-[900px] rounded-[32px] border border-white/15 bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] p-10 text-white shadow-[0_50px_120px_rgba(0,0,0,0.65)]"
+      className="w-[1080px] rounded-[32px] border border-white/15 bg-[radial-gradient(circle_at_top,_#2d1f58,_#0b0f1f)] p-10 text-white shadow-[0_50px_120px_rgba(0,0,0,0.65)]"
     >
       <div className="space-y-3">
         <p className="text-xs uppercase tracking-[0.4em] text-white/70">Интерпретация расклада</p>
