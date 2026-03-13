@@ -208,6 +208,7 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const isLikelyMobileViewport = viewportWidth <= 900;
+  const useUltraLiteFanStage = showForm && isLikelyMobileViewport && !isRunning;
   const isInputPerformanceMode =
     showForm && !isRunning && (isLikelyMobileViewport || isQuestionInputFocused || isKeyboardVisible);
   const useHardMobileInputMode = showForm && !isRunning && isLikelyMobileViewport && isInputPerformanceMode;
@@ -884,11 +885,15 @@ export default function SpreadPlayPage() {
     <div
       id="questionForm"
       ref={questionFormRef}
-      className={`ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur ${
-        useSimplifiedQuestionStage ? "ritual-question-panel-simplified" : ""
-      }`}
+      className={
+        useUltraLiteFanStage
+          ? "w-full space-y-4 rounded-3xl border border-white/10 bg-[#141827] p-5 shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+          : `ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur ${
+              useSimplifiedQuestionStage ? "ritual-question-panel-simplified" : ""
+            }`
+      }
       style={{
-        marginTop: useSimplifiedQuestionStage ? "0" : "clamp(-10px, -2vh, -4px)"
+        marginTop: useUltraLiteFanStage ? "0" : useSimplifiedQuestionStage ? "0" : "clamp(-10px, -2vh, -4px)"
       }}
     >
       <div className="space-y-1">
@@ -901,9 +906,13 @@ export default function SpreadPlayPage() {
       </div>
       <textarea
         placeholder="Введите ваш вопрос к картам..."
-        className={`ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
-          useSimplifiedQuestionStage ? "resize-none" : "resize-y"
-        } ${useHardMobileInputMode ? "ritual-question-input-hard" : ""}`}
+        className={
+          useUltraLiteFanStage
+            ? "text-wrap-anywhere h-28 w-full resize-none rounded-2xl border border-white/20 bg-[#101423] p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
+            : `ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
+                useSimplifiedQuestionStage ? "resize-none" : "resize-y"
+              } ${useHardMobileInputMode ? "ritual-question-input-hard" : ""}`
+        }
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
         onFocus={() => setIsQuestionInputFocused(true)}
@@ -914,6 +923,40 @@ export default function SpreadPlayPage() {
       </Button>
     </div>
   );
+
+  if (useUltraLiteFanStage) {
+    return (
+      <div className="relative min-h-screen w-full overflow-hidden bg-[#0b1220] text-white">
+        <div
+          ref={scope}
+          className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center gap-3 px-4 pb-10 pt-4"
+        >
+          <div className="w-full rounded-2xl border border-white/10 bg-[#11192a] px-4 py-2 text-sm text-white/85">
+            Энергия: {energyLabel} <span className="text-white/90">⚡</span>
+            {energyError && (
+              <button
+                type="button"
+                className="ml-3 text-xs font-semibold text-secondary underline"
+                onClick={() => {
+                  void reloadEnergy();
+                }}
+              >
+                Обновить
+              </button>
+            )}
+            {energyError && <p className="mt-1 text-xs text-red-200">{energyError}</p>}
+          </div>
+          <div className="w-full">{questionFormNode}</div>
+          {viewError && <p className="text-center text-sm text-amber-300">{viewError}</p>}
+        </div>
+        {isViewLoading && (
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 px-6">
+            <LoadingTarot message={loadingHint.message} subMessage={loadingHint.subMessage} />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
