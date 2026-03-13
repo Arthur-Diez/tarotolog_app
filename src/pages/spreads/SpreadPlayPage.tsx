@@ -104,10 +104,6 @@ const isCoarsePointerDevice = () =>
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
   window.matchMedia("(pointer: coarse)").matches;
-const isTelegramMiniAppClient = () =>
-  typeof window !== "undefined" && Boolean(window.Telegram?.WebApp);
-const isAndroidClient = () =>
-  typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 const normalizeLocale = (value: string | null | undefined): string => {
   if (!value) return "ru";
   const normalized = value.trim().toLowerCase();
@@ -212,18 +208,11 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const isLikelyMobileViewport = viewportWidth <= 900;
-  const isTelegramMiniApp = isTelegramMiniAppClient();
-  const isAndroid = isAndroidClient();
-  const useForcedLiteFanByPlatform = isTelegramMiniApp && isAndroid;
-  const useUltraLiteFanStage =
-    showForm && !isRunning && (useForcedLiteFanByPlatform || isLikelyMobileViewport);
-  const isInputPerformanceMode =
-    showForm &&
-    !isRunning &&
-    (useForcedLiteFanByPlatform || isLikelyMobileViewport || isQuestionInputFocused || isKeyboardVisible);
-  const useHardMobileInputMode = showForm && !isRunning && isLikelyMobileViewport && isInputPerformanceMode;
-  const useSimplifiedQuestionStage =
-    showForm && !isRunning && (isCoarsePointer || isLikelyMobileViewport);
+  const isInputActive = showForm && !isRunning && (isQuestionInputFocused || isKeyboardVisible);
+  const useUltraLiteFanStage = false;
+  const isInputPerformanceMode = isInputActive;
+  const useHardMobileInputMode = false;
+  const useSimplifiedQuestionStage = showForm && !isRunning && isInputActive && (isCoarsePointer || isLikelyMobileViewport);
   const showQuestionBubble = showForm && (!isInputPerformanceMode || isRunning);
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
@@ -824,6 +813,14 @@ export default function SpreadPlayPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("spread-keyboard-open", isInputActive);
+    return () => {
+      document.body.classList.remove("spread-keyboard-open");
+    };
+  }, [isInputActive]);
 
   const spreadSpacerHeight = useMemo(() => {
     if (showForm || showActionButtons) return 0;
