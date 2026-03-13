@@ -92,6 +92,10 @@ const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const isCoarsePointerDevice = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(pointer: coarse)").matches;
 const normalizeLocale = (value: string | null | undefined): string => {
   if (!value) return "ru";
   const normalized = value.trim().toLowerCase();
@@ -174,6 +178,7 @@ export default function SpreadPlayPage() {
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [isQuestionInputFocused, setIsQuestionInputFocused] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isCoarsePointer, setIsCoarsePointer] = useState<boolean>(() => isCoarsePointerDevice());
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
@@ -194,8 +199,9 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
+  const useSimplifiedQuestionStage = showForm && isCoarsePointer;
   const isInputPerformanceMode = showForm && (isQuestionInputFocused || isKeyboardVisible);
-  const showQuestionBubble = showForm && !isInputPerformanceMode;
+  const showQuestionBubble = showForm && !isInputPerformanceMode && !useSimplifiedQuestionStage;
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const sceneScale = isInputPerformanceMode ? 1 : scale;
@@ -255,6 +261,15 @@ export default function SpreadPlayPage() {
     }
     prevEnergyRef.current = energy;
   }, [energy]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(pointer: coarse)");
+    const onChange = () => setIsCoarsePointer(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     if (!isViewLoading) {
@@ -414,6 +429,10 @@ export default function SpreadPlayPage() {
   }, [bubbleTopInSpread, isInputPerformanceMode, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
+    if (useSimplifiedQuestionStage) {
+      await animateAndTrack("#questionForm", { opacity: 0 }, { duration: 0.15 });
+      return;
+    }
     const bubble = questionBubbleRef.current;
     const target = fanCenterRef.current;
     if (!bubble || !target) {
@@ -439,7 +458,7 @@ export default function SpreadPlayPage() {
         { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut", at: "<" }
       ]
     ]);
-  }, [animateAndTrack]);
+  }, [animateAndTrack, useSimplifiedQuestionStage]);
 
   useEffect(() => {
     if (stage === "fan" || stage === "collecting" || stage === "shuffling") {
@@ -849,9 +868,44 @@ export default function SpreadPlayPage() {
       });
   }, [adsgram, hasSubscription, isViewLoading]);
 
+  const questionFormNode = (
+    <div
+      id="questionForm"
+      ref={questionFormRef}
+      className={`ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur ${
+        useSimplifiedQuestionStage ? "ritual-question-panel-simplified" : ""
+      }`}
+      style={{
+        marginTop: useSimplifiedQuestionStage ? "0" : "clamp(-10px, -2vh, -4px)"
+      }}
+    >
+      <div className="space-y-1">
+        <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
+        <p className="text-wrap-anywhere text-sm text-white/70">
+          {schema.id === "one_card"
+            ? "Сформулируйте запрос и получите энергию дня."
+            : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
+        </p>
+      </div>
+      <textarea
+        placeholder="Введите ваш вопрос к картам..."
+        className={`ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
+          useSimplifiedQuestionStage ? "resize-none" : "resize-y"
+        }`}
+        value={question}
+        onChange={(event) => setQuestion(event.target.value)}
+        onFocus={() => setIsQuestionInputFocused(true)}
+        onBlur={() => setIsQuestionInputFocused(false)}
+      />
+      <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
+        Подтвердить вопрос
+      </Button>
+    </div>
+  );
+
   return (
     <div
-      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""}`}
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""}`}
     >
       <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
         <div className="ritual-haze" />
@@ -869,7 +923,7 @@ export default function SpreadPlayPage() {
         ref={scope}
         className="ritual-shell relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
-          perspective: "1200px",
+          perspective: useSimplifiedQuestionStage ? "none" : "1200px",
           gap: formGap
         }}
       >
@@ -892,7 +946,7 @@ export default function SpreadPlayPage() {
         </div>
         <div
           ref={spreadAreaRef}
-          className="ritual-scene relative"
+            className="ritual-scene relative"
             style={{
               width: "100%",
               display: "flex",
@@ -903,7 +957,11 @@ export default function SpreadPlayPage() {
           >
             <div
               className="ritual-scene-frame relative flex w-full flex-col items-center"
-              style={{ transform: `scale(${sceneScale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
+              style={{
+                transform: useSimplifiedQuestionStage ? "none" : `scale(${sceneScale})`,
+                transformOrigin: "center top",
+                transformStyle: useSimplifiedQuestionStage ? "flat" : "preserve-3d"
+              }}
             >
             <div className="ritual-scene-halo" aria-hidden />
             <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
@@ -911,7 +969,12 @@ export default function SpreadPlayPage() {
                 className="deck-outer ritual-deck-shell"
                 style={{ transform: `scale(${effectiveDeckScale})`, transformOrigin: "center top" }}
               >
-                <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
+                <DeckStack
+                  key={deckKey}
+                  backSrc={backSrc}
+                  mode={useSimplifiedQuestionStage ? "fan" : stage}
+                  fanCenterRef={fanCenterRef}
+                />
               </div>
             </div>
             <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
@@ -1091,34 +1154,10 @@ export default function SpreadPlayPage() {
         {showQuestionBubble && null}
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
-        {showForm && (
-          <div
-            id="questionForm"
-            ref={questionFormRef}
-            className="ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
-            style={{
-              marginTop: "clamp(-10px, -2vh, -4px)"
-            }}
-          >
-            <div className="space-y-1">
-              <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
-              <p className="text-wrap-anywhere text-sm text-white/70">
-                {schema.id === "one_card"
-                  ? "Сформулируйте запрос и получите энергию дня."
-                  : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
-              </p>
-            </div>
-            <textarea
-              placeholder="Введите ваш вопрос к картам..."
-              className="ritual-question-input text-wrap-anywhere h-28 w-full resize-y rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              onFocus={() => setIsQuestionInputFocused(true)}
-              onBlur={() => setIsQuestionInputFocused(false)}
-            />
-            <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
-              Подтвердить вопрос
-            </Button>
+        {showForm && !useSimplifiedQuestionStage && questionFormNode}
+        {showForm && useSimplifiedQuestionStage && (
+          <div className="w-full max-w-xl pt-2">
+            {questionFormNode}
           </div>
         )}
 

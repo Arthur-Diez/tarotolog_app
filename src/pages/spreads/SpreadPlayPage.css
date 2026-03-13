@@ -320,6 +320,38 @@
   resize: none;
 }
 
+/* Coarse-pointer question stage fallback to avoid Android/WebView composition artifacts. */
+.ritual-screen.questionStageSimplified .ritual-environment,
+.ritual-screen.questionStageSimplified::after {
+  display: none !important;
+}
+
+.ritual-screen.questionStageSimplified .ritual-vignette {
+  opacity: 0.5;
+}
+
+.ritual-screen.questionStageSimplified .ritual-scene-frame,
+.ritual-screen.questionStageSimplified .ritual-deck-shell,
+.ritual-screen.questionStageSimplified .ritual-bottom-panel {
+  transition: none !important;
+}
+
+.ritual-screen.questionStageSimplified .ritual-deck-shell {
+  filter: none !important;
+}
+
+.ritual-question-panel-simplified {
+  backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.03) !important;
+}
+
+.ritual-question-panel-simplified::before {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ritual-haze,
   .ritual-stardust-dot,
