@@ -207,8 +207,10 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
-  const useSimplifiedQuestionStage = showForm && isCoarsePointer;
-  const isInputPerformanceMode = showForm && (isQuestionInputFocused || isKeyboardVisible);
+  const useSimplifiedQuestionStage = showForm && isCoarsePointer && !isRunning;
+  const isInputPerformanceMode =
+    showForm && !isRunning && (isCoarsePointer || isQuestionInputFocused || isKeyboardVisible);
+  const useHardMobileInputMode = showForm && isCoarsePointer && !isRunning;
   const showQuestionBubble = showForm && (!isInputPerformanceMode || isRunning);
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
@@ -485,6 +487,7 @@ export default function SpreadPlayPage() {
     setIsRunning(true);
     setIsQuestionInputFocused(false);
     setIsKeyboardVisible(false);
+    await nextFrame();
     await nextFrame();
 
     const isActive = () => timelineTokenRef.current === runToken;
@@ -898,7 +901,7 @@ export default function SpreadPlayPage() {
         placeholder="Введите ваш вопрос к картам..."
         className={`ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
           useSimplifiedQuestionStage ? "resize-none" : "resize-y"
-        }`}
+        } ${useHardMobileInputMode ? "ritual-question-input-hard" : ""}`}
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
         onFocus={() => setIsQuestionInputFocused(true)}
@@ -912,7 +915,7 @@ export default function SpreadPlayPage() {
 
   return (
     <div
-      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""}`}
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""} ${useHardMobileInputMode ? "hardInputMode" : ""}`}
     >
       <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
         <div className="ritual-haze" />
@@ -930,7 +933,7 @@ export default function SpreadPlayPage() {
         ref={scope}
         className="ritual-shell relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
-          perspective: useSimplifiedQuestionStage ? "none" : "1200px",
+          perspective: useHardMobileInputMode ? "none" : "1200px",
           gap: formGap
         }}
       >

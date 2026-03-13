@@ -353,6 +353,44 @@
   filter: none !important;
 }
 
+.ritual-screen.hardInputMode .ritual-environment,
+.ritual-screen.hardInputMode::before,
+.ritual-screen.hardInputMode::after,
+.ritual-screen.hardInputMode .ritual-scene,
+.ritual-screen.hardInputMode .ritual-topbar {
+  display: none !important;
+}
+
+.ritual-screen.hardInputMode .ritual-shell {
+  min-height: 100svh;
+  justify-content: flex-start;
+  gap: 0.75rem !important;
+}
+
+.ritual-screen.hardInputMode .ritual-question-panel {
+  contain: layout paint;
+  margin-top: 0 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: #141827 !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: none !important;
+}
+
+.ritual-screen.hardInputMode .ritual-question-panel::before {
+  display: none !important;
+}
+
+.ritual-question-input-hard {
+  background: #101423 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.ritual-question-input-hard::placeholder {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
 .ritual-question-panel-simplified {
   backdrop-filter: none !important;
   background: rgba(255, 255, 255, 0.04) !important;
