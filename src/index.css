@@ -187,6 +187,20 @@
     border-radius: 0;
   }
 
+  body.spread-play-fullbleed {
+    background-image: none;
+    background-attachment: scroll;
+  }
+
+  body.spread-play-fullbleed::before,
+  body.spread-play-fullbleed::after {
+    display: none;
+  }
+
+  body.keyboard-open .app-scroll {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+
   #root {
     @apply relative min-h-screen;
     z-index: 1;
