@@ -207,10 +207,11 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
-  const useSimplifiedQuestionStage = showForm && isCoarsePointer && !isRunning;
-  const isInputPerformanceMode =
-    showForm && !isRunning && (isCoarsePointer || isQuestionInputFocused || isKeyboardVisible);
-  const useHardMobileInputMode = showForm && isCoarsePointer && !isRunning;
+  const isLikelyMobileViewport = viewportWidth <= 900;
+  const isInputPerformanceMode = showForm && !isRunning && (isQuestionInputFocused || isKeyboardVisible);
+  const useHardMobileInputMode = showForm && !isRunning && isLikelyMobileViewport && isInputPerformanceMode;
+  const useSimplifiedQuestionStage =
+    showForm && !isRunning && (isCoarsePointer || isLikelyMobileViewport);
   const showQuestionBubble = showForm && (!isInputPerformanceMode || isRunning);
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
