@@ -104,6 +104,10 @@ const isCoarsePointerDevice = () =>
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
   window.matchMedia("(pointer: coarse)").matches;
+const isTelegramMiniAppClient = () =>
+  typeof window !== "undefined" && Boolean(window.Telegram?.WebApp);
+const isAndroidClient = () =>
+  typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 const normalizeLocale = (value: string | null | undefined): string => {
   if (!value) return "ru";
   const normalized = value.trim().toLowerCase();
@@ -208,9 +212,15 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const isLikelyMobileViewport = viewportWidth <= 900;
-  const useUltraLiteFanStage = showForm && isLikelyMobileViewport && !isRunning;
+  const isTelegramMiniApp = isTelegramMiniAppClient();
+  const isAndroid = isAndroidClient();
+  const useForcedLiteFanByPlatform = isTelegramMiniApp && isAndroid;
+  const useUltraLiteFanStage =
+    showForm && !isRunning && (useForcedLiteFanByPlatform || isLikelyMobileViewport);
   const isInputPerformanceMode =
-    showForm && !isRunning && (isLikelyMobileViewport || isQuestionInputFocused || isKeyboardVisible);
+    showForm &&
+    !isRunning &&
+    (useForcedLiteFanByPlatform || isLikelyMobileViewport || isQuestionInputFocused || isKeyboardVisible);
   const useHardMobileInputMode = showForm && !isRunning && isLikelyMobileViewport && isInputPerformanceMode;
   const useSimplifiedQuestionStage =
     showForm && !isRunning && (isCoarsePointer || isLikelyMobileViewport);
@@ -881,13 +891,18 @@ export default function SpreadPlayPage() {
       });
   }, [adsgram, hasSubscription, isViewLoading]);
 
+  const questionHintText =
+    schema.id === "one_card"
+      ? "Сформулируйте запрос и получите энергию дня."
+      : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`;
+
   const questionFormNode = (
     <div
       id="questionForm"
       ref={questionFormRef}
       className={
         useUltraLiteFanStage
-          ? "w-full space-y-4 rounded-3xl border border-white/10 bg-[#141827] p-5 shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+          ? "w-full space-y-4 rounded-2xl border border-[#24304a] bg-[#11182a] p-4"
           : `ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur ${
               useSimplifiedQuestionStage ? "ritual-question-panel-simplified" : ""
             }`
@@ -899,16 +914,14 @@ export default function SpreadPlayPage() {
       <div className="space-y-1">
         <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
         <p className="text-wrap-anywhere text-sm text-white/70">
-          {schema.id === "one_card"
-            ? "Сформулируйте запрос и получите энергию дня."
-            : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
+          {questionHintText}
         </p>
       </div>
       <textarea
         placeholder="Введите ваш вопрос к картам..."
         className={
           useUltraLiteFanStage
-            ? "text-wrap-anywhere h-28 w-full resize-none rounded-2xl border border-white/20 bg-[#101423] p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
+            ? "h-32 w-full resize-none rounded-lg border border-[#2d3854] bg-[#0c1322] p-3 text-base leading-6 text-white placeholder:text-white/60 outline-none"
             : `ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
                 useSimplifiedQuestionStage ? "resize-none" : "resize-y"
               } ${useHardMobileInputMode ? "ritual-question-input-hard" : ""}`
@@ -918,9 +931,20 @@ export default function SpreadPlayPage() {
         onFocus={() => setIsQuestionInputFocused(true)}
         onBlur={() => setIsQuestionInputFocused(false)}
       />
-      <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
-        Подтвердить вопрос
-      </Button>
+      {useUltraLiteFanStage ? (
+        <button
+          type="button"
+          onClick={handleStart}
+          disabled={isRunning || !trimmedQuestion}
+          className="w-full rounded-xl border border-[#384766] bg-[#1a2338] px-4 py-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Подтвердить вопрос
+        </button>
+      ) : (
+        <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
+          Подтвердить вопрос
+        </Button>
+      )}
     </div>
   );
 
