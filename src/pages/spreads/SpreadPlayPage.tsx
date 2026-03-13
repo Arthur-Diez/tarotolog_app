@@ -40,6 +40,7 @@ const VIEW_POLL_INTERVAL = 2000;
 const LONG_WAIT_THRESHOLD = 15000;
 const READY_WITHOUT_PAYLOAD_RETRY_LIMIT = 3;
 const LOADING_HINT_ROTATE_INTERVAL = 4500;
+const KEYBOARD_VISIBLE_THRESHOLD_PX = 140;
 const INTERPRETATION_LOADING_HINTS = [
   {
     message: "Читаем связи между картами",
@@ -171,6 +172,8 @@ export default function SpreadPlayPage() {
   const [loadingHintIndex, setLoadingHintIndex] = useState(0);
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
+  const [isQuestionInputFocused, setIsQuestionInputFocused] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
@@ -191,9 +194,11 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
-  const showQuestionBubble = showForm;
+  const isInputPerformanceMode = showForm && (isQuestionInputFocused || isKeyboardVisible);
+  const showQuestionBubble = showForm && !isInputPerformanceMode;
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
+  const sceneScale = isInputPerformanceMode ? 1 : scale;
   const availableWidth = Math.max(
     MIN_AVAILABLE_WIDTH,
     Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
@@ -208,6 +213,7 @@ export default function SpreadPlayPage() {
       // Fan size is standardized across spreads by targeting fixed visible width.
       ? clamp(fanOuterScale, FAN_STAGE_MIN_SCALE, FAN_STAGE_MAX_SCALE)
       : dealOuterScale;
+  const effectiveDeckScale = isInputPerformanceMode ? 1 : deckBaseScale;
 
   useDeckTheme(schema.deckType);
 
@@ -388,6 +394,9 @@ export default function SpreadPlayPage() {
   }, [scale, viewportHeight, viewportWidth, deckKey]);
 
   useLayoutEffect(() => {
+    if (isInputPerformanceMode) {
+      return;
+    }
     if (!showForm) {
       return;
     }
@@ -402,7 +411,7 @@ export default function SpreadPlayPage() {
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, isInputPerformanceMode, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -728,12 +737,50 @@ export default function SpreadPlayPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let rafId = 0;
     const handleResize = () => {
-      setViewportHeight(window.innerHeight);
-      setViewportWidth(window.innerWidth);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(() => {
+        setViewportWidth(window.innerWidth);
+        if (!isInputPerformanceMode) {
+          setViewportHeight(window.innerHeight);
+        }
+      });
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [isInputPerformanceMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const viewport = window.visualViewport;
+    let rafId = 0;
+    const updateKeyboardState = () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(() => {
+        const keyboardHeight = window.innerHeight - viewport.height;
+        setIsKeyboardVisible(keyboardHeight > KEYBOARD_VISIBLE_THRESHOLD_PX);
+      });
+    };
+    updateKeyboardState();
+    viewport.addEventListener("resize", updateKeyboardState, { passive: true });
+    viewport.addEventListener("scroll", updateKeyboardState, { passive: true });
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardState);
+      viewport.removeEventListener("scroll", updateKeyboardState);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   const spreadSpacerHeight = useMemo(() => {
@@ -804,7 +851,7 @@ export default function SpreadPlayPage() {
 
   return (
     <div
-      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""}`}
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""}`}
     >
       <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
         <div className="ritual-haze" />
@@ -846,23 +893,23 @@ export default function SpreadPlayPage() {
         <div
           ref={spreadAreaRef}
           className="ritual-scene relative"
-          style={{
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
-            pointerEvents: shouldBlockInteractions ? "none" : "auto"
-          }}
-        >
-          <div
-            className="ritual-scene-frame relative flex w-full flex-col items-center"
-            style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
+            style={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              marginTop: showForm ? `${6 / sceneScale}px` : `${16 / sceneScale}px`,
+              pointerEvents: shouldBlockInteractions ? "none" : "auto"
+            }}
           >
+            <div
+              className="ritual-scene-frame relative flex w-full flex-col items-center"
+              style={{ transform: `scale(${sceneScale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
+            >
             <div className="ritual-scene-halo" aria-hidden />
             <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
               <div
                 className="deck-outer ritual-deck-shell"
-                style={{ transform: `scale(${deckBaseScale})`, transformOrigin: "center top" }}
+                style={{ transform: `scale(${effectiveDeckScale})`, transformOrigin: "center top" }}
               >
                 <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
               </div>
@@ -1066,6 +1113,8 @@ export default function SpreadPlayPage() {
               className="ritual-question-input text-wrap-anywhere h-28 w-full resize-y rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
+              onFocus={() => setIsQuestionInputFocused(true)}
+              onBlur={() => setIsQuestionInputFocused(false)}
             />
             <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
               Подтвердить вопрос
