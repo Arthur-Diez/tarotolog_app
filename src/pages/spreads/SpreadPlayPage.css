@@ -279,6 +279,14 @@
   background-image: none;
 }
 
+.ritual-screen.performanceMode::before {
+  background: none !important;
+}
+
+.ritual-screen.performanceMode .ritual-environment {
+  display: none !important;
+}
+
 .ritual-screen.performanceMode .ritual-haze,
 .ritual-screen.performanceMode .ritual-stardust,
 .ritual-screen.performanceMode .ritual-scene-halo,
@@ -294,9 +302,12 @@
 }
 
 .ritual-screen.performanceMode .ritual-question-panel {
+  contain: layout paint;
+  background: rgba(21, 24, 36, 0.98) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.28),
-    inset 0 1px 1px rgba(255, 255, 255, 0.03);
+    0 8px 20px rgba(0, 0, 0, 0.24),
+    inset 0 1px 1px rgba(255, 255, 255, 0.02);
 }
 
 .ritual-screen.performanceMode .ritual-question-panel::before {
@@ -317,6 +328,8 @@
 }
 
 .ritual-screen.performanceMode .ritual-question-input {
+  background: rgba(15, 18, 28, 0.98) !important;
+  box-shadow: none !important;
   resize: none;
 }
 

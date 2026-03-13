@@ -91,6 +91,14 @@ const DEAL_STAGE_MAX_SCALE = 1.15;
 const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    if (typeof window === "undefined") {
+      resolve();
+      return;
+    }
+    window.requestAnimationFrame(() => resolve());
+  });
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const isCoarsePointerDevice = () =>
   typeof window !== "undefined" &&
@@ -201,7 +209,7 @@ export default function SpreadPlayPage() {
   const showForm = stage === "fan";
   const useSimplifiedQuestionStage = showForm && isCoarsePointer;
   const isInputPerformanceMode = showForm && (isQuestionInputFocused || isKeyboardVisible);
-  const showQuestionBubble = showForm;
+  const showQuestionBubble = showForm && (!isInputPerformanceMode || isRunning);
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const sceneScale = isInputPerformanceMode ? 1 : scale;
@@ -409,7 +417,7 @@ export default function SpreadPlayPage() {
   }, [scale, viewportHeight, viewportWidth, deckKey]);
 
   useLayoutEffect(() => {
-    if (isInputPerformanceMode) {
+    if (isInputPerformanceMode && !isRunning) {
       return;
     }
     if (!showForm) {
@@ -426,7 +434,7 @@ export default function SpreadPlayPage() {
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopInSpread, isInputPerformanceMode, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, isInputPerformanceMode, isRunning, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -475,6 +483,9 @@ export default function SpreadPlayPage() {
     if (!scope.current || !trimmedQuestion) return;
     const runToken = ++timelineTokenRef.current;
     setIsRunning(true);
+    setIsQuestionInputFocused(false);
+    setIsKeyboardVisible(false);
+    await nextFrame();
 
     const isActive = () => timelineTokenRef.current === runToken;
 
