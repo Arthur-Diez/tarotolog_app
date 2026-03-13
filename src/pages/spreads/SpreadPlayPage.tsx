@@ -208,7 +208,8 @@ export default function SpreadPlayPage() {
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
   const isLikelyMobileViewport = viewportWidth <= 900;
-  const isInputPerformanceMode = showForm && !isRunning && (isQuestionInputFocused || isKeyboardVisible);
+  const isInputPerformanceMode =
+    showForm && !isRunning && (isLikelyMobileViewport || isQuestionInputFocused || isKeyboardVisible);
   const useHardMobileInputMode = showForm && !isRunning && isLikelyMobileViewport && isInputPerformanceMode;
   const useSimplifiedQuestionStage =
     showForm && !isRunning && (isCoarsePointer || isLikelyMobileViewport);
