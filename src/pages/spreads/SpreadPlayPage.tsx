@@ -210,10 +210,11 @@ export default function SpreadPlayPage() {
   const isLikelyMobileViewport = viewportWidth <= 900;
   const isInputActive = showForm && !isRunning && (isQuestionInputFocused || isKeyboardVisible);
   const useUltraLiteFanStage = false;
-  const isInputPerformanceMode = isInputActive;
+  const isInputPerformanceMode = false;
   const useHardMobileInputMode = false;
-  const useSimplifiedQuestionStage = showForm && !isRunning && isInputActive && (isCoarsePointer || isLikelyMobileViewport);
-  const showQuestionBubble = showForm && (!isInputPerformanceMode || isRunning);
+  const useSimplifiedQuestionStage =
+    showForm && !isRunning && (isCoarsePointer || isLikelyMobileViewport);
+  const showQuestionBubble = showForm;
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
   const sceneScale = isInputPerformanceMode ? 1 : scale;
@@ -421,7 +422,7 @@ export default function SpreadPlayPage() {
   }, [scale, viewportHeight, viewportWidth, deckKey]);
 
   useLayoutEffect(() => {
-    if (isInputPerformanceMode && !isRunning) {
+    if (isInputActive && !isRunning) {
       return;
     }
     if (!showForm) {
@@ -438,7 +439,7 @@ export default function SpreadPlayPage() {
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopInSpread, isInputPerformanceMode, isRunning, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, isInputActive, isRunning, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
     const bubble = questionBubbleRef.current;
@@ -775,7 +776,7 @@ export default function SpreadPlayPage() {
       }
       rafId = window.requestAnimationFrame(() => {
         setViewportWidth(window.innerWidth);
-        if (!isInputPerformanceMode) {
+        if (!isInputActive) {
           setViewportHeight(window.innerHeight);
         }
       });
@@ -787,7 +788,7 @@ export default function SpreadPlayPage() {
         window.cancelAnimationFrame(rafId);
       }
     };
-  }, [isInputPerformanceMode]);
+  }, [isInputActive]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return;
@@ -813,14 +814,6 @@ export default function SpreadPlayPage() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.body.classList.toggle("spread-keyboard-open", isInputActive);
-    return () => {
-      document.body.classList.remove("spread-keyboard-open");
-    };
-  }, [isInputActive]);
 
   const spreadSpacerHeight = useMemo(() => {
     if (showForm || showActionButtons) return 0;
