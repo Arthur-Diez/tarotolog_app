@@ -40,7 +40,6 @@ const VIEW_POLL_INTERVAL = 2000;
 const LONG_WAIT_THRESHOLD = 15000;
 const READY_WITHOUT_PAYLOAD_RETRY_LIMIT = 3;
 const LOADING_HINT_ROTATE_INTERVAL = 4500;
-const KEYBOARD_VISIBLE_THRESHOLD_PX = 140;
 const INTERPRETATION_LOADING_HINTS = [
   {
     message: "Читаем связи между картами",
@@ -92,10 +91,6 @@ const SCALE_EPSILON = 0.01;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-const isCoarsePointerDevice = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(pointer: coarse)").matches;
 const normalizeLocale = (value: string | null | undefined): string => {
   if (!value) return "ru";
   const normalized = value.trim().toLowerCase();
@@ -176,9 +171,6 @@ export default function SpreadPlayPage() {
   const [loadingHintIndex, setLoadingHintIndex] = useState(0);
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
-  const [isQuestionInputFocused, setIsQuestionInputFocused] = useState(false);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [isCoarsePointer, setIsCoarsePointer] = useState<boolean>(() => isCoarsePointerDevice());
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
@@ -199,12 +191,9 @@ export default function SpreadPlayPage() {
   const hasOpenedAnyCard = cards.some((card) => card.isOpen);
   const hintVisible = stage === "await_open" && !hasOpenedAnyCard;
   const showForm = stage === "fan";
-  const useSimplifiedQuestionStage = showForm && isCoarsePointer;
-  const isInputPerformanceMode = showForm && (isQuestionInputFocused || isKeyboardVisible);
-  const showQuestionBubble = showForm && !isInputPerformanceMode && !useSimplifiedQuestionStage;
+  const showQuestionBubble = showForm;
   const prefersReducedMotion = usePrefersReducedMotion();
   const scale = useSpreadScale(schema, viewportHeight, showForm ? 360 : 260);
-  const sceneScale = isInputPerformanceMode ? 1 : scale;
   const availableWidth = Math.max(
     MIN_AVAILABLE_WIDTH,
     Math.min(viewportWidth, MAX_CONTAINER_WIDTH) - CONTAINER_PADDING
@@ -219,7 +208,6 @@ export default function SpreadPlayPage() {
       // Fan size is standardized across spreads by targeting fixed visible width.
       ? clamp(fanOuterScale, FAN_STAGE_MIN_SCALE, FAN_STAGE_MAX_SCALE)
       : dealOuterScale;
-  const effectiveDeckScale = isInputPerformanceMode ? 1 : deckBaseScale;
 
   useDeckTheme(schema.deckType);
 
@@ -261,15 +249,6 @@ export default function SpreadPlayPage() {
     }
     prevEnergyRef.current = energy;
   }, [energy]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(pointer: coarse)");
-    const onChange = () => setIsCoarsePointer(media.matches);
-    onChange();
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
 
   useEffect(() => {
     if (!isViewLoading) {
@@ -409,9 +388,6 @@ export default function SpreadPlayPage() {
   }, [scale, viewportHeight, viewportWidth, deckKey]);
 
   useLayoutEffect(() => {
-    if (isInputPerformanceMode) {
-      return;
-    }
     if (!showForm) {
       return;
     }
@@ -426,13 +402,9 @@ export default function SpreadPlayPage() {
     if (Math.abs(nextTop - bubbleTopInSpread) > 1) {
       setBubbleTopInSpread(nextTop);
     }
-  }, [bubbleTopInSpread, isInputPerformanceMode, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
+  }, [bubbleTopInSpread, showForm, scale, viewportHeight, viewportWidth, trimmedQuestion]);
 
   const dissolveQuestion = useCallback(async () => {
-    if (useSimplifiedQuestionStage) {
-      await animateAndTrack("#questionForm", { opacity: 0 }, { duration: 0.15 });
-      return;
-    }
     const bubble = questionBubbleRef.current;
     const target = fanCenterRef.current;
     if (!bubble || !target) {
@@ -458,7 +430,7 @@ export default function SpreadPlayPage() {
         { duration: QUESTION_DISSOLVE_DURATION, ease: "easeInOut", at: "<" }
       ]
     ]);
-  }, [animateAndTrack, useSimplifiedQuestionStage]);
+  }, [animateAndTrack]);
 
   useEffect(() => {
     if (stage === "fan" || stage === "collecting" || stage === "shuffling") {
@@ -756,50 +728,12 @@ export default function SpreadPlayPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    let rafId = 0;
     const handleResize = () => {
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-      rafId = window.requestAnimationFrame(() => {
-        setViewportWidth(window.innerWidth);
-        if (!isInputPerformanceMode) {
-          setViewportHeight(window.innerHeight);
-        }
-      });
+      setViewportHeight(window.innerHeight);
+      setViewportWidth(window.innerWidth);
     };
-    window.addEventListener("resize", handleResize, { passive: true });
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-    };
-  }, [isInputPerformanceMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const viewport = window.visualViewport;
-    let rafId = 0;
-    const updateKeyboardState = () => {
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-      rafId = window.requestAnimationFrame(() => {
-        const keyboardHeight = window.innerHeight - viewport.height;
-        setIsKeyboardVisible(keyboardHeight > KEYBOARD_VISIBLE_THRESHOLD_PX);
-      });
-    };
-    updateKeyboardState();
-    viewport.addEventListener("resize", updateKeyboardState, { passive: true });
-    viewport.addEventListener("scroll", updateKeyboardState, { passive: true });
-    return () => {
-      viewport.removeEventListener("resize", updateKeyboardState);
-      viewport.removeEventListener("scroll", updateKeyboardState);
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const spreadSpacerHeight = useMemo(() => {
@@ -868,44 +802,9 @@ export default function SpreadPlayPage() {
       });
   }, [adsgram, hasSubscription, isViewLoading]);
 
-  const questionFormNode = (
-    <div
-      id="questionForm"
-      ref={questionFormRef}
-      className={`ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur ${
-        useSimplifiedQuestionStage ? "ritual-question-panel-simplified" : ""
-      }`}
-      style={{
-        marginTop: useSimplifiedQuestionStage ? "0" : "clamp(-10px, -2vh, -4px)"
-      }}
-    >
-      <div className="space-y-1">
-        <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
-        <p className="text-wrap-anywhere text-sm text-white/70">
-          {schema.id === "one_card"
-            ? "Сформулируйте запрос и получите энергию дня."
-            : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
-        </p>
-      </div>
-      <textarea
-        placeholder="Введите ваш вопрос к картам..."
-        className={`ritual-question-input text-wrap-anywhere h-28 w-full rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none ${
-          useSimplifiedQuestionStage ? "resize-none" : "resize-y"
-        }`}
-        value={question}
-        onChange={(event) => setQuestion(event.target.value)}
-        onFocus={() => setIsQuestionInputFocused(true)}
-        onBlur={() => setIsQuestionInputFocused(false)}
-      />
-      <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
-        Подтвердить вопрос
-      </Button>
-    </div>
-  );
-
   return (
     <div
-      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""}`}
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""}`}
     >
       <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
         <div className="ritual-haze" />
@@ -923,7 +822,7 @@ export default function SpreadPlayPage() {
         ref={scope}
         className="ritual-shell relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center px-4 pb-10 pt-4"
         style={{
-          perspective: useSimplifiedQuestionStage ? "none" : "1200px",
+          perspective: "1200px",
           gap: formGap
         }}
       >
@@ -946,35 +845,26 @@ export default function SpreadPlayPage() {
         </div>
         <div
           ref={spreadAreaRef}
-            className="ritual-scene relative"
-            style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              marginTop: showForm ? `${6 / sceneScale}px` : `${16 / sceneScale}px`,
-              pointerEvents: shouldBlockInteractions ? "none" : "auto"
-            }}
+          className="ritual-scene relative"
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
+            pointerEvents: shouldBlockInteractions ? "none" : "auto"
+          }}
+        >
+          <div
+            className="ritual-scene-frame relative flex w-full flex-col items-center"
+            style={{ transform: `scale(${scale})`, transformOrigin: "center top", transformStyle: "preserve-3d" }}
           >
-            <div
-              className="ritual-scene-frame relative flex w-full flex-col items-center"
-              style={{
-                transform: useSimplifiedQuestionStage ? "none" : `scale(${sceneScale})`,
-                transformOrigin: "center top",
-                transformStyle: useSimplifiedQuestionStage ? "flat" : "preserve-3d"
-              }}
-            >
             <div className="ritual-scene-halo" aria-hidden />
             <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
               <div
                 className="deck-outer ritual-deck-shell"
-                style={{ transform: `scale(${effectiveDeckScale})`, transformOrigin: "center top" }}
+                style={{ transform: `scale(${deckBaseScale})`, transformOrigin: "center top" }}
               >
-                <DeckStack
-                  key={deckKey}
-                  backSrc={backSrc}
-                  mode={useSimplifiedQuestionStage ? "fan" : stage}
-                  fanCenterRef={fanCenterRef}
-                />
+                <DeckStack key={deckKey} backSrc={backSrc} mode={stage} fanCenterRef={fanCenterRef} />
               </div>
             </div>
             <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">
@@ -1154,10 +1044,32 @@ export default function SpreadPlayPage() {
         {showQuestionBubble && null}
         <div aria-hidden className="w-full" style={{ height: `${spreadSpacerHeight}px` }} />
 
-        {showForm && !useSimplifiedQuestionStage && questionFormNode}
-        {showForm && useSimplifiedQuestionStage && (
-          <div className="w-full max-w-xl pt-2">
-            {questionFormNode}
+        {showForm && (
+          <div
+            id="questionForm"
+            ref={questionFormRef}
+            className="ritual-bottom-panel ritual-question-panel w-full space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur"
+            style={{
+              marginTop: "clamp(-10px, -2vh, -4px)"
+            }}
+          >
+            <div className="space-y-1">
+              <h1 className="text-wrap-anywhere text-xl font-semibold text-white">{schema.name}</h1>
+              <p className="text-wrap-anywhere text-sm text-white/70">
+                {schema.id === "one_card"
+                  ? "Сформулируйте запрос и получите энергию дня."
+                  : `${schema.cardCount} карт(ы) помогут раскрыть ваш вопрос и показать ключевые акценты.`}
+              </p>
+            </div>
+            <textarea
+              placeholder="Введите ваш вопрос к картам..."
+              className="ritual-question-input text-wrap-anywhere h-28 w-full resize-y rounded-2xl border border-white/20 bg-white/5 p-3 text-sm text-white placeholder:text-white/60 focus-visible:outline-none"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+            />
+            <Button onClick={handleStart} className="w-full text-base" disabled={isRunning || !trimmedQuestion}>
+              Подтвердить вопрос
+            </Button>
           </div>
         )}
 
