@@ -206,12 +206,12 @@
     border-radius: 24px;
     background: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
   }
 
   .tarot-card-shadow {
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
   }
 
   .mystic-heading {
@@ -229,5 +229,45 @@
   }
   100% {
     transform: translateY(0) scale(1);
+  }
+}
+
+@media (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+  }
+
+  body::before {
+    opacity: 0.08;
+  }
+
+  body::after {
+    display: none;
+  }
+
+  .backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  .backdrop-blur,
+  .backdrop-blur-md {
+    -webkit-backdrop-filter: blur(6px) !important;
+    backdrop-filter: blur(6px) !important;
+  }
+
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl {
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .blur-xl {
+    filter: blur(10px) !important;
+  }
+
+  .blur-2xl {
+    filter: blur(14px) !important;
   }
 }
