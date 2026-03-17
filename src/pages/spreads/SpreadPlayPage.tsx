@@ -224,7 +224,9 @@ export default function SpreadPlayPage() {
   );
   const normalizedScale = Math.max(scale, SCALE_EPSILON);
   const fanVisualScale = (availableWidth * FAN_TARGET_FILL) / FAN_TARGET_WIDTH;
-  const fanOuterScale = fanVisualScale / normalizedScale;
+  // In simplified question stage we don't apply scene-scale transform, so
+  // deck scale must be direct visual scale to avoid oversized fan on wide layouts.
+  const fanOuterScale = useSimplifiedQuestionStage ? fanVisualScale : fanVisualScale / normalizedScale;
   const deckFitScale = availableWidth / (normalizedScale * FAN_TARGET_WIDTH);
   const dealOuterScale = deckFitScale >= 1 ? Math.min(DEAL_STAGE_MAX_SCALE, deckFitScale) : deckFitScale;
   const deckBaseScale =
