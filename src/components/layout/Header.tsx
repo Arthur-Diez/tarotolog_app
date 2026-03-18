@@ -16,14 +16,14 @@ export function Header({ name, username, energy, className }: HeaderProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/80 px-5 py-4 backdrop-blur-2xl",
+        "flex items-center justify-between gap-4 rounded-[28px] border border-[var(--surface-border)] bg-[var(--bg-card)]/80 px-5 py-4 shadow-[var(--surface-shadow)] backdrop-blur-2xl",
         className
       )}
     >
       <div className="flex items-center gap-4">
         <div className="relative">
           <div className="absolute inset-0 rounded-[22px] bg-[var(--accent-pink)]/20 blur-xl" />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-[22px] border border-white/15 bg-[var(--bg-card-strong)] text-2xl font-semibold text-[var(--accent-pink)] shadow-[0_12px_35px_rgba(0,0,0,0.45)]">
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-[22px] border border-[var(--surface-border-strong)] bg-[var(--bg-card-strong)] text-2xl font-semibold text-[var(--accent-pink)] shadow-[var(--surface-shadow-soft)]">
             {name.slice(0, 1)}
           </div>
         </div>
@@ -36,9 +36,9 @@ export function Header({ name, username, energy, className }: HeaderProps) {
       </div>
       <Button
         variant="primary"
-        className="gap-2 whitespace-nowrap border border-white/10 bg-[var(--accent-gold)]/90 px-4 text-sm text-[#1b1610] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] hover:bg-[var(--accent-gold)]"
+        className="gap-2 whitespace-nowrap border border-[var(--surface-border)] bg-[var(--accent-gold)] px-4 text-sm text-[hsl(var(--secondary-foreground))] shadow-[var(--surface-shadow-soft)]"
       >
-        <Wallet className="h-4 w-4 text-[#1b1610]" strokeWidth={1.5} />
+        <Wallet className="h-4 w-4 text-[hsl(var(--secondary-foreground))]" strokeWidth={1.5} />
         Пополнить
       </Button>
     </div>

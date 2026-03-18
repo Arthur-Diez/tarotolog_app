@@ -16,6 +16,16 @@
     --bg-card: rgba(255, 255, 255, 0.06);
     --bg-card-strong: rgba(255, 255, 255, 0.1);
     --bg-blur: rgba(255, 255, 255, 0.08);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --surface-border-strong: rgba(255, 255, 255, 0.16);
+    --surface-chip-bg: rgba(255, 255, 255, 0.08);
+    --surface-chip-border: rgba(255, 255, 255, 0.14);
+    --surface-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    --surface-shadow-soft: 0 12px 26px rgba(0, 0, 0, 0.34);
+    --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.14);
+    --input-placeholder: rgba(255, 255, 255, 0.45);
 
     --accent-pink: #eecdf5;
     --accent-gold: #d9c2a3;
@@ -56,6 +66,16 @@
     --bg-card: rgba(255, 255, 255, 0.06);
     --bg-card-strong: rgba(255, 255, 255, 0.1);
     --bg-blur: rgba(255, 255, 255, 0.08);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --surface-border-strong: rgba(255, 255, 255, 0.16);
+    --surface-chip-bg: rgba(255, 255, 255, 0.08);
+    --surface-chip-border: rgba(255, 255, 255, 0.14);
+    --surface-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    --surface-shadow-soft: 0 12px 26px rgba(0, 0, 0, 0.34);
+    --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.14);
+    --input-placeholder: rgba(255, 255, 255, 0.45);
 
     --accent-pink: #eecdf5;
     --accent-gold: #d9c2a3;
@@ -95,38 +115,68 @@
     --bg-card: rgba(255, 255, 255, 0.06);
     --bg-card-strong: rgba(255, 255, 255, 0.1);
     --bg-blur: rgba(255, 255, 255, 0.08);
+    --surface-border: rgba(255, 255, 255, 0.1);
+    --surface-border-strong: rgba(255, 255, 255, 0.16);
+    --surface-chip-bg: rgba(255, 255, 255, 0.08);
+    --surface-chip-border: rgba(255, 255, 255, 0.14);
+    --surface-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    --surface-shadow-soft: 0 12px 26px rgba(0, 0, 0, 0.34);
+    --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.14);
+    --input-placeholder: rgba(255, 255, 255, 0.45);
     --text-primary: rgba(255, 255, 255, 0.9);
     --text-secondary: rgba(255, 255, 255, 0.6);
     --text-tertiary: rgba(255, 255, 255, 0.4);
   }
 
   .tg-light {
-    --bg-main: #f8f5fb;
-    --bg-card: rgba(18, 14, 23, 0.08);
-    --bg-card-strong: rgba(18, 14, 23, 0.12);
-    --bg-blur: rgba(18, 14, 23, 0.08);
+    --bg-main: #eef1f8;
+    --bg-card: rgba(255, 255, 255, 0.78);
+    --bg-card-strong: rgba(255, 255, 255, 0.88);
+    --bg-blur: rgba(255, 255, 255, 0.7);
+    --surface-border: rgba(72, 71, 103, 0.18);
+    --surface-border-strong: rgba(72, 71, 103, 0.26);
+    --surface-chip-bg: rgba(112, 128, 181, 0.14);
+    --surface-chip-border: rgba(86, 101, 154, 0.24);
+    --surface-shadow: 0 18px 40px rgba(54, 49, 80, 0.18);
+    --surface-shadow-soft: 0 10px 24px rgba(54, 49, 80, 0.15);
+    --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    --input-bg: rgba(255, 255, 255, 0.86);
+    --input-border: rgba(86, 101, 154, 0.24);
+    --input-placeholder: rgba(55, 61, 91, 0.52);
 
-    --text-primary: rgba(18, 14, 23, 0.9);
-    --text-secondary: rgba(18, 14, 23, 0.65);
-    --text-tertiary: rgba(18, 14, 23, 0.45);
+    --accent-pink: #cfadde;
+    --accent-gold: #c79f69;
+    --accent-energy: linear-gradient(45deg, #d9b6ea, #f0d7c2);
 
-    --background: 282 28% 96%;
-    --foreground: 266 24% 12%;
-    --card: 280 40% 96% / 0.8;
-    --card-foreground: 266 24% 12%;
-    --border: 280 15% 82%;
-    --input: 282 20% 86%;
-    --primary: 289 67% 55%;
+    --text-primary: rgba(34, 38, 57, 0.94);
+    --text-secondary: rgba(34, 38, 57, 0.7);
+    --text-tertiary: rgba(34, 38, 57, 0.48);
+
+    --tg-bg: 238 241 248;
+    --tg-fg: 34 38 57;
+    --tg-secondary-bg: 255 255 255;
+    --tg-accent: 145 167 224;
+    --tg-muted: 101 108 143;
+
+    --background: 233 39% 95%;
+    --foreground: 230 22% 18%;
+    --card: 0 0% 100% / 0.82;
+    --card-foreground: 230 22% 18%;
+    --border: 232 21% 78%;
+    --input: 230 25% 84%;
+    --primary: 220 67% 70%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 35 40% 45%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 285 27% 92%;
-    --muted-foreground: 280 24% 45%;
-    --accent: 289 67% 55%;
+    --secondary: 35 44% 58%;
+    --secondary-foreground: 232 30% 13%;
+    --muted: 230 32% 90%;
+    --muted-foreground: 231 18% 42%;
+    --accent: 220 67% 70%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 79% 55%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 289 67% 55%;
+    --ring: 220 67% 70%;
   }
 
   *,
@@ -182,6 +232,25 @@
     border-radius: 32px;
   }
 
+  .tg-light body {
+    background-image:
+      radial-gradient(circle at 18% -12%, rgba(160, 186, 238, 0.28), transparent 44%),
+      radial-gradient(circle at 86% 4%, rgba(214, 181, 228, 0.26), transparent 42%),
+      radial-gradient(circle at 24% 74%, rgba(244, 220, 199, 0.16), transparent 38%);
+  }
+
+  .tg-light body::before {
+    background-image:
+      radial-gradient(circle, rgba(58, 66, 102, 0.13) 1px, transparent 1px),
+      radial-gradient(circle, rgba(58, 66, 102, 0.1) 0.5px, transparent 1px);
+    opacity: 0.12;
+  }
+
+  .tg-light body::after {
+    mix-blend-mode: multiply;
+    opacity: 0.035;
+  }
+
   body.spread-play-fullbleed::before,
   body.spread-play-fullbleed::after {
     border-radius: 0;
@@ -205,8 +274,8 @@
   .glass-panel {
     border-radius: 24px;
     background: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--surface-shadow-soft), var(--surface-inset);
     backdrop-filter: blur(12px);
   }
 

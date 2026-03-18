@@ -16,7 +16,7 @@ export function EnergyGauge({ level, glowIntensity, max = 100, className }: Ener
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[28px] border border-[rgba(217,194,163,0.25)] bg-[var(--bg-card-strong)] p-6 shadow-[0_30px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl",
+        "relative overflow-hidden rounded-[28px] border border-[var(--surface-border)] bg-[var(--bg-card-strong)] p-6 shadow-[var(--surface-shadow)] backdrop-blur-2xl",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function EnergyGauge({ level, glowIntensity, max = 100, className }: Ener
           <span>низкая</span>
           <span>высокая</span>
         </div>
-        <div className="relative h-4 w-full rounded-full bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+        <div className="relative h-4 w-full rounded-full bg-[var(--surface-chip-bg)] shadow-[var(--surface-inset)]">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${percentage}%` }}

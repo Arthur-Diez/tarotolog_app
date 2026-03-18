@@ -33,10 +33,10 @@ export function SectionGrid({ sections, onSectionSelect }: SectionGridProps) {
         >
           <Card
             className={cn(
-              "flex h-full min-h-[150px] flex-col items-start justify-between rounded-[24px] border border-white/10 bg-[var(--bg-card)]/90 p-5 text-left shadow-[0_20px_40px_rgba(0,0,0,0.45)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:border-white/20"
+              "flex h-full min-h-[150px] flex-col items-start justify-between rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/90 p-5 text-left shadow-[var(--surface-shadow)] transition-transform duration-200 group-hover:-translate-y-1 group-hover:border-[var(--surface-border-strong)]"
             )}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[var(--accent-gold)]">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] text-[var(--accent-gold)]">
               {section.icon}
             </span>
             <div className="mt-4 space-y-1.5">

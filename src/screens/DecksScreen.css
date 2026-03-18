@@ -66,13 +66,10 @@
   --deck-accent: rgba(214, 176, 118, 0.92);
   --deck-glow: rgba(214, 176, 118, 0.16);
   --deck-preview-glow: var(--deck-glow);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--bg-card);
   backdrop-filter: blur(12px);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.05),
-    0 0 22px var(--deck-glow);
+  box-shadow: var(--surface-shadow-soft), var(--surface-inset), 0 0 22px var(--deck-glow);
   transition:
     transform 320ms ease,
     box-shadow 320ms ease,
@@ -125,8 +122,8 @@
 
 .deck-card-toggle {
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-chip-bg);
   backdrop-filter: blur(8px);
   transition:
     background-color 260ms ease,
@@ -135,8 +132,8 @@
 }
 
 .deck-card-toggle:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: var(--bg-card-strong);
+  border-color: var(--surface-border-strong);
 }
 
 .deck-card-toggle:focus-visible {
@@ -156,9 +153,9 @@
 }
 
 .deck-expanded {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(11, 13, 21, 0.55);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-border);
+  background: var(--bg-card-strong);
+  box-shadow: var(--surface-inset);
   backdrop-filter: blur(10px);
 }
 
@@ -213,8 +210,8 @@
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-chip-border);
+  background: var(--surface-chip-bg);
   padding: 6px 10px;
   font-size: 12px;
   line-height: 1;
@@ -224,7 +221,7 @@
 .deck-section {
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--surface-border);
 }
 
 .deck-section-title {
@@ -237,39 +234,39 @@
 
 .tg-light .decks-screen::before {
   background:
-    radial-gradient(circle at 16% 18%, rgba(189, 148, 80, 0.14) 0%, rgba(189, 148, 80, 0) 44%),
-    radial-gradient(circle at 84% 8%, rgba(100, 138, 212, 0.14) 0%, rgba(100, 138, 212, 0) 46%),
-    radial-gradient(circle at 52% 88%, rgba(153, 126, 214, 0.12) 0%, rgba(153, 126, 214, 0) 50%),
-    #f2eff7;
+    radial-gradient(circle at 16% 18%, rgba(189, 148, 80, 0.18) 0%, rgba(189, 148, 80, 0) 44%),
+    radial-gradient(circle at 84% 8%, rgba(100, 138, 212, 0.2) 0%, rgba(100, 138, 212, 0) 46%),
+    radial-gradient(circle at 52% 88%, rgba(153, 126, 214, 0.16) 0%, rgba(153, 126, 214, 0) 50%),
+    #ecf0f9;
 }
 
 .tg-light .deck-portal-card {
-  border-color: rgba(18, 14, 23, 0.08);
-  background: rgba(255, 255, 255, 0.58);
+  border-color: var(--surface-border);
+  background: rgba(255, 255, 255, 0.86);
   box-shadow:
-    0 12px 24px rgba(14, 11, 20, 0.11),
-    inset 0 1px 1px rgba(255, 255, 255, 0.68),
+    var(--surface-shadow-soft),
+    var(--surface-inset),
     0 0 20px var(--deck-glow);
 }
 
 .tg-light .deck-expanded {
-  border-color: rgba(18, 14, 23, 0.1);
-  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--surface-border);
+  background: rgba(255, 255, 255, 0.84);
 }
 
 .tg-light .deck-card-toggle {
-  border-color: rgba(18, 14, 23, 0.12);
-  background: rgba(255, 255, 255, 0.62);
+  border-color: var(--surface-border);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .tg-light .deck-chip {
-  border-color: rgba(18, 14, 23, 0.12);
-  background: rgba(18, 14, 23, 0.06);
+  border-color: var(--surface-chip-border);
+  background: var(--surface-chip-bg);
   color: rgba(18, 14, 23, 0.84);
 }
 
 .tg-light .deck-section {
-  border-top-color: rgba(18, 14, 23, 0.12);
+  border-top-color: var(--surface-border);
 }
 
 .tg-light .deck-section-title {

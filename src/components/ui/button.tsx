@@ -9,13 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--bg-blur)] text-[var(--text-primary)] shadow-[0_10px_25px_rgba(0,0,0,0.4)] border border-white/10 hover:border-white/20 hover:bg-[var(--bg-card-strong)]",
+          "bg-[var(--bg-blur)] text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)] border border-[var(--surface-border)] hover:border-[var(--surface-border-strong)] hover:bg-[var(--bg-card-strong)]",
         primary:
-          "bg-[var(--accent-gold)]/90 text-[#2b1f16] shadow-[0_15px_35px_rgba(0,0,0,0.45)] hover:bg-[var(--accent-gold)]",
+          "bg-[var(--accent-gold)] text-[hsl(var(--secondary-foreground))] shadow-[var(--surface-shadow-soft)] hover:brightness-105",
         outline:
-          "border border-white/15 bg-transparent text-[var(--text-primary)] hover:bg-white/5 hover:text-white",
+          "border border-[var(--surface-border-strong)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-chip-bg)]",
         ghost: "bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-        muted: "bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        muted: "bg-[var(--surface-chip-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       },
       size: {
         default: "h-11 px-6",

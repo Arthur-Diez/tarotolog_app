@@ -476,7 +476,9 @@ function MetaphoricalDeckFlowPreview({ isActive, className = "" }: { isActive: b
 
 function StaticDeckPreview({ className = "" }: { className?: string }) {
   return (
-    <div className={`relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 ${className}`}>
+    <div
+      className={`relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] ${className}`}
+    >
       <div className="absolute h-24 w-24 rounded-full bg-[rgba(140,90,255,0.2)] blur-2xl" />
       <FaceCard name={RWS_FLOW_FACE_CARDS[0]} size={52} className="absolute -ml-16 opacity-80" />
       <FaceCard name={RWS_FLOW_FACE_CARDS[1]} size={52} className="absolute" />

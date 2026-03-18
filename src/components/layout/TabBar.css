@@ -12,11 +12,9 @@
 
 .tabbar-glass {
   min-height: var(--tabbar-height);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(14, 16, 24, 0.52);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--surface-border);
+  background: var(--bg-card);
+  box-shadow: var(--surface-shadow-soft), var(--surface-inset);
   backdrop-filter: blur(12px);
 }
 
@@ -30,7 +28,7 @@
 
 .tabbar-link:focus-visible .tabbar-item {
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 0 0 1px var(--surface-border-strong),
     0 0 0 3px rgba(183, 156, 235, 0.35);
 }
 
@@ -43,68 +41,68 @@
 }
 
 .tabbar-item-indicator {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-chip-bg);
   box-shadow:
-    inset 0 0 10px rgba(255, 255, 255, 0.12),
+    var(--surface-inset),
     0 0 12px rgba(229, 190, 250, 0.14);
 }
 
 .tabbar-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-tertiary);
 }
 
 .tabbar-icon.is-active {
-  color: rgba(250, 241, 255, 0.96);
+  color: var(--text-primary);
   filter: drop-shadow(0 0 4px rgba(232, 194, 255, 0.24));
 }
 
 .tabbar-label {
-  color: rgba(255, 255, 255, 0.48);
+  color: var(--text-tertiary);
   font-size: 0.6rem;
 }
 
 .tabbar-label.is-active {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
 }
 
 .tg-light .tabbar-glass {
-  border-color: rgba(18, 14, 23, 0.1);
-  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--surface-border);
+  background: rgba(255, 255, 255, 0.88);
   box-shadow:
-    0 10px 20px rgba(18, 14, 23, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    var(--surface-shadow-soft),
+    var(--surface-inset);
 }
 
 .tg-light .tabbar-item-indicator {
-  border-color: rgba(18, 14, 23, 0.1);
-  background: rgba(18, 14, 23, 0.05);
+  border-color: var(--surface-chip-border);
+  background: var(--surface-chip-bg);
   box-shadow:
-    inset 0 0 9px rgba(18, 14, 23, 0.07),
+    var(--surface-inset),
     0 0 10px rgba(180, 145, 232, 0.14);
 }
 
 .tg-light .tabbar-icon {
-  color: rgba(18, 14, 23, 0.5);
+  color: var(--text-tertiary);
 }
 
 .tg-light .tabbar-icon.is-active {
-  color: rgba(18, 14, 23, 0.9);
+  color: var(--text-primary);
   filter: drop-shadow(0 0 4px rgba(162, 118, 223, 0.2));
 }
 
 .tg-light .tabbar-label {
-  color: rgba(18, 14, 23, 0.48);
+  color: var(--text-tertiary);
 }
 
 .tg-light .tabbar-label.is-active {
-  color: rgba(18, 14, 23, 0.88);
+  color: var(--text-primary);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .tabbar-link:hover .tabbar-item:not(.is-active) .tabbar-icon,
   .tabbar-link:hover .tabbar-item:not(.is-active) .tabbar-label {
-    color: rgba(255, 255, 255, 0.68);
+    color: var(--text-secondary);
   }
 }
 

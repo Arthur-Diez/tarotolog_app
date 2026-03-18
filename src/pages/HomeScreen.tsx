@@ -128,9 +128,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     }
 
     return (
-      <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5 shadow-[0_25px_45px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+      <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/85 p-5 shadow-[var(--surface-shadow)] backdrop-blur-2xl">
         <div className="flex items-center gap-3">
-          <span className="rounded-2xl border border-white/15 bg-white/5 p-2">{meta.icon}</span>
+          <span className="rounded-2xl border border-[var(--surface-border-strong)] bg-[var(--surface-chip-bg)] p-2">{meta.icon}</span>
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">{meta.title}</h3>
         </div>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">{meta.description}</p>
@@ -142,7 +142,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const skeletons = Array.from({ length: 3 }, (_, index) => (
     <div
       key={`skeleton-${index}`}
-      className="rounded-[24px] border border-white/5 bg-white/5 p-6 opacity-70 animate-pulse"
+      className="animate-pulse rounded-[24px] border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] p-6 opacity-70"
     />
   ));
 

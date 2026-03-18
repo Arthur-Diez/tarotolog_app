@@ -344,7 +344,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   }, [countdownLabel, hasSubscription, reward.status]);
 
   return (
-    <div className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/80 p-4 shadow-[0_20px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/80 p-4 shadow-[var(--surface-shadow)] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
@@ -354,14 +354,14 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
           </p>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
+        <span className="rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
           +{reward.amount || 0} ⚡
         </span>
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <button
-          className="rounded-full bg-[var(--accent-pink)] px-5 py-2 text-sm font-semibold text-[#1b111b] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-[var(--text-tertiary)]"
+          className="rounded-full border border-[var(--surface-border)] bg-[var(--accent-pink)] px-5 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))] shadow-[var(--surface-shadow-soft)] disabled:cursor-not-allowed disabled:bg-[var(--surface-chip-bg)] disabled:text-[var(--text-tertiary)]"
           onClick={handleClaim}
           disabled={
             processing ||
@@ -379,7 +379,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
             <span>{reward.error}</span>
             <button
               type="button"
-              className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-[var(--text-secondary)]"
+              className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] px-2 py-1 text-[10px] text-[var(--text-secondary)]"
               onClick={handleClaim}
               disabled={processing}
             >
@@ -389,7 +389,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         ) : null}
       </div>
       {debugAds || reward.status === "error" ? (
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
+        <div className="mt-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
           <div>AdsGram blockId: {reward.adsgramBlockId ?? adsDebugState.blockId ?? "missing"}</div>
           <div>Controller: {adsDebugState.controllerReady ? "ready" : "missing"}</div>
           <div>Last event: {adsDebugState.lastEvent ?? "n/a"}</div>

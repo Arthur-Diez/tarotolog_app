@@ -1109,13 +1109,13 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
       </div>
 
       <div className="spread-reveal relative" style={{ ["--reveal-delay" as string]: "140ms" } as CSSProperties}>
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Поиск: любовь, деньги, кризис, 3 карты..."
-          className="spreads-search-input h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] pl-10 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none"
+          className="spreads-search-input h-11 w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] pl-10 pr-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--input-placeholder)] focus-visible:outline-none"
         />
       </div>
 
@@ -1134,7 +1134,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold text-[var(--text-primary)]">{block.title}</h3>
                 {block.badge ? (
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">
+                  <span className="rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-primary)]">
                     {block.badge}
                   </span>
                 ) : null}
@@ -1160,7 +1160,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             </section>
           ))}
           {groupedBlocks.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+            <Card className="rounded-[20px] border border-[var(--surface-border)] bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               {emptyMessage}
             </Card>
           ) : null}
@@ -1184,7 +1184,7 @@ export function SpreadsScreen({ deck, onBack }: SpreadsScreenProps) {
             );
           })}
           {nonRwsSpreads.length === 0 ? (
-            <Card className="rounded-[20px] border border-white/10 bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
+            <Card className="rounded-[20px] border border-[var(--surface-border)] bg-[var(--bg-card)]/70 p-4 text-sm text-[var(--text-secondary)]">
               {emptyMessage}
             </Card>
           ) : null}
@@ -2286,14 +2286,14 @@ function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect,
           <p className="truncate text-sm text-[var(--text-secondary)]">{metaLine}</p>
         </div>
         <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-2">
-          <span className="spread-energy-badge inline-flex h-9 min-w-16 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-semibold text-white/95">
+          <span className="spread-energy-badge inline-flex h-9 min-w-16 items-center justify-center rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 text-sm font-semibold text-[var(--text-primary)]">
             {energyText}
           </span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="spread-toggle-button h-9 gap-1 border-white/10 bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
+            className="spread-toggle-button h-9 gap-1 border-[var(--surface-border)] bg-[var(--bg-card-strong)]/70 text-[var(--text-primary)] hover:bg-[var(--bg-card-strong)]"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`spread-desc-${spread.id}`}
@@ -2317,7 +2317,7 @@ function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect,
       </div>
       <Expander isOpen={expanded} ariaId={`spread-desc-${spread.id}`}>
         {hasDetailedContent ? (
-          <div className="spread-expanded-panel mt-4 space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur">
+          <div className="spread-expanded-panel mt-4 space-y-4 rounded-[22px] border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] p-4 backdrop-blur">
             <SpreadPreviewByLayout spreadId={spread.id} />
             <div>
               <h4 className="text-base font-semibold text-[var(--text-primary)]">{details.header}</h4>
@@ -2579,7 +2579,7 @@ function SpreadPreviewByLayout({ spreadId }: { spreadId: string }) {
     customSize ?? (cardsCount <= 1 ? 86 : cardsCount <= 3 ? 64 : cardsCount <= 5 ? 56 : cardsCount <= 7 ? 48 : cardsCount <= 10 ? 44 : 38);
 
   return (
-    <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5">
+    <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-chip-bg)]">
       <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(140,90,255,0.35)] blur-2xl" />
       {previewPositions.map((position, idx) => {
         const normalizedX = (position.x - centerX) * fitScale + 50;
