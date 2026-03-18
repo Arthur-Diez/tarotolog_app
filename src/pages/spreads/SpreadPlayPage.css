@@ -117,9 +117,41 @@
   backdrop-filter: blur(10px);
 }
 
+.ritual-energy-balance {
+  position: relative;
+  overflow: hidden;
+}
+
 .ritual-energy-icon {
   color: var(--deck-accent, rgba(214, 176, 118, 0.92));
   text-shadow: 0 0 12px var(--deck-glow, rgba(214, 176, 118, 0.16));
+}
+
+.ritual-energy-delta {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(9px) scale(0.95);
+  animation: ritual-energy-delta-rise 880ms var(--ritual-ease) forwards;
+}
+
+.ritual-energy-delta.is-minus {
+  color: #ffe7ab;
+  background: rgba(163, 115, 33, 0.26);
+  box-shadow: 0 0 16px rgba(242, 179, 69, 0.2);
+}
+
+.ritual-energy-delta.is-plus {
+  color: #d9ffe6;
+  background: rgba(39, 129, 88, 0.26);
+  box-shadow: 0 0 16px rgba(67, 176, 122, 0.2);
 }
 
 .ritual-topbar-inner.is-flash {
@@ -428,6 +460,12 @@
   .ritual-deck-shell {
     transition: none !important;
   }
+
+  .ritual-energy-delta {
+    animation: none !important;
+    opacity: 0.95;
+    transform: translateY(-50%);
+  }
 }
 
 @keyframes ritual-haze-drift {
@@ -461,5 +499,20 @@
   100% {
     opacity: 0;
     transform: scale(1.06);
+  }
+}
+
+@keyframes ritual-energy-delta-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(9px) scale(0.95);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.03);
   }
 }

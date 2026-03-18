@@ -25,6 +25,7 @@ import { isDeckWithReversals } from "@/lib/tarotOrientation";
 import { useSpreadStore } from "@/stores/spreadStore";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 import type { SpreadId } from "@/data/rws_spreads";
+import { getRwsSpreadEnergyCost } from "@/data/rwsEnergyCosts";
 import { DECKS } from "@/data/decks";
 import { useDeckTheme } from "@/ui/useDeckTheme";
 import "./SpreadPlayPage.css";
@@ -89,6 +90,7 @@ const FAN_STAGE_MIN_SCALE = 0.7;
 const FAN_STAGE_MAX_SCALE = 3;
 const DEAL_STAGE_MAX_SCALE = 1.15;
 const SCALE_EPSILON = 0.01;
+const ENERGY_DELTA_BADGE_DURATION = 1200;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = () =>
@@ -182,6 +184,8 @@ export default function SpreadPlayPage() {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isLongWait, setIsLongWait] = useState(false);
   const [loadingHintIndex, setLoadingHintIndex] = useState(0);
+  const [energyDeltaBadge, setEnergyDeltaBadge] = useState<{ key: number; amount: number } | null>(null);
+  const [displayEnergy, setDisplayEnergy] = useState<number | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
   const [orderWarning, setOrderWarning] = useState<string | null>(null);
   const [isQuestionInputFocused, setIsQuestionInputFocused] = useState(false);
@@ -199,7 +203,21 @@ export default function SpreadPlayPage() {
   const pauseTimerRef = useRef<number | null>(null);
   const burstTimerRef = useRef<number | null>(null);
   const energyFlashTimerRef = useRef<number | null>(null);
+  const energyDeltaTimerRef = useRef<number | null>(null);
+  const energyDeltaKeyRef = useRef(0);
+  const energyCountRafRef = useRef<number | null>(null);
+  const displayEnergyRef = useRef<number | null>(null);
   const prevEnergyRef = useRef<number | null>(null);
+  const energyRef = useRef<number | null>(null);
+  const pendingEnergyChargeRef = useRef<{
+    active: boolean;
+    amount: number;
+    previousBalance: number | null;
+  }>({
+    active: false,
+    amount: 0,
+    previousBalance: null
+  });
   const { energy, loading: energyLoading, error: energyError, reload: reloadEnergy, setEnergyBalance } =
     useEnergyBalance();
   const navigate = useNavigate();
@@ -243,6 +261,10 @@ export default function SpreadPlayPage() {
   const shouldBlockInteractions = isFocusMode && stage !== "await_open" && stage !== "done";
   const interpretationHints = isLongWait ? INTERPRETATION_LOADING_HINTS_LONG_WAIT : INTERPRETATION_LOADING_HINTS;
   const loadingHint = interpretationHints[loadingHintIndex % interpretationHints.length];
+  const spreadEnergyCost = useMemo(
+    () => (schema.deckType === "rws" ? getRwsSpreadEnergyCost(schema.id, schema.cardCount) : 0),
+    [schema.cardCount, schema.deckType, schema.id]
+  );
 
   useEffect(() => {
     setSchema(schema);
@@ -259,8 +281,65 @@ export default function SpreadPlayPage() {
       if (energyFlashTimerRef.current !== null) {
         window.clearTimeout(energyFlashTimerRef.current);
       }
+      if (energyDeltaTimerRef.current !== null) {
+        window.clearTimeout(energyDeltaTimerRef.current);
+      }
+      if (energyCountRafRef.current !== null) {
+        window.cancelAnimationFrame(energyCountRafRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    energyRef.current = energy;
+  }, [energy]);
+
+  useEffect(() => {
+    if (typeof energy !== "number") {
+      displayEnergyRef.current = energy ?? null;
+      setDisplayEnergy(energy ?? null);
+      return;
+    }
+
+    const from = displayEnergyRef.current;
+    if (typeof from !== "number" || from === energy) {
+      displayEnergyRef.current = energy;
+      setDisplayEnergy(energy);
+      return;
+    }
+
+    if (energyCountRafRef.current !== null) {
+      window.cancelAnimationFrame(energyCountRafRef.current);
+      energyCountRafRef.current = null;
+    }
+
+    const startedAt = performance.now();
+    const delta = energy - from;
+    const duration = Math.min(760, Math.max(240, Math.abs(delta) * 52));
+
+    const frame = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextValue = Math.round(from + delta * eased);
+      displayEnergyRef.current = nextValue;
+      setDisplayEnergy(nextValue);
+      if (progress < 1) {
+        energyCountRafRef.current = window.requestAnimationFrame(frame);
+        return;
+      }
+      displayEnergyRef.current = energy;
+      setDisplayEnergy(energy);
+      energyCountRafRef.current = null;
+    };
+
+    energyCountRafRef.current = window.requestAnimationFrame(frame);
+    return () => {
+      if (energyCountRafRef.current !== null) {
+        window.cancelAnimationFrame(energyCountRafRef.current);
+        energyCountRafRef.current = null;
+      }
+    };
+  }, [energy]);
 
   useEffect(() => {
     if (typeof energy !== "number") return;
@@ -303,6 +382,60 @@ export default function SpreadPlayPage() {
     setLoadingHintIndex(0);
   }, [isLongWait, isViewLoading]);
 
+  const showEnergyDeltaBadge = useCallback((amount: number) => {
+    if (!amount) return;
+    energyDeltaKeyRef.current += 1;
+    const key = energyDeltaKeyRef.current;
+    setEnergyDeltaBadge({ key, amount });
+    if (energyDeltaTimerRef.current !== null) {
+      window.clearTimeout(energyDeltaTimerRef.current);
+    }
+    energyDeltaTimerRef.current = window.setTimeout(() => {
+      setEnergyDeltaBadge((current) => (current?.key === key ? null : current));
+      energyDeltaTimerRef.current = null;
+    }, ENERGY_DELTA_BADGE_DURATION);
+  }, []);
+
+  const clearPendingEnergyCharge = useCallback(() => {
+    pendingEnergyChargeRef.current = {
+      active: false,
+      amount: 0,
+      previousBalance: null
+    };
+  }, []);
+
+  const reserveSpreadEnergy = useCallback(() => {
+    if (spreadEnergyCost <= 0) return false;
+    if (pendingEnergyChargeRef.current.active) return true;
+    const currentBalance = energyRef.current;
+    if (typeof currentBalance !== "number") return false;
+    if (currentBalance < spreadEnergyCost) return false;
+
+    pendingEnergyChargeRef.current = {
+      active: true,
+      amount: spreadEnergyCost,
+      previousBalance: currentBalance
+    };
+    setEnergyBalance(Math.max(0, currentBalance - spreadEnergyCost));
+    showEnergyDeltaBadge(-spreadEnergyCost);
+    return true;
+  }, [setEnergyBalance, showEnergyDeltaBadge, spreadEnergyCost]);
+
+  const refundPendingEnergyCharge = useCallback(() => {
+    const pending = pendingEnergyChargeRef.current;
+    if (!pending.active) return false;
+
+    if (typeof pending.previousBalance === "number") {
+      setEnergyBalance(pending.previousBalance);
+    } else if (typeof energyRef.current === "number") {
+      setEnergyBalance(energyRef.current + pending.amount);
+    }
+
+    showEnergyDeltaBadge(pending.amount);
+    clearPendingEnergyCharge();
+    return true;
+  }, [clearPendingEnergyCharge, setEnergyBalance, showEnergyDeltaBadge]);
+
   const finishReading = useCallback(
     (response: ViewReadingResponse) => {
       if (!response.output_payload) {
@@ -314,10 +447,11 @@ export default function SpreadPlayPage() {
         energySpent: response.energy_spent,
         balance: response.balance
       });
+      clearPendingEnergyCharge();
       setEnergyBalance(response.balance);
       navigate(`/reading/${response.id}`, { state: { reading: response } });
     },
-    [navigate, setEnergyBalance, setReadingResult]
+    [clearPendingEnergyCharge, navigate, setEnergyBalance, setReadingResult]
   );
 
   const backSrc = useMemo(() => backUrl(schema.deckType), [schema.deckType]);
@@ -393,6 +527,7 @@ export default function SpreadPlayPage() {
   }, [animateAndTrack, deckBaseScale]);
 
   const handleReset = () => {
+    refundPendingEnergyCharge();
     cancelTimeline();
     resetStore();
     setStage("fan");
@@ -506,6 +641,7 @@ export default function SpreadPlayPage() {
       if (!isActive()) return;
 
       setStage("shuffling");
+      reserveSpreadEnergy();
       await wait(SHUFFLE_DURATION * 1000);
       if (!isActive()) return;
 
@@ -540,7 +676,16 @@ export default function SpreadPlayPage() {
         activeAnimationRef.current = null;
       }
     }
-  }, [animateAndTrack, dissolveQuestion, prefersReducedMotion, runDealSequence, scope, setStage, trimmedQuestion]);
+  }, [
+    animateAndTrack,
+    dissolveQuestion,
+    prefersReducedMotion,
+    reserveSpreadEnergy,
+    runDealSequence,
+    scope,
+    setStage,
+    trimmedQuestion
+  ]);
 
   const handleStart = async () => {
     if (!trimmedQuestion || isRunning) {
@@ -555,6 +700,7 @@ export default function SpreadPlayPage() {
     }
     (document.activeElement as HTMLElement | null)?.blur?.();
 
+    refundPendingEnergyCharge();
     cancelTimeline();
     setViewError(null);
     setOrderWarning(null);
@@ -605,11 +751,11 @@ export default function SpreadPlayPage() {
     setViewError(null);
     setIsLongWait(false);
     setIsViewLoading(true);
+    reserveSpreadEnergy();
 
     const startedAt = Date.now();
     let longWaitNotified = false;
     let readyWithoutPayloadRetries = 0;
-    let retriedAfterProcessingTimeout = false;
     let ensuredReadingId = readingId;
 
     try {
@@ -686,13 +832,8 @@ export default function SpreadPlayPage() {
             normalizedBackendError.startsWith("processing_timeout_") ||
             normalizedBackendError.startsWith("openai_request_timeout_after_");
 
-          if (isRetryableTimeout && !retriedAfterProcessingTimeout) {
-            retriedAfterProcessingTimeout = true;
-            ensuredReadingId = undefined;
-            readyWithoutPayloadRetries = 0;
-            setBackendMeta({ readingId: undefined, backendStatus: "pending" });
-            await wait(900);
-            continue;
+          if (isRetryableTimeout) {
+            throw new Error("Сервер не успел подготовить интерпретацию. Попробуйте снова.");
           }
 
           throw new Error(backendError || "Произошла ошибка при подготовке расклада");
@@ -708,23 +849,29 @@ export default function SpreadPlayPage() {
     } catch (error) {
       console.error(error);
       setBackendMeta({ backendStatus: "error", readingId: ensuredReadingId });
+      let errorMessage = "Не удалось получить интерпретацию";
       if (error instanceof ApiError) {
         if (error.code === "not_enough_energy") {
-          setViewError("Недостаточно энергии. Пополните баланс и попробуйте снова.");
+          errorMessage = "Недостаточно энергии. Пополните баланс и попробуйте снова.";
         } else if (error.status === 401) {
-          setViewError("Сессия невалидна. Перезапустите мини-приложение через Telegram.");
+          errorMessage = "Сессия невалидна. Перезапустите мини-приложение через Telegram.";
         } else {
-          setViewError(error.message || "Не удалось получить интерпретацию");
+          errorMessage = error.message || "Не удалось получить интерпретацию";
         }
       } else {
-        setViewError(error instanceof Error ? error.message : "Не удалось получить интерпретацию");
+        errorMessage = error instanceof Error ? error.message : "Не удалось получить интерпретацию";
       }
+
+      if (refundPendingEnergyCharge()) {
+        errorMessage = `${errorMessage} Энергия за расклад возвращена.`;
+      }
+      setViewError(errorMessage);
     } finally {
       setIsViewLoading(false);
     }
   };
 
-  const energyLabel = energyLoading ? "…" : energy ?? "—";
+  const energyLabel = energyLoading ? "…" : displayEnergy ?? "—";
   const statusLabel = backendStatus ? STATUS_TEXT[backendStatus] : null;
   const deckSupportsReversals = isDeckWithReversals(schema.deckType);
 
@@ -947,8 +1094,16 @@ export default function SpreadPlayPage() {
           ref={scope}
           className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-xl flex-col items-center gap-3 px-4 pb-10 pt-4"
         >
-          <div className="w-full rounded-2xl border border-white/10 bg-[#11192a] px-4 py-2 text-sm text-white/85">
+          <div className="ritual-topbar-inner ritual-energy-balance w-full rounded-2xl border border-white/10 bg-[#11192a] px-4 py-2 text-sm text-white/85">
             Энергия: {energyLabel} <span className="text-white/90">⚡</span>
+            {energyDeltaBadge ? (
+              <span
+                key={energyDeltaBadge.key}
+                className={`ritual-energy-delta ${energyDeltaBadge.amount < 0 ? "is-minus" : "is-plus"}`}
+              >
+                {energyDeltaBadge.amount > 0 ? `+${energyDeltaBadge.amount}` : energyDeltaBadge.amount} ⚡
+              </span>
+            ) : null}
             {energyError && (
               <button
                 type="button"
@@ -999,8 +1154,16 @@ export default function SpreadPlayPage() {
         }}
       >
         <div className="ritual-topbar w-full">
-          <div className={`ritual-topbar-inner rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-inner ${energyFlash ? "is-flash" : ""}`}>
+          <div className={`ritual-topbar-inner ritual-energy-balance rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-inner ${energyFlash ? "is-flash" : ""}`}>
             Энергия: {energyLabel} <span className="ritual-energy-icon">⚡</span>
+            {energyDeltaBadge ? (
+              <span
+                key={energyDeltaBadge.key}
+                className={`ritual-energy-delta ${energyDeltaBadge.amount < 0 ? "is-minus" : "is-plus"}`}
+              >
+                {energyDeltaBadge.amount > 0 ? `+${energyDeltaBadge.amount}` : energyDeltaBadge.amount} ⚡
+              </span>
+            ) : null}
             {energyError && (
               <button
                 type="button"

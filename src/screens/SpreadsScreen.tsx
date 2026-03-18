@@ -13,6 +13,7 @@ import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
+import { RWS_SPREAD_ENERGY_COSTS } from "@/data/rwsEnergyCosts";
 import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { endTransition } from "@/ui/deckTransitionStore";
@@ -294,39 +295,39 @@ const METAPHORIC_SPREAD_BLOCKS: SpreadBlock[] = [
 ];
 
 const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
-  one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: 5, popularityScore: 95, keywords: ["быстро", "карта дня"] },
-  yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: 10, popularityScore: 92, keywords: ["да", "нет"] },
-  three_cards: { category: "popular", tags: ["прошлое", "настоящее", "будущее"], energyCost: 12, popularityScore: 90, keywords: ["динамика"] },
-  cross: { category: "popular", tags: ["ситуация", "препятствие", "результат"], energyCost: 14, popularityScore: 88, keywords: ["структура"] },
-  five_cards: { category: "popular", tags: ["слои", "совет", "итог"], energyCost: 16, popularityScore: 82, keywords: ["углублённый"] },
-  we_and_perspective: { category: "relationships", tags: ["любовь", "партнёр", "перспектива"], energyCost: 14, popularityScore: 87, keywords: ["отношения"] },
-  relationship_analysis: { category: "relationships", tags: ["чувства", "проблема", "потенциал"], energyCost: 18, popularityScore: 86, keywords: ["пара"] },
-  new_person: { category: "relationships", tags: ["новое", "намерения", "риски"], energyCost: 16, popularityScore: 84, keywords: ["знакомство"] },
-  love_triangle: { category: "relationships", tags: ["треугольник", "чувства", "выбор"], energyCost: 22, popularityScore: 83, keywords: ["третьи лица"] },
-  future_relationships: { category: "relationships", tags: ["будущее", "урок", "итог"], energyCost: 17, popularityScore: 85, keywords: ["прогноз"] },
-  conflict_reason: { category: "relationships", tags: ["конфликт", "роли", "решение"], energyCost: 18, popularityScore: 80, keywords: ["кризис"] },
-  will_he_return: { category: "relationships", tags: ["возврат", "чувства", "шанс"], energyCost: 17, popularityScore: 89, keywords: ["после расставания"] },
-  karmic_connection: { category: "relationships", tags: ["карма", "уроки", "предназначение"], energyCost: 22, popularityScore: 78, keywords: ["судьба"] },
-  work_current_situation: { category: "work_finance", tags: ["работа", "фактор", "прогноз"], energyCost: 12, popularityScore: 82, keywords: ["карьера"] },
-  change_job: { category: "work_finance", tags: ["работа", "плюсы", "риски"], energyCost: 16, popularityScore: 86, keywords: ["смена"] },
-  career_growth: { category: "work_finance", tags: ["рост", "ресурс", "шанс"], energyCost: 18, popularityScore: 84, keywords: ["повышение"] },
-  financial_flow: { category: "work_finance", tags: ["деньги", "утечки", "рост"], energyCost: 16, popularityScore: 88, keywords: ["доход"] },
-  new_project: { category: "work_finance", tags: ["проект", "риски", "перспектива"], energyCost: 20, popularityScore: 81, keywords: ["бизнес"] },
-  finances_period: { category: "work_finance", tags: ["деньги", "период", "совет"], energyCost: 16, popularityScore: 85, keywords: ["планирование"] },
-  team_work: { category: "work_finance", tags: ["команда", "руководство", "итог"], energyCost: 17, popularityScore: 79, keywords: ["коллектив"] },
-  vocation_profession: { category: "work_finance", tags: ["предназначение", "талант", "путь"], energyCost: 22, popularityScore: 83, keywords: ["профессия", "рост"] },
-  inner_resource: { category: "self_growth", tags: ["энергия", "блок", "восстановление"], energyCost: 15, popularityScore: 82, keywords: ["выгорание"] },
-  inner_conflict: { category: "self_growth", tags: ["выбор", "страх", "решение"], energyCost: 16, popularityScore: 80, keywords: ["кризис"] },
-  shadow_side: { category: "self_growth", tags: ["тень", "подавление", "интеграция"], energyCost: 22, popularityScore: 76, keywords: ["психология"] },
-  hero_path: { category: "self_growth", tags: ["путь", "урок", "уровень"], energyCost: 20, popularityScore: 77, keywords: ["трансформация"] },
-  balance_wheel: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: 21, popularityScore: 81, keywords: ["системность"] },
-  reset_reload: { category: "self_growth", tags: ["перезагрузка", "ресурс", "итог"], energyCost: 18, popularityScore: 83, keywords: ["перемены"] },
-  soul_purpose: { category: "self_growth", tags: ["миссия", "дар", "путь"], energyCost: 23, popularityScore: 74, keywords: ["смысл"] },
-  celtic_cross: { category: "premium", tags: ["глубокий", "анализ", "прогноз"], energyCost: 28, popularityScore: 93, keywords: ["классика"] },
-  wheel_of_year: { category: "premium", tags: ["год", "цикл", "стратегия"], energyCost: 30, popularityScore: 90, keywords: ["12 карт"] },
-  pyramid: { category: "premium", tags: ["уровни", "развитие", "итог"], energyCost: 24, popularityScore: 79, keywords: ["система"] },
-  horseshoe: { category: "premium", tags: ["траектория", "окружение", "итог"], energyCost: 24, popularityScore: 75, keywords: ["подкова"] },
-  star: { category: "premium", tags: ["энергия", "чакры", "гармония"], energyCost: 26, popularityScore: 73, keywords: ["диагностика"] }
+  one_card: { category: "popular", tags: ["день", "совет", "фокус"], energyCost: RWS_SPREAD_ENERGY_COSTS.one_card, popularityScore: 95, keywords: ["быстро", "карта дня"] },
+  yes_no: { category: "popular", tags: ["выбор", "баланс", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.yes_no, popularityScore: 92, keywords: ["да", "нет"] },
+  three_cards: { category: "popular", tags: ["прошлое", "настоящее", "будущее"], energyCost: RWS_SPREAD_ENERGY_COSTS.three_cards, popularityScore: 90, keywords: ["динамика"] },
+  cross: { category: "popular", tags: ["ситуация", "препятствие", "результат"], energyCost: RWS_SPREAD_ENERGY_COSTS.cross, popularityScore: 88, keywords: ["структура"] },
+  five_cards: { category: "popular", tags: ["слои", "совет", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.five_cards, popularityScore: 82, keywords: ["углублённый"] },
+  we_and_perspective: { category: "relationships", tags: ["любовь", "партнёр", "перспектива"], energyCost: RWS_SPREAD_ENERGY_COSTS.we_and_perspective, popularityScore: 87, keywords: ["отношения"] },
+  relationship_analysis: { category: "relationships", tags: ["чувства", "проблема", "потенциал"], energyCost: RWS_SPREAD_ENERGY_COSTS.relationship_analysis, popularityScore: 86, keywords: ["пара"] },
+  new_person: { category: "relationships", tags: ["новое", "намерения", "риски"], energyCost: RWS_SPREAD_ENERGY_COSTS.new_person, popularityScore: 84, keywords: ["знакомство"] },
+  love_triangle: { category: "relationships", tags: ["треугольник", "чувства", "выбор"], energyCost: RWS_SPREAD_ENERGY_COSTS.love_triangle, popularityScore: 83, keywords: ["третьи лица"] },
+  future_relationships: { category: "relationships", tags: ["будущее", "урок", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.future_relationships, popularityScore: 85, keywords: ["прогноз"] },
+  conflict_reason: { category: "relationships", tags: ["конфликт", "роли", "решение"], energyCost: RWS_SPREAD_ENERGY_COSTS.conflict_reason, popularityScore: 80, keywords: ["кризис"] },
+  will_he_return: { category: "relationships", tags: ["возврат", "чувства", "шанс"], energyCost: RWS_SPREAD_ENERGY_COSTS.will_he_return, popularityScore: 89, keywords: ["после расставания"] },
+  karmic_connection: { category: "relationships", tags: ["карма", "уроки", "предназначение"], energyCost: RWS_SPREAD_ENERGY_COSTS.karmic_connection, popularityScore: 78, keywords: ["судьба"] },
+  work_current_situation: { category: "work_finance", tags: ["работа", "фактор", "прогноз"], energyCost: RWS_SPREAD_ENERGY_COSTS.work_current_situation, popularityScore: 82, keywords: ["карьера"] },
+  change_job: { category: "work_finance", tags: ["работа", "плюсы", "риски"], energyCost: RWS_SPREAD_ENERGY_COSTS.change_job, popularityScore: 86, keywords: ["смена"] },
+  career_growth: { category: "work_finance", tags: ["рост", "ресурс", "шанс"], energyCost: RWS_SPREAD_ENERGY_COSTS.career_growth, popularityScore: 84, keywords: ["повышение"] },
+  financial_flow: { category: "work_finance", tags: ["деньги", "утечки", "рост"], energyCost: RWS_SPREAD_ENERGY_COSTS.financial_flow, popularityScore: 88, keywords: ["доход"] },
+  new_project: { category: "work_finance", tags: ["проект", "риски", "перспектива"], energyCost: RWS_SPREAD_ENERGY_COSTS.new_project, popularityScore: 81, keywords: ["бизнес"] },
+  finances_period: { category: "work_finance", tags: ["деньги", "период", "совет"], energyCost: RWS_SPREAD_ENERGY_COSTS.finances_period, popularityScore: 85, keywords: ["планирование"] },
+  team_work: { category: "work_finance", tags: ["команда", "руководство", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.team_work, popularityScore: 79, keywords: ["коллектив"] },
+  vocation_profession: { category: "work_finance", tags: ["предназначение", "талант", "путь"], energyCost: RWS_SPREAD_ENERGY_COSTS.vocation_profession, popularityScore: 83, keywords: ["профессия", "рост"] },
+  inner_resource: { category: "self_growth", tags: ["энергия", "блок", "восстановление"], energyCost: RWS_SPREAD_ENERGY_COSTS.inner_resource, popularityScore: 82, keywords: ["выгорание"] },
+  inner_conflict: { category: "self_growth", tags: ["выбор", "страх", "решение"], energyCost: RWS_SPREAD_ENERGY_COSTS.inner_conflict, popularityScore: 80, keywords: ["кризис"] },
+  shadow_side: { category: "self_growth", tags: ["тень", "подавление", "интеграция"], energyCost: RWS_SPREAD_ENERGY_COSTS.shadow_side, popularityScore: 76, keywords: ["психология"] },
+  hero_path: { category: "self_growth", tags: ["путь", "урок", "уровень"], energyCost: RWS_SPREAD_ENERGY_COSTS.hero_path, popularityScore: 77, keywords: ["трансформация"] },
+  balance_wheel: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: RWS_SPREAD_ENERGY_COSTS.balance_wheel, popularityScore: 81, keywords: ["системность"] },
+  reset_reload: { category: "self_growth", tags: ["перезагрузка", "ресурс", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.reset_reload, popularityScore: 83, keywords: ["перемены"] },
+  soul_purpose: { category: "self_growth", tags: ["миссия", "дар", "путь"], energyCost: RWS_SPREAD_ENERGY_COSTS.soul_purpose, popularityScore: 74, keywords: ["смысл"] },
+  celtic_cross: { category: "premium", tags: ["глубокий", "анализ", "прогноз"], energyCost: RWS_SPREAD_ENERGY_COSTS.celtic_cross, popularityScore: 93, keywords: ["классика"] },
+  wheel_of_year: { category: "premium", tags: ["год", "цикл", "стратегия"], energyCost: RWS_SPREAD_ENERGY_COSTS.wheel_of_year, popularityScore: 90, keywords: ["12 карт"] },
+  pyramid: { category: "premium", tags: ["уровни", "развитие", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.pyramid, popularityScore: 79, keywords: ["система"] },
+  horseshoe: { category: "premium", tags: ["траектория", "окружение", "итог"], energyCost: RWS_SPREAD_ENERGY_COSTS.horseshoe, popularityScore: 75, keywords: ["подкова"] },
+  star: { category: "premium", tags: ["энергия", "чакры", "гармония"], energyCost: RWS_SPREAD_ENERGY_COSTS.star, popularityScore: 73, keywords: ["диагностика"] }
 };
 
 const LENORMAND_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
