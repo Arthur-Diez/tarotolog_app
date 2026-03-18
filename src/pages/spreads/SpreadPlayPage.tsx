@@ -23,9 +23,15 @@ import { backUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { isDeckWithReversals } from "@/lib/tarotOrientation";
 import { useSpreadStore } from "@/stores/spreadStore";
+import { getAngelsSpreadEnergyCost } from "@/data/angelsEnergyCosts";
+import { getGoldenSpreadEnergyCost } from "@/data/goldenEnergyCosts";
+import { getLenormandSpreadEnergyCost } from "@/data/lenormandEnergyCosts";
+import { getManaraSpreadEnergyCost } from "@/data/manaraEnergyCosts";
+import { getMetaphoricSpreadEnergyCost } from "@/data/metaphoricEnergyCosts";
 import { SPREAD_SCHEMAS, SpreadOneCard, type SpreadSchema } from "@/data/spreadSchemas";
 import type { SpreadId } from "@/data/rws_spreads";
 import { getRwsSpreadEnergyCost } from "@/data/rwsEnergyCosts";
+import { getSilaRodaSpreadEnergyCost } from "@/data/silaRodaEnergyCosts";
 import { DECKS } from "@/data/decks";
 import { useDeckTheme } from "@/ui/useDeckTheme";
 import "./SpreadPlayPage.css";
@@ -261,10 +267,30 @@ export default function SpreadPlayPage() {
   const shouldBlockInteractions = isFocusMode && stage !== "await_open" && stage !== "done";
   const interpretationHints = isLongWait ? INTERPRETATION_LOADING_HINTS_LONG_WAIT : INTERPRETATION_LOADING_HINTS;
   const loadingHint = interpretationHints[loadingHintIndex % interpretationHints.length];
-  const spreadEnergyCost = useMemo(
-    () => (schema.deckType === "rws" ? getRwsSpreadEnergyCost(schema.id, schema.cardCount) : 0),
-    [schema.cardCount, schema.deckType, schema.id]
-  );
+  const spreadEnergyCost = useMemo(() => {
+    if (schema.deckType === "rws") {
+      return getRwsSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "lenormand") {
+      return getLenormandSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "manara") {
+      return getManaraSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "angels") {
+      return getAngelsSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "golden") {
+      return getGoldenSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "ancestry") {
+      return getSilaRodaSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    if (schema.deckType === "metaphoric") {
+      return getMetaphoricSpreadEnergyCost(schema.id, schema.cardCount);
+    }
+    return 0;
+  }, [schema.cardCount, schema.deckType, schema.id]);
 
   useEffect(() => {
     setSchema(schema);

@@ -8,12 +8,18 @@ import { Expander } from "@/components/Expander";
 import CardBack from "@/components/tarot/CardBack";
 import type { Deck, DeckSpread } from "@/data/decks";
 import { ANGELS_SPREADS_MAP } from "@/data/angels_spreads";
+import { ANGELS_SPREAD_ENERGY_COSTS } from "@/data/angelsEnergyCosts";
+import { GOLDEN_SPREAD_ENERGY_COSTS } from "@/data/goldenEnergyCosts";
 import { GOLDEN_SPREADS_MAP } from "@/data/golden_spreads";
 import { LENORMAND_SPREADS_MAP } from "@/data/lenormand_spreads";
 import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
+import { MANARA_SPREAD_ENERGY_COSTS } from "@/data/manaraEnergyCosts";
+import { METAPHORIC_SPREAD_ENERGY_COSTS } from "@/data/metaphoricEnergyCosts";
 import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
+import { LENORMAND_SPREAD_ENERGY_COSTS } from "@/data/lenormandEnergyCosts";
 import { RWS_SPREAD_ENERGY_COSTS } from "@/data/rwsEnergyCosts";
+import { SILA_RODA_SPREAD_ENERGY_COSTS } from "@/data/silaRodaEnergyCosts";
 import { SILA_RODA_SPREADS_MAP } from "@/data/sila_roda_spreads";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { endTransition } from "@/ui/deckTransitionStore";
@@ -331,81 +337,81 @@ const RWS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
 };
 
 const LENORMAND_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
-  lenormand_one_card: { category: "popular", tags: ["событие", "фокус", "день"], energyCost: 5, popularityScore: 95, keywords: ["быстро"] },
-  lenormand_three_cards: { category: "popular", tags: ["цепочка", "развитие", "итог"], energyCost: 9, popularityScore: 91, keywords: ["ход событий"] },
-  lenormand_yes_no: { category: "popular", tags: ["решение", "аргументы", "итог"], energyCost: 10, popularityScore: 90, keywords: ["фактический ответ"] },
-  lenormand_we_and_connection: { category: "relationships", tags: ["связь", "партнёр", "перспектива"], energyCost: 15, popularityScore: 86, keywords: ["отношения"] },
-  lenormand_his_intentions: { category: "relationships", tags: ["намерения", "чувства", "действия"], energyCost: 16, popularityScore: 88, keywords: ["он и вы"] },
-  lenormand_feelings_actions: { category: "relationships", tags: ["эмоции", "поступки", "динамика"], energyCost: 16, popularityScore: 87, keywords: ["искренность"] },
-  lenormand_work_money: { category: "work_finance", tags: ["доход", "риски", "результат"], energyCost: 17, popularityScore: 84, keywords: ["карьера"] },
-  lenormand_week: { category: "forecast", tags: ["дни", "ритм", "план"], energyCost: 14, popularityScore: 82, keywords: ["неделя"] },
-  lenormand_next_month: { category: "forecast", tags: ["месяц", "недели", "события"], energyCost: 18, popularityScore: 85, keywords: ["период"] },
-  lenormand_wheel_of_year: { category: "forecast", tags: ["год", "месяцы", "цикл"], energyCost: 28, popularityScore: 81, keywords: ["стратегия"] },
-  lenormand_square_9: { category: "premium", tags: ["детали", "анализ", "ситуация"], energyCost: 24, popularityScore: 79, keywords: ["9 карт"] },
-  lenormand_grand_tableau: { category: "premium", tags: ["36 карт", "полный обзор", "судьба"], energyCost: 40, popularityScore: 76, keywords: ["grand tableau"] }
+  lenormand_one_card: { category: "popular", tags: ["событие", "фокус", "день"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_one_card, popularityScore: 95, keywords: ["быстро"] },
+  lenormand_three_cards: { category: "popular", tags: ["цепочка", "развитие", "итог"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_three_cards, popularityScore: 91, keywords: ["ход событий"] },
+  lenormand_yes_no: { category: "popular", tags: ["решение", "аргументы", "итог"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_yes_no, popularityScore: 90, keywords: ["фактический ответ"] },
+  lenormand_we_and_connection: { category: "relationships", tags: ["связь", "партнёр", "перспектива"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_we_and_connection, popularityScore: 86, keywords: ["отношения"] },
+  lenormand_his_intentions: { category: "relationships", tags: ["намерения", "чувства", "действия"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_his_intentions, popularityScore: 88, keywords: ["он и вы"] },
+  lenormand_feelings_actions: { category: "relationships", tags: ["эмоции", "поступки", "динамика"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_feelings_actions, popularityScore: 87, keywords: ["искренность"] },
+  lenormand_work_money: { category: "work_finance", tags: ["доход", "риски", "результат"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_work_money, popularityScore: 84, keywords: ["карьера"] },
+  lenormand_week: { category: "forecast", tags: ["дни", "ритм", "план"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_week, popularityScore: 82, keywords: ["неделя"] },
+  lenormand_next_month: { category: "forecast", tags: ["месяц", "недели", "события"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_next_month, popularityScore: 85, keywords: ["период"] },
+  lenormand_wheel_of_year: { category: "forecast", tags: ["год", "месяцы", "цикл"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_wheel_of_year, popularityScore: 81, keywords: ["стратегия"] },
+  lenormand_square_9: { category: "premium", tags: ["детали", "анализ", "ситуация"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_square_9, popularityScore: 79, keywords: ["9 карт"] },
+  lenormand_grand_tableau: { category: "premium", tags: ["36 карт", "полный обзор", "судьба"], energyCost: LENORMAND_SPREAD_ENERGY_COSTS.lenormand_grand_tableau, popularityScore: 76, keywords: ["grand tableau"] }
 };
 
 const MANARA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   manara_mystery_love: {
     category: "relationships",
     tags: ["близость", "мысли", "страсть", "итог"],
-    energyCost: 24,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_mystery_love,
     popularityScore: 91,
     keywords: ["любовь", "интимность"]
   },
   manara_love_check: {
     category: "relationships",
     tags: ["искренность", "намерения", "перспектива"],
-    energyCost: 12,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_love_check,
     popularityScore: 88,
     keywords: ["проверка", "чувства"]
   },
   manara_two_hearts: {
     category: "relationships",
     tags: ["пара", "ожидания", "притяжение", "итог"],
-    energyCost: 24,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_two_hearts,
     popularityScore: 86,
     keywords: ["два сердца", "совместимость"]
   },
   manara_relationship_future: {
     category: "relationships",
     tags: ["будущее", "динамика", "вклад", "перспектива"],
-    energyCost: 26,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_relationship_future,
     popularityScore: 89,
     keywords: ["союз", "развитие"]
   },
   manara_his_intentions: {
     category: "self_growth",
     tags: ["намерение", "мысли", "действия", "психология"],
-    energyCost: 16,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_his_intentions,
     popularityScore: 90,
     keywords: ["мотивация", "истина"]
   },
   manara_feelings_actions: {
     category: "self_growth",
     tags: ["эмоции", "поступки", "конфликт", "итог"],
-    energyCost: 16,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_feelings_actions,
     popularityScore: 89,
     keywords: ["чувства", "действия"]
   },
   manara_three_cards: {
     category: "popular",
     tags: ["причина", "развитие", "итог"],
-    energyCost: 9,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_three_cards,
     popularityScore: 85,
     keywords: ["быстрый", "ситуация"]
   },
   manara_path: {
     category: "popular",
     tags: ["траектория", "перелом", "совет", "итог"],
-    energyCost: 18,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_path,
     popularityScore: 84,
     keywords: ["путь", "выбор"]
   },
   manara_celtic_cross: {
     category: "premium",
     tags: ["глубокий", "психология", "анализ", "итог"],
-    energyCost: 30,
+    energyCost: MANARA_SPREAD_ENERGY_COSTS.manara_celtic_cross,
     popularityScore: 83,
     keywords: ["кельтский крест", "глубина"]
   }
@@ -415,84 +421,84 @@ const ANGELS_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   angels_one_card: {
     category: "popular",
     tags: ["поддержка", "послание", "ориентир"],
-    energyCost: 5,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_one_card,
     popularityScore: 94,
     keywords: ["одна карта", "ангел"]
   },
   angels_advice: {
     category: "popular",
     tags: ["совет", "ситуация", "благословение"],
-    energyCost: 10,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_advice,
     popularityScore: 90,
     keywords: ["треугольник совета"]
   },
   angels_yes_no_soft: {
     category: "popular",
     tags: ["выбор", "мягкий ответ", "направление"],
-    energyCost: 10,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_yes_no_soft,
     popularityScore: 88,
     keywords: ["да нет", "ответ свыше"]
   },
   angels_balance_soul: {
     category: "self_growth",
     tags: ["гармония", "душа", "восстановление"],
-    energyCost: 16,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_balance_soul,
     popularityScore: 86,
     keywords: ["баланс души"]
   },
   angels_healing_needed: {
     category: "self_growth",
     tags: ["исцеление", "причина", "урок"],
-    energyCost: 14,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_healing_needed,
     popularityScore: 84,
     keywords: ["что требует исцеления"]
   },
   angels_body_spirit_energy: {
     category: "self_growth",
     tags: ["тело", "дух", "ресурс", "баланс"],
-    energyCost: 18,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_body_spirit_energy,
     popularityScore: 83,
     keywords: ["энергия тела и духа"]
   },
   angels_soul_path: {
     category: "forecast",
     tags: ["предназначение", "путь", "итог"],
-    energyCost: 20,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_soul_path,
     popularityScore: 82,
     keywords: ["путь души"]
   },
   angels_karmic_lesson: {
     category: "forecast",
     tags: ["карма", "сценарий", "освобождение"],
-    energyCost: 17,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_karmic_lesson,
     popularityScore: 80,
     keywords: ["кармический урок"]
   },
   angels_vector: {
     category: "forecast",
     tags: ["направление", "поддержка", "выбор"],
-    energyCost: 16,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_vector,
     popularityScore: 85,
     keywords: ["вектор развития"]
   },
   angels_relationship_support: {
     category: "relationships",
     tags: ["союз", "роль", "поддержка"],
-    energyCost: 14,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_relationship_support,
     popularityScore: 81,
     keywords: ["отношения под защитой"]
   },
   angels_union_harmony: {
     category: "relationships",
     tags: ["гармония", "пара", "перспектива"],
-    energyCost: 18,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_union_harmony,
     popularityScore: 83,
     keywords: ["гармония союза"]
   },
   angels_higher_connection_meaning: {
     category: "relationships",
     tags: ["кармический узел", "урок", "высший итог"],
-    energyCost: 17,
+    energyCost: ANGELS_SPREAD_ENERGY_COSTS.angels_higher_connection_meaning,
     popularityScore: 79,
     keywords: ["высший смысл связи"]
   }
@@ -502,112 +508,112 @@ const GOLDEN_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   golden_crown_opportunities: {
     category: "work_finance",
     tags: ["карьера", "рост", "статус", "стратегия"],
-    energyCost: 15,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_crown_opportunities,
     popularityScore: 89,
     keywords: ["корона возможностей"]
   },
   golden_big_game: {
     category: "work_finance",
     tags: ["стратегия", "конкуренция", "исход"],
-    energyCost: 20,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_big_game,
     popularityScore: 86,
     keywords: ["большая игра"]
   },
   golden_path_success: {
     category: "work_finance",
     tags: ["рост", "ускорение", "результат"],
-    energyCost: 18,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_path_success,
     popularityScore: 84,
     keywords: ["путь к успеху"]
   },
   golden_influence_resources: {
     category: "work_finance",
     tags: ["влияние", "связи", "рычаги"],
-    energyCost: 16,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_influence_resources,
     popularityScore: 82,
     keywords: ["ресурсы влияния"]
   },
   golden_money_flow: {
     category: "popular",
     tags: ["деньги", "поток", "утечки"],
-    energyCost: 16,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_money_flow,
     popularityScore: 90,
     keywords: ["денежный поток"]
   },
   golden_investment: {
     category: "popular",
     tags: ["инвестиции", "риск", "вложения"],
-    energyCost: 18,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_investment,
     popularityScore: 85,
     keywords: ["инвестиция"]
   },
   golden_financial_forecast: {
     category: "popular",
     tags: ["финансы", "прогноз", "период"],
-    energyCost: 20,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_financial_forecast,
     popularityScore: 88,
     keywords: ["финансовый прогноз"]
   },
   golden_risk_reward: {
     category: "popular",
     tags: ["риск", "выгода", "баланс"],
-    energyCost: 14,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_risk_reward,
     popularityScore: 87,
     keywords: ["риск и выгода"]
   },
   golden_strong_decision: {
     category: "self_growth",
     tags: ["решение", "контроль", "ресурс"],
-    energyCost: 16,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_strong_decision,
     popularityScore: 84,
     keywords: ["сильное решение"]
   },
   golden_competitive_field: {
     category: "self_growth",
     tags: ["конкуренты", "союзники", "среда"],
-    energyCost: 18,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_competitive_field,
     popularityScore: 82,
     keywords: ["конкурентная среда"]
   },
   golden_negotiations: {
     category: "self_growth",
     tags: ["переговоры", "сделка", "диалог"],
-    energyCost: 16,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_negotiations,
     popularityScore: 83,
     keywords: ["переговоры"]
   },
   golden_leadership: {
     category: "self_growth",
     tags: ["лидерство", "авторитет", "иерархия"],
-    energyCost: 17,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_leadership,
     popularityScore: 80,
     keywords: ["лидерство"]
   },
   golden_abundance_level: {
     category: "premium",
     tags: ["изобилие", "потолок", "рост"],
-    energyCost: 17,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_abundance_level,
     popularityScore: 81,
     keywords: ["уровень изобилия"]
   },
   golden_new_level: {
     category: "premium",
     tags: ["рост", "барьер", "переход"],
-    energyCost: 20,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_new_level,
     popularityScore: 84,
     keywords: ["новый уровень"]
   },
   golden_image_reputation: {
     category: "premium",
     tags: ["имидж", "репутация", "восприятие"],
-    energyCost: 16,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_image_reputation,
     popularityScore: 79,
     keywords: ["имидж и репутация"]
   },
   golden_long_term_perspective: {
     category: "premium",
     tags: ["год", "стратегия", "долгосрочно"],
-    energyCost: 24,
+    energyCost: GOLDEN_SPREAD_ENERGY_COSTS.golden_long_term_perspective,
     popularityScore: 85,
     keywords: ["долгосрочная перспектива"]
   }
@@ -617,226 +623,226 @@ const SILA_RODA_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
   sila_roda_roots_tree: {
     category: "popular",
     tags: ["корни", "предки", "ресурс"],
-    energyCost: 16,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_roots_tree,
     popularityScore: 90,
     keywords: ["дерево", "род"]
   },
   sila_roda_lineage_flow: {
     category: "popular",
     tags: ["поколения", "поток", "линия"],
-    energyCost: 18,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_lineage_flow,
     popularityScore: 88,
     keywords: ["родовая линия"]
   },
   sila_roda_ancestors_message: {
     category: "popular",
     tags: ["послание", "предки", "подсказка"],
-    energyCost: 10,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_ancestors_message,
     popularityScore: 92,
     keywords: ["луч света"]
   },
   sila_roda_ancestral_scenario: {
     category: "self_growth",
     tags: ["сценарий", "цикл", "выход"],
-    energyCost: 17,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_ancestral_scenario,
     popularityScore: 86,
     keywords: ["замкнутый цикл"]
   },
   sila_roda_karmic_knot: {
     category: "self_growth",
     tags: ["карма", "узел", "развязка"],
-    energyCost: 16,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_karmic_knot,
     popularityScore: 87,
     keywords: ["перекресток"]
   },
   sila_roda_inherited_patterns: {
     category: "self_growth",
     tags: ["установки", "убеждения", "трансформация"],
-    energyCost: 15,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_inherited_patterns,
     popularityScore: 84,
     keywords: ["зеркало рода"]
   },
   sila_roda_power_within: {
     category: "work_finance",
     tags: ["талант", "дар", "раскрытие"],
-    energyCost: 15,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_power_within,
     popularityScore: 85,
     keywords: ["родовая звезда"]
   },
   sila_roda_protection: {
     category: "work_finance",
     tags: ["защита", "уязвимость", "усиление"],
-    energyCost: 15,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_protection,
     popularityScore: 83,
     keywords: ["щит"]
   },
   sila_roda_abundance_stream: {
     category: "work_finance",
     tags: ["деньги", "поток", "блоки"],
-    energyCost: 18,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_abundance_stream,
     popularityScore: 89,
     keywords: ["изобилие"]
   },
   sila_roda_healing: {
     category: "premium",
     tags: ["исцеление", "трансформация", "поддержка"],
-    energyCost: 20,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_healing,
     popularityScore: 82,
     keywords: ["спираль"]
   },
   sila_roda_female_line: {
     category: "premium",
     tags: ["женская линия", "урок", "исцеление"],
-    energyCost: 16,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_female_line,
     popularityScore: 84,
     keywords: ["лунная дуга"]
   },
   sila_roda_male_line: {
     category: "premium",
     tags: ["мужская линия", "опора", "сила"],
-    energyCost: 16,
+    energyCost: SILA_RODA_SPREAD_ENERGY_COSTS.sila_roda_male_line,
     popularityScore: 84,
     keywords: ["столб рода"]
   }
 };
 
 const METAPHORIC_SPREAD_META: Partial<Record<string, SpreadMeta>> = {
-  metaphoric_card_of_day: { category: "popular", tags: ["день", "фокус", "инсайт"], energyCost: 5, popularityScore: 95, keywords: ["карта дня"] },
+  metaphoric_card_of_day: { category: "popular", tags: ["день", "фокус", "инсайт"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_card_of_day, popularityScore: 95, keywords: ["карта дня"] },
   metaphoric_moment_emotion: {
     category: "popular",
     tags: ["эмоция", "момент", "состояние"],
-    energyCost: 5,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_moment_emotion,
     popularityScore: 92,
     keywords: ["эмоция момента"]
   },
-  metaphoric_quick_advice: { category: "popular", tags: ["совет", "быстро", "ориентир"], energyCost: 5, popularityScore: 90, keywords: ["быстрый совет"] },
-  metaphoric_check_in: { category: "popular", tags: ["check-in", "состояние", "настройка"], energyCost: 9, popularityScore: 89, keywords: ["проверка состояния"] },
+  metaphoric_quick_advice: { category: "popular", tags: ["совет", "быстро", "ориентир"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_quick_advice, popularityScore: 90, keywords: ["быстрый совет"] },
+  metaphoric_check_in: { category: "popular", tags: ["check-in", "состояние", "настройка"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_check_in, popularityScore: 89, keywords: ["проверка состояния"] },
   metaphoric_energy_obstacle_advice: {
     category: "popular",
     tags: ["энергия", "препятствие", "совет"],
-    energyCost: 9,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_energy_obstacle_advice,
     popularityScore: 90,
     keywords: ["ресурс", "блок"]
   },
   metaphoric_thoughts_feelings_actions: {
     category: "popular",
     tags: ["мысли", "чувства", "действия"],
-    energyCost: 9,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_thoughts_feelings_actions,
     popularityScore: 88,
     keywords: ["внутренний конфликт"]
   },
   metaphoric_self_world_next_step: {
     category: "popular",
     tags: ["я", "мир", "следующий шаг"],
-    energyCost: 9,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_self_world_next_step,
     popularityScore: 87,
     keywords: ["контекст", "шаг"]
   },
   metaphoric_strength_heart_challenge: {
     category: "popular",
     tags: ["сила", "сердце", "вызов"],
-    energyCost: 9,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_strength_heart_challenge,
     popularityScore: 86,
     keywords: ["смелость"]
   },
   metaphoric_situation_cause_solution: {
     category: "popular",
     tags: ["ситуация", "причина", "решение"],
-    energyCost: 9,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_situation_cause_solution,
     popularityScore: 88,
     keywords: ["анализ"]
   },
   metaphoric_old_story_new_story_action: {
     category: "self_growth",
     tags: ["старая история", "новая история", "действие"],
-    energyCost: 10,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_old_story_new_story_action,
     popularityScore: 85,
     keywords: ["переписывание сценария"]
   },
   metaphoric_inner_conflict: {
     category: "self_growth",
     tags: ["конфликт", "выбор", "интеграция"],
-    energyCost: 15,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_inner_conflict,
     popularityScore: 86,
     keywords: ["самоисследование"]
   },
-  metaphoric_new_stage: { category: "self_growth", tags: ["этап", "переход", "рост"], energyCost: 15, popularityScore: 84, keywords: ["новый этап"] },
+  metaphoric_new_stage: { category: "self_growth", tags: ["этап", "переход", "рост"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_new_stage, popularityScore: 84, keywords: ["новый этап"] },
   metaphoric_personal_decision: {
     category: "self_growth",
     tags: ["решение", "риск", "поддержка"],
-    energyCost: 15,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_personal_decision,
     popularityScore: 85,
     keywords: ["личное решение"]
   },
-  metaphoric_life_balance: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: 15, popularityScore: 86, keywords: ["баланс жизни"] },
+  metaphoric_life_balance: { category: "self_growth", tags: ["баланс", "сферы", "гармония"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_life_balance, popularityScore: 86, keywords: ["баланс жизни"] },
   metaphoric_self_reflection: {
     category: "self_growth",
     tags: ["саморефлексия", "зеркало", "вывод"],
-    energyCost: 15,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_self_reflection,
     popularityScore: 83,
     keywords: ["self-reflection"]
   },
   metaphoric_relationships_without_masks: {
     category: "self_growth",
     tags: ["отношения", "честность", "маски"],
-    energyCost: 18,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_relationships_without_masks,
     popularityScore: 84,
     keywords: ["без масок"]
   },
   metaphoric_dialogue_with_subconscious: {
     category: "premium",
     tags: ["подсознание", "диалог", "глубина"],
-    energyCost: 21,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_dialogue_with_subconscious,
     popularityScore: 82,
     keywords: ["deep inner work"]
   },
   metaphoric_transformation_path: {
     category: "premium",
     tags: ["трансформация", "этапы", "изменения"],
-    energyCost: 21,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_transformation_path,
     popularityScore: 81,
     keywords: ["путь трансформации"]
   },
-  metaphoric_release: { category: "premium", tags: ["освобождение", "отпускание", "очищение"], energyCost: 21, popularityScore: 80, keywords: ["release"] },
+  metaphoric_release: { category: "premium", tags: ["освобождение", "отпускание", "очищение"], energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_release, popularityScore: 80, keywords: ["release"] },
   metaphoric_inner_resource: {
     category: "premium",
     tags: ["ресурс", "энергия", "опора"],
-    energyCost: 21,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_inner_resource,
     popularityScore: 83,
     keywords: ["внутренний ресурс"]
   },
   metaphoric_reality_vs_perception: {
     category: "premium",
     tags: ["реальность", "восприятие", "контраст"],
-    energyCost: 21,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_reality_vs_perception,
     popularityScore: 82,
     keywords: ["reality vs perception"]
   },
   metaphoric_horseshoe_guidance: {
     category: "premium",
     tags: ["подкова", "путеводитель", "путь"],
-    energyCost: 21,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_horseshoe_guidance,
     popularityScore: 81,
     keywords: ["guidance"]
   },
   metaphoric_dialogue_with_self: {
     category: "forecast",
     tags: ["авторский", "диалог", "глубина"],
-    energyCost: 27,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_dialogue_with_self,
     popularityScore: 80,
     keywords: ["signature"]
   },
   metaphoric_life_reboot: {
     category: "forecast",
     tags: ["перезагрузка", "переосмысление", "перезапуск"],
-    energyCost: 27,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_life_reboot,
     popularityScore: 79,
     keywords: ["wow расклад"]
   },
   metaphoric_personality_archetype: {
     category: "forecast",
     tags: ["архетип", "личность", "паттерны"],
-    energyCost: 27,
+    energyCost: METAPHORIC_SPREAD_ENERGY_COSTS.metaphoric_personality_archetype,
     popularityScore: 78,
     keywords: ["signature"]
   }
