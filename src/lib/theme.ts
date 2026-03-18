@@ -32,23 +32,12 @@ function applyThemeParams(themeParams?: ThemeParams) {
   });
 }
 
-function resolveColorScheme(webApp?: TelegramWebApp) {
-  const scheme = webApp?.colorScheme;
-  if (scheme === "light" || scheme === "dark") {
-    return scheme;
-  }
-
-  if (typeof window !== "undefined" && window.matchMedia) {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-
-  return "light";
-}
-
 export function applyTheme(webApp?: TelegramWebApp) {
   if (typeof document === "undefined") return;
 
   applyThemeParams(webApp?.themeParams);
-  const scheme = resolveColorScheme(webApp);
-  document.documentElement.classList.toggle("dark", scheme === "dark");
+  const root = document.documentElement;
+  root.classList.add("dark");
+  root.classList.add("tg-dark");
+  root.classList.remove("tg-light");
 }

@@ -24,7 +24,6 @@ import { DeckTransitionOverlay } from "@/ui/DeckTransitionOverlay";
 
 export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
-  const settingsTheme = settings?.theme;
   const location = useLocation();
   const isSpreadPlayRoute = location.pathname.startsWith("/spreads/play/");
   const { loading: profileLoading, error: profileError, profile, refresh } = useProfile();
@@ -35,26 +34,19 @@ export default function App() {
   useAutoTimezone(profile);
 
   useEffect(() => {
-    if (settingsTheme === "light" || settingsTheme === "dark") {
-      document.documentElement.classList.toggle("dark", settingsTheme === "dark");
-    } else if (settingsTheme === "system") {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [settingsTheme]);
-
-  useEffect(() => {
-    const applyTelegramTheme = () => {
-      const scheme = window.Telegram?.WebApp?.colorScheme ?? "dark";
-      document.documentElement.classList.toggle("tg-light", scheme === "light");
-      document.documentElement.classList.toggle("tg-dark", scheme !== "light");
+    const enforceDarkTheme = () => {
+      const root = document.documentElement;
+      root.classList.add("dark");
+      root.classList.add("tg-dark");
+      root.classList.remove("tg-light");
     };
 
-    applyTelegramTheme();
+    enforceDarkTheme();
     const tg = window.Telegram?.WebApp;
-    tg?.onEvent?.("themeChanged", applyTelegramTheme);
+    tg?.onEvent?.("themeChanged", enforceDarkTheme);
 
     return () => {
-      tg?.offEvent?.("themeChanged", applyTelegramTheme);
+      tg?.offEvent?.("themeChanged", enforceDarkTheme);
     };
   }, []);
 
