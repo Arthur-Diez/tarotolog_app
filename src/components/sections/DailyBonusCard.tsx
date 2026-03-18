@@ -246,10 +246,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       });
       console.info("daily-bonus: ad_show", { blockId: adsgramBlockId });
 
-      console.info("daily-bonus: ad_showing");
-      const adResult = await adsgram.show({
+      console.info("daily-bonus: ad_preparing");
+      const adResult = await adsgram.showPrepared({
         blockId: adsgramBlockId,
-        debug: debugAds
+        debug: debugAds,
+        warmupMs: 650
       });
       refreshAdsDebug();
       if (!adResult.ok) {

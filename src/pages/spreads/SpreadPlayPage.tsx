@@ -1021,7 +1021,7 @@ export default function SpreadPlayPage() {
 
     interstitialShownRef.current = true;
     void adsgram
-      .show({ blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID })
+      .showPrepared({ blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID, warmupMs: 500 })
       .then((result) => {
         console.info("interpretation: interstitial_result", result);
       })
@@ -1029,6 +1029,13 @@ export default function SpreadPlayPage() {
         console.info("interpretation: interstitial_error", error);
       });
   }, [adsgram, hasSubscription, isViewLoading]);
+
+  useEffect(() => {
+    if (hasSubscription) return;
+    void adsgram.preload({ blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID }).catch((error) => {
+      console.info("interpretation: interstitial_prewarm_error", error);
+    });
+  }, [adsgram, hasSubscription]);
 
   const questionHintText =
     schema.id === "one_card"
