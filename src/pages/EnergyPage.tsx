@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, RefreshCw, X, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,10 @@ import {
 import { openExternalLink } from "@/lib/telegram";
 
 const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
+const AUTO_STATUS_POLL_INTERVAL_MS = 12_000;
+const AUTO_STATUS_POLL_MAX_ATTEMPTS = 12;
+const BALANCE_ANIMATION_DURATION_MS = 850;
+const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
 
@@ -28,6 +32,12 @@ interface EnergyPackConfig {
   title: string;
   energyAmount: number;
   priceLabel: string;
+}
+
+interface PurchaseNotice {
+  tone: "success" | "error";
+  title: string;
+  message: string;
 }
 
 const ENERGY_PACKS: EnergyPackConfig[] = [
@@ -83,6 +93,83 @@ export default function EnergyPage() {
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   const [creatingProductCode, setCreatingProductCode] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [displayedEnergyBalance, setDisplayedEnergyBalance] = useState<number>(energyBalance);
+  const [balanceDelta, setBalanceDelta] = useState<number | null>(null);
+  const [isBalanceAnimating, setIsBalanceAnimating] = useState(false);
+  const [purchaseNotice, setPurchaseNotice] = useState<PurchaseNotice | null>(null);
+
+  const lastEnergyBalanceRef = useRef<number>(energyBalance);
+  const balanceAnimationFrameRef = useRef<number | null>(null);
+  const balanceDeltaTimeoutRef = useRef<number | null>(null);
+  const statusCheckInFlightRef = useRef(false);
+  const autoPollAttemptsRef = useRef(0);
+  const notifiedPurchaseStatesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const previous = lastEnergyBalanceRef.current;
+    const next = energyBalance;
+
+    if (previous === next) {
+      setDisplayedEnergyBalance(next);
+      return;
+    }
+
+    if (balanceAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(balanceAnimationFrameRef.current);
+      balanceAnimationFrameRef.current = null;
+    }
+
+    if (balanceDeltaTimeoutRef.current !== null) {
+      window.clearTimeout(balanceDeltaTimeoutRef.current);
+      balanceDeltaTimeoutRef.current = null;
+    }
+
+    const delta = next - previous;
+    lastEnergyBalanceRef.current = next;
+
+    if (delta <= 0) {
+      setDisplayedEnergyBalance(next);
+      setBalanceDelta(null);
+      setIsBalanceAnimating(false);
+      return;
+    }
+
+    setBalanceDelta(delta);
+    setIsBalanceAnimating(true);
+
+    const animationStart = performance.now();
+    const animate = (timestamp: number) => {
+      const progress = Math.min((timestamp - animationStart) / BALANCE_ANIMATION_DURATION_MS, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const currentValue = previous + delta * eased;
+      setDisplayedEnergyBalance(currentValue);
+
+      if (progress < 1) {
+        balanceAnimationFrameRef.current = window.requestAnimationFrame(animate);
+      } else {
+        setDisplayedEnergyBalance(next);
+        setIsBalanceAnimating(false);
+        balanceAnimationFrameRef.current = null;
+      }
+    };
+
+    balanceAnimationFrameRef.current = window.requestAnimationFrame(animate);
+    balanceDeltaTimeoutRef.current = window.setTimeout(() => {
+      setBalanceDelta(null);
+      balanceDeltaTimeoutRef.current = null;
+    }, BALANCE_DELTA_BADGE_DURATION_MS);
+
+    return () => {
+      if (balanceAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(balanceAnimationFrameRef.current);
+        balanceAnimationFrameRef.current = null;
+      }
+      if (balanceDeltaTimeoutRef.current !== null) {
+        window.clearTimeout(balanceDeltaTimeoutRef.current);
+        balanceDeltaTimeoutRef.current = null;
+      }
+    };
+  }, [energyBalance]);
 
   const applyPurchaseStatus = useCallback(
     async (purchase: PurchaseStatusResponse) => {
@@ -93,7 +180,18 @@ export default function EnergyPage() {
         setPendingPurchaseId(null);
         setUiState("succeeded");
         setErrorText(null);
-        setStatusText("Энергия успешно начислена.");
+        setStatusText("Оплата подтверждена. Баланс обновляется...");
+
+        const successNoticeKey = `${purchase.purchase_id}:succeeded`;
+        if (!notifiedPurchaseStatesRef.current.has(successNoticeKey)) {
+          notifiedPurchaseStatesRef.current.add(successNoticeKey);
+          setPurchaseNotice({
+            tone: "success",
+            title: "Спасибо за покупку",
+            message: `Платёж подтверждён, начислено ${purchase.energy_credited} ⚡.`
+          });
+        }
+
         await refresh();
         return;
       }
@@ -104,28 +202,42 @@ export default function EnergyPage() {
         setUiState("failed");
         setStatusText(null);
         setErrorText("Оплата не завершена.");
+
+        const failNoticeKey = `${purchase.purchase_id}:${purchase.status}`;
+        if (!notifiedPurchaseStatesRef.current.has(failNoticeKey)) {
+          notifiedPurchaseStatesRef.current.add(failNoticeKey);
+          setPurchaseNotice({
+            tone: "error",
+            title: "Платёж не завершён",
+            message: "Оплата была отменена или отклонена. Энергия не списана."
+          });
+        }
         return;
       }
 
       setPendingPurchaseId(purchase.purchase_id);
       setUiState("pending");
       setErrorText(null);
-      setStatusText("Платёж ещё обрабатывается. Нажмите «Проверить статус» чуть позже.");
+      setStatusText("Платёж ещё обрабатывается. Мы проверяем статус автоматически.");
     },
     [refresh]
   );
 
   const checkPurchaseStatus = useCallback(
-    async (purchaseId: string) => {
-      if (!purchaseId) return;
+    async (purchaseId: string, options?: { silent?: boolean }) => {
+      if (!purchaseId || statusCheckInFlightRef.current) return;
+      statusCheckInFlightRef.current = true;
       setCheckingStatus(true);
       try {
         const statusResponse = await getPurchaseStatus(purchaseId);
         await applyPurchaseStatus(statusResponse);
       } catch (error) {
-        setUiState("pending");
-        setErrorText(normalizeErrorMessage(error, "Не удалось проверить статус оплаты. Попробуйте ещё раз."));
+        if (!options?.silent) {
+          setUiState("pending");
+          setErrorText(normalizeErrorMessage(error, "Не удалось проверить статус оплаты. Попробуйте ещё раз."));
+        }
       } finally {
+        statusCheckInFlightRef.current = false;
         setCheckingStatus(false);
       }
     },
@@ -167,6 +279,7 @@ export default function EnergyPage() {
         });
         setUiState("awaiting_confirmation");
         setStatusText("Мы ждём подтверждение оплаты. После оплаты вернитесь в мини-приложение.");
+        autoPollAttemptsRef.current = 0;
 
         openExternalLink(payment.payment_url);
       } catch (error) {
@@ -186,13 +299,63 @@ export default function EnergyPage() {
     setPendingPurchaseId(pending.purchase_id);
     setUiState("pending");
     setStatusText("Найден незавершённый платёж. Проверяем статус...");
-    void checkPurchaseStatus(pending.purchase_id);
+    void checkPurchaseStatus(pending.purchase_id, { silent: true });
   }, [checkPurchaseStatus]);
 
+  useEffect(() => {
+    if (!pendingPurchaseId || typeof window === "undefined") return;
+    autoPollAttemptsRef.current = 0;
+
+    let intervalId: number | null = null;
+
+    const runCheck = () => {
+      if (document.visibilityState !== "visible") return;
+
+      if (autoPollAttemptsRef.current >= AUTO_STATUS_POLL_MAX_ATTEMPTS) {
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
+        setStatusText("Платёж ещё обрабатывается. Автопроверка остановлена, нажмите «Проверить статус».");
+        return;
+      }
+
+      autoPollAttemptsRef.current += 1;
+      void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+    };
+
+    const handleFocus = () => {
+      autoPollAttemptsRef.current = 0;
+      void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        autoPollAttemptsRef.current = 0;
+        void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+      }
+    };
+
+    runCheck();
+    intervalId = window.setInterval(runCheck, AUTO_STATUS_POLL_INTERVAL_MS);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [checkPurchaseStatus, pendingPurchaseId]);
+
   const canCheckStatus = Boolean(pendingPurchaseId) && !checkingStatus;
+  const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
         <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">
           <Zap className="h-7 w-7 text-[var(--accent-gold)]" strokeWidth={1.4} />
@@ -202,7 +365,20 @@ export default function EnergyPage() {
           {loading && !profile ? (
             <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-white/10" />
           ) : (
-            <p className="mt-2 text-3xl font-semibold text-[var(--accent-pink)]">{energyBalance} ⚡</p>
+            <div className="mt-2 flex items-center gap-2">
+              <p
+                className={`text-3xl font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
+                  isBalanceAnimating ? "scale-105 text-[var(--accent-gold)]" : ""
+                }`}
+              >
+                {formattedEnergyBalance} ⚡
+              </p>
+              {balanceDelta ? (
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">
+                  +{balanceDelta} ⚡
+                </span>
+              ) : null}
+            </div>
           )}
           {user?.telegram.username ? (
             <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p>
@@ -283,13 +459,14 @@ export default function EnergyPage() {
               variant="outline"
               className="mt-3 gap-2 border-white/20"
               disabled={!canCheckStatus}
-              onClick={() => {
-                if (!pendingPurchaseId) return;
-                void checkPurchaseStatus(pendingPurchaseId);
-              }}
-            >
-              {checkingStatus ? (
-                <>
+                  onClick={() => {
+                    if (!pendingPurchaseId) return;
+                    autoPollAttemptsRef.current = 0;
+                    void checkPurchaseStatus(pendingPurchaseId);
+                  }}
+                >
+                  {checkingStatus ? (
+                    <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Проверяем...
                 </>
@@ -298,11 +475,47 @@ export default function EnergyPage() {
                   <RefreshCw className="h-4 w-4" />
                   Проверить статус
                 </>
-              )}
-            </Button>
+                  )}
+                </Button>
+          ) : null}
+
+          {pendingPurchaseId ? (
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">
+              Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
+              когда приложение активно.
+            </p>
           ) : null}
         </Card>
       )}
-    </div>
+      </div>
+
+      {purchaseNotice ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center">
+          <div
+            className={`w-full max-w-md rounded-3xl border p-5 shadow-[0_30px_60px_rgba(0,0,0,0.55)] ${
+              purchaseNotice.tone === "success"
+                ? "border-emerald-400/40 bg-[rgba(25,44,35,0.95)]"
+                : "border-red-400/40 bg-[rgba(52,24,28,0.95)]"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-lg font-semibold text-white">{purchaseNotice.title}</h3>
+              <button
+                type="button"
+                onClick={() => setPurchaseNotice(null)}
+                className="rounded-full border border-white/20 p-2 text-white/75 transition hover:text-white"
+                aria-label="Закрыть"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-white/80">{purchaseNotice.message}</p>
+            <Button className="mt-4 w-full" onClick={() => setPurchaseNotice(null)}>
+              Закрыть
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
