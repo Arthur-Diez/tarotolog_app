@@ -590,11 +590,17 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
   return handleResponse<HoroscopeFreeTodayResponse>(res);
 }
 
-export async function createRobokassaPayment(product_code: string): Promise<RobokassaCreatePaymentResponse> {
+export async function createRobokassaPayment(
+  product_code: string,
+  currency_code?: "RUB" | "USD" | "EUR"
+): Promise<RobokassaCreatePaymentResponse> {
   const res = await fetch(`${API_BASE}/payments/robokassa/create`, {
     method: "POST",
     headers: withAuthHeaders(undefined, true),
-    body: JSON.stringify({ product_code })
+    body: JSON.stringify({
+      product_code,
+      ...(currency_code ? { currency_code } : {})
+    })
   });
   return handleResponse<RobokassaCreatePaymentResponse>(res);
 }

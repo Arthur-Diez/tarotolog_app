@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw, X, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,14 @@ import {
 import { openExternalLink, triggerHapticNotification } from "@/lib/telegram";
 
 const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
+const ENERGY_CURRENCY_STORAGE_KEY = "tarotolog_energy_currency";
 const AUTO_STATUS_POLL_INTERVAL_MS = 12_000;
 const AUTO_STATUS_POLL_MAX_ATTEMPTS = 12;
 const BALANCE_ANIMATION_DURATION_MS = 850;
 const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
+type CurrencyCode = "RUB" | "USD" | "EUR";
 
 interface PendingPurchaseStorage {
   purchase_id: string;
@@ -31,7 +33,7 @@ interface EnergyPackConfig {
   productCode: string;
   title: string;
   energyAmount: number;
-  priceLabel: string;
+  pricesMinor: Record<CurrencyCode, number>;
 }
 
 interface PurchaseNotice {
@@ -40,13 +42,72 @@ interface PurchaseNotice {
   message: string;
 }
 
+interface CurrencyOption {
+  code: CurrencyCode;
+  label: string;
+}
+
 const ENERGY_PACKS: EnergyPackConfig[] = [
-  { productCode: "energy_50", title: "Пакет Старт", energyAmount: 10, priceLabel: "149 ₽" },
-  { productCode: "energy_100", title: "Пакет Фокус", energyAmount: 25, priceLabel: "299 ₽" },
-  { productCode: "energy_250", title: "Пакет Поток", energyAmount: 60, priceLabel: "599 ₽" }
+  {
+    productCode: "energy_50",
+    title: "Пакет Старт",
+    energyAmount: 10,
+    pricesMinor: { RUB: 14900, USD: 299, EUR: 299 }
+  },
+  {
+    productCode: "energy_100",
+    title: "Пакет Фокус",
+    energyAmount: 25,
+    pricesMinor: { RUB: 29900, USD: 699, EUR: 699 }
+  },
+  {
+    productCode: "energy_250",
+    title: "Пакет Поток",
+    energyAmount: 60,
+    pricesMinor: { RUB: 59900, USD: 1499, EUR: 1499 }
+  }
+];
+
+const CURRENCY_OPTIONS: CurrencyOption[] = [
+  { code: "RUB", label: "₽ RUB" },
+  { code: "USD", label: "$ USD" },
+  { code: "EUR", label: "€ EUR" }
 ];
 
 const FAILED_STATUSES = new Set(["failed", "canceled", "refunded"]);
+const EU_COUNTRY_CODES = new Set([
+  "AT",
+  "BE",
+  "BG",
+  "HR",
+  "CY",
+  "CZ",
+  "DK",
+  "EE",
+  "FI",
+  "FR",
+  "DE",
+  "GR",
+  "HU",
+  "IE",
+  "IT",
+  "LV",
+  "LT",
+  "LU",
+  "MT",
+  "NL",
+  "PL",
+  "PT",
+  "RO",
+  "SK",
+  "SI",
+  "ES",
+  "SE"
+]);
+
+function isCurrencyCode(value: string | null | undefined): value is CurrencyCode {
+  return value === "RUB" || value === "USD" || value === "EUR";
+}
 
 function readPendingPurchase(): PendingPurchaseStorage | null {
   if (typeof window === "undefined") return null;
@@ -71,6 +132,17 @@ function clearPendingPurchase(): void {
   window.localStorage.removeItem(PENDING_PURCHASE_STORAGE_KEY);
 }
 
+function readStoredCurrency(): CurrencyCode | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(ENERGY_CURRENCY_STORAGE_KEY);
+  return isCurrencyCode(stored) ? stored : null;
+}
+
+function writeStoredCurrency(currency: CurrencyCode): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ENERGY_CURRENCY_STORAGE_KEY, currency);
+}
+
 function normalizeErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message || fallback;
@@ -79,6 +151,44 @@ function normalizeErrorMessage(error: unknown, fallback: string): string {
     return error.message || fallback;
   }
   return fallback;
+}
+
+function formatPrice(minor: number, currency: CurrencyCode): string {
+  const amount = minor / 100;
+  if (currency === "RUB") {
+    return `${Math.round(amount).toLocaleString("ru-RU")} ₽`;
+  }
+  const locale = currency === "EUR" ? "de-DE" : "en-US";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}
+
+function resolveAutodetectedCurrency(params: {
+  userLang?: string | null;
+  interfaceLanguage?: string | null;
+  telegramLanguage?: string | null;
+  detectedCountry?: string | null;
+}): CurrencyCode {
+  const languages = [params.userLang, params.interfaceLanguage, params.telegramLanguage]
+    .filter(Boolean)
+    .map((lang) => String(lang).trim().toLowerCase());
+
+  if (languages.some((lang) => lang.startsWith("ru"))) {
+    return "RUB";
+  }
+
+  const country = (params.detectedCountry || "").trim().toUpperCase();
+  if (country === "RU") {
+    return "RUB";
+  }
+  if (EU_COUNTRY_CODES.has(country)) {
+    return "EUR";
+  }
+  return "USD";
 }
 
 export default function EnergyPage() {
@@ -97,6 +207,7 @@ export default function EnergyPage() {
   const [balanceDelta, setBalanceDelta] = useState<number | null>(null);
   const [isBalanceAnimating, setIsBalanceAnimating] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState<PurchaseNotice | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => readStoredCurrency() || "RUB");
 
   const lastEnergyBalanceRef = useRef<number>(energyBalance);
   const balanceAnimationFrameRef = useRef<number | null>(null);
@@ -104,6 +215,30 @@ export default function EnergyPage() {
   const statusCheckInFlightRef = useRef(false);
   const autoPollAttemptsRef = useRef(0);
   const notifiedPurchaseStatesRef = useRef<Set<string>>(new Set());
+  const currencyWasChangedManuallyRef = useRef(Boolean(readStoredCurrency()));
+
+  const telegramLanguage = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || null;
+  }, []);
+
+  useEffect(() => {
+    if (currencyWasChangedManuallyRef.current) return;
+    if (!profile) return;
+
+    const autodetected = resolveAutodetectedCurrency({
+      userLang: profile.user?.lang,
+      interfaceLanguage: profile.birth_profile?.interface_language,
+      telegramLanguage,
+      detectedCountry: profile.birth_profile?.detected_country
+    });
+    setSelectedCurrency(autodetected);
+    writeStoredCurrency(autodetected);
+  }, [profile, telegramLanguage]);
+
+  useEffect(() => {
+    writeStoredCurrency(selectedCurrency);
+  }, [selectedCurrency]);
 
   useEffect(() => {
     const previous = lastEnergyBalanceRef.current;
@@ -118,7 +253,6 @@ export default function EnergyPage() {
       window.cancelAnimationFrame(balanceAnimationFrameRef.current);
       balanceAnimationFrameRef.current = null;
     }
-
     if (balanceDeltaTimeoutRef.current !== null) {
       window.clearTimeout(balanceDeltaTimeoutRef.current);
       balanceDeltaTimeoutRef.current = null;
@@ -141,8 +275,7 @@ export default function EnergyPage() {
     const animate = (timestamp: number) => {
       const progress = Math.min((timestamp - animationStart) / BALANCE_ANIMATION_DURATION_MS, 1);
       const eased = 1 - (1 - progress) ** 3;
-      const currentValue = previous + delta * eased;
-      setDisplayedEnergyBalance(currentValue);
+      setDisplayedEnergyBalance(previous + delta * eased);
 
       if (progress < 1) {
         balanceAnimationFrameRef.current = window.requestAnimationFrame(animate);
@@ -210,7 +343,7 @@ export default function EnergyPage() {
           setPurchaseNotice({
             tone: "error",
             title: "Платёж не завершён",
-            message: "Оплата была отменена или отклонена. Энергия не списана."
+            message: "Оплата была отменена или отклонена. Энергия не начислена."
           });
         }
         return;
@@ -253,7 +386,7 @@ export default function EnergyPage() {
       setErrorText(null);
 
       try {
-        const payment = await createRobokassaPayment(pack.productCode);
+        const payment = await createRobokassaPayment(pack.productCode, selectedCurrency);
         if (!payment.payment_url || !payment.purchase_id) {
           throw new Error("Не удалось создать платёж");
         }
@@ -291,7 +424,7 @@ export default function EnergyPage() {
         setCreatingProductCode(null);
       }
     },
-    []
+    [selectedCurrency]
   );
 
   useEffect(() => {
@@ -306,12 +439,10 @@ export default function EnergyPage() {
   useEffect(() => {
     if (!pendingPurchaseId || typeof window === "undefined") return;
     autoPollAttemptsRef.current = 0;
-
     let intervalId: number | null = null;
 
     const runCheck = () => {
       if (document.visibilityState !== "visible") return;
-
       if (autoPollAttemptsRef.current >= AUTO_STATUS_POLL_MAX_ATTEMPTS) {
         if (intervalId !== null) {
           window.clearInterval(intervalId);
@@ -320,7 +451,6 @@ export default function EnergyPage() {
         setStatusText("Платёж ещё обрабатывается. Автопроверка остановлена, нажмите «Проверить статус».");
         return;
       }
-
       autoPollAttemptsRef.current += 1;
       void checkPurchaseStatus(pendingPurchaseId, { silent: true });
     };
@@ -357,137 +487,155 @@ export default function EnergyPage() {
   return (
     <>
       <div className="space-y-6">
-      <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
-        <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">
-          <Zap className="h-7 w-7 text-[var(--accent-gold)]" strokeWidth={1.4} />
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Энергия аккаунта</p>
-          {loading && !profile ? (
-            <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-white/10" />
-          ) : (
-            <div className="mt-2 flex items-center gap-2">
-              <p
-                className={`text-3xl font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
-                  isBalanceAnimating ? "scale-105 text-[var(--accent-gold)]" : ""
-                }`}
-              >
-                {formattedEnergyBalance} ⚡
-              </p>
-              {balanceDelta ? (
-                <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">
-                  +{balanceDelta} ⚡
-                </span>
-              ) : null}
-            </div>
-          )}
-          {user?.telegram.username ? (
-            <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p>
-          ) : null}
-        </div>
-      </div>
-
-      <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-6">
-        <div className="mb-4 space-y-1">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Пополнение энергии</h2>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Выберите пакет и оплатите через Robokassa. Начисление произойдёт после подтверждения оплаты.
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          {ENERGY_PACKS.map((pack) => {
-            const creatingThisPack = creatingProductCode === pack.productCode;
-
-            return (
-              <div
-                key={pack.productCode}
-                className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-[var(--text-secondary)]">{pack.title}</p>
-                    <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{pack.energyAmount} ⚡</p>
-                  </div>
-                  <p className="text-base font-semibold text-[var(--accent-gold)]">{pack.priceLabel}</p>
-                </div>
-                <Button
-                  className="mt-3 w-full"
-                  variant="default"
-                  disabled={Boolean(creatingProductCode) || checkingStatus}
-                  onClick={() => {
-                    void handleBuyPack(pack);
-                  }}
+        <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">
+            <Zap className="h-7 w-7 text-[var(--accent-gold)]" strokeWidth={1.4} />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Энергия аккаунта</p>
+            {loading && !profile ? (
+              <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-white/10" />
+            ) : (
+              <div className="mt-2 flex items-center gap-2">
+                <p
+                  className={`text-3xl font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
+                    isBalanceAnimating ? "scale-105 text-[var(--accent-gold)]" : ""
+                  }`}
                 >
-                  {creatingThisPack ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Подготовка платежа...
-                    </span>
-                  ) : (
-                    "Купить"
-                  )}
-                </Button>
+                  {formattedEnergyBalance} ⚡
+                </p>
+                {balanceDelta ? (
+                  <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">
+                    +{balanceDelta} ⚡
+                  </span>
+                ) : null}
               </div>
-            );
-          })}
+            )}
+            {user?.telegram.username ? <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p> : null}
+          </div>
         </div>
-      </Card>
 
-      {(statusText || errorText || activePurchase || pendingPurchaseId) && (
-        <Card
-          className={`border p-5 ${
-            uiState === "succeeded"
-              ? "border-emerald-400/40 bg-emerald-400/10"
-              : uiState === "failed"
-                ? "border-red-400/40 bg-red-400/10"
-                : "border-white/10 bg-[var(--bg-card)]/85"
-          }`}
-        >
-          {statusText ? <p className="text-sm text-[var(--text-primary)]">{statusText}</p> : null}
-          {errorText ? <p className="text-sm text-red-100">{errorText}</p> : null}
-
-          {activePurchase ? (
-            <p className="mt-2 text-xs text-[var(--text-secondary)]">
-              Покупка #{activePurchase.invoice_id} • {activePurchase.product_title || activePurchase.product_code} • статус:{" "}
-              {activePurchase.status}
+        <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-6">
+          <div className="mb-4 space-y-2">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Пополнение энергии</h2>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Валюта определяется автоматически по языку и стране, но вы можете выбрать вручную.
             </p>
-          ) : null}
-
-          {pendingPurchaseId ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3 gap-2 border-white/20"
-              disabled={!canCheckStatus}
+            <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
+              {CURRENCY_OPTIONS.map((option) => (
+                <button
+                  key={option.code}
+                  type="button"
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    selectedCurrency === option.code
+                      ? "bg-white/15 text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
                   onClick={() => {
-                    if (!pendingPurchaseId) return;
-                    autoPollAttemptsRef.current = 0;
-                    void checkPurchaseStatus(pendingPurchaseId);
+                    currencyWasChangedManuallyRef.current = true;
+                    setSelectedCurrency(option.code);
                   }}
                 >
-                  {checkingStatus ? (
-                    <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Проверяем...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Проверить статус
-                </>
-                  )}
-                </Button>
-          ) : null}
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          {pendingPurchaseId ? (
-            <p className="mt-2 text-xs text-[var(--text-secondary)]">
-              Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
-              когда приложение активно.
-            </p>
-          ) : null}
+          <div className="grid gap-3">
+            {ENERGY_PACKS.map((pack) => {
+              const creatingThisPack = creatingProductCode === pack.productCode;
+              const priceLabel = formatPrice(pack.pricesMinor[selectedCurrency], selectedCurrency);
+
+              return (
+                <div
+                  key={pack.productCode}
+                  className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-[var(--text-secondary)]">{pack.title}</p>
+                      <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{pack.energyAmount} ⚡</p>
+                    </div>
+                    <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
+                  </div>
+                  <Button
+                    className="mt-3 w-full"
+                    variant="default"
+                    disabled={Boolean(creatingProductCode) || checkingStatus}
+                    onClick={() => {
+                      void handleBuyPack(pack);
+                    }}
+                  >
+                    {creatingThisPack ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Подготовка платежа...
+                      </span>
+                    ) : (
+                      "Купить"
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         </Card>
-      )}
+
+        {(statusText || errorText || activePurchase || pendingPurchaseId) && (
+          <Card
+            className={`border p-5 ${
+              uiState === "succeeded"
+                ? "border-emerald-400/40 bg-emerald-400/10"
+                : uiState === "failed"
+                  ? "border-red-400/40 bg-red-400/10"
+                  : "border-white/10 bg-[var(--bg-card)]/85"
+            }`}
+          >
+            {statusText ? <p className="text-sm text-[var(--text-primary)]">{statusText}</p> : null}
+            {errorText ? <p className="text-sm text-red-100">{errorText}</p> : null}
+
+            {activePurchase ? (
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                Покупка #{activePurchase.invoice_id} • {activePurchase.product_title || activePurchase.product_code} •{" "}
+                {activePurchase.currency} • статус: {activePurchase.status}
+              </p>
+            ) : null}
+
+            {pendingPurchaseId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 gap-2 border-white/20"
+                disabled={!canCheckStatus}
+                onClick={() => {
+                  if (!pendingPurchaseId) return;
+                  autoPollAttemptsRef.current = 0;
+                  void checkPurchaseStatus(pendingPurchaseId);
+                }}
+              >
+                {checkingStatus ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Проверяем...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Проверить статус
+                  </>
+                )}
+              </Button>
+            ) : null}
+
+            {pendingPurchaseId ? (
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
+                когда приложение активно.
+              </p>
+            ) : null}
+          </Card>
+        )}
       </div>
 
       {purchaseNotice ? (
