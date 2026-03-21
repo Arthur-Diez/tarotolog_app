@@ -1,7 +1,10 @@
 import type { SpreadId } from "@/data/rws_spreads";
 
 // api.ts
-export const API_BASE = "https://tarotapi.freakdev.site/api";
+const API_ORIGIN = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "https://api.freakdev.site")
+  .trim()
+  .replace(/\/+$/, "");
+export const API_BASE = `${API_ORIGIN}/api`;
 
 export const WIDGET_KEYS = [
   "card_of_day",
