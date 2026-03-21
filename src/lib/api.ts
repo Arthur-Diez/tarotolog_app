@@ -377,6 +377,31 @@ export interface DailyBonusClaimResponse {
   status?: string | null;
 }
 
+export interface RobokassaCreatePaymentResponse {
+  purchase_id: string;
+  invoice_id: number;
+  payment_url: string;
+  amount_minor: number;
+  currency: string;
+  product_code: string;
+  product_title: string;
+  energy_credited: number;
+  status: string;
+}
+
+export interface PurchaseStatusResponse {
+  purchase_id: string;
+  invoice_id: number;
+  status: string;
+  amount_minor: number;
+  currency: string;
+  product_code: string;
+  product_title: string;
+  energy_credited: number;
+  created_at: string;
+  paid_at: string | null;
+}
+
 export interface ShareCreateResponse {
   share_token: string;
   expires_at: string;
@@ -560,6 +585,23 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
     headers: withAuthHeaders()
   });
   return handleResponse<HoroscopeFreeTodayResponse>(res);
+}
+
+export async function createRobokassaPayment(product_code: string): Promise<RobokassaCreatePaymentResponse> {
+  const res = await fetch(`${API_BASE}/payments/robokassa/create`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({ product_code })
+  });
+  return handleResponse<RobokassaCreatePaymentResponse>(res);
+}
+
+export async function getPurchaseStatus(purchaseId: string): Promise<PurchaseStatusResponse> {
+  const res = await fetch(`${API_BASE}/purchases/${encodeURIComponent(purchaseId)}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<PurchaseStatusResponse>(res);
 }
 
 export async function createShare(payload: { reading_id: string; image: Blob }): Promise<ShareCreateResponse> {

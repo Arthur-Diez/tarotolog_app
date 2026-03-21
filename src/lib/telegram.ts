@@ -33,6 +33,7 @@ export interface TelegramWebApp {
   expand: () => void;
   onEvent?: (event: "themeChanged", handler: () => void) => void;
   offEvent?: (event: "themeChanged", handler: () => void) => void;
+  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
   switchInlineQuery?: (
     query: string,
     options?: {
@@ -79,4 +80,21 @@ export async function initTelegram(): Promise<TelegramWebApp | null> {
 
 export function getTelegramWebApp(): TelegramWebApp | null {
   return cachedWebApp;
+}
+
+export function openExternalLink(url: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const webApp = window.Telegram?.WebApp;
+  if (typeof webApp?.openLink === "function") {
+    webApp.openLink(url, { try_instant_view: false });
+    return;
+  }
+
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    window.location.assign(url);
+  }
 }
