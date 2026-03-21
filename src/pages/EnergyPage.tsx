@@ -10,7 +10,7 @@ import {
   getPurchaseStatus,
   type PurchaseStatusResponse
 } from "@/lib/api";
-import { openExternalLink } from "@/lib/telegram";
+import { openExternalLink, triggerHapticNotification } from "@/lib/telegram";
 
 const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
 const AUTO_STATUS_POLL_INTERVAL_MS = 12_000;
@@ -185,6 +185,7 @@ export default function EnergyPage() {
         const successNoticeKey = `${purchase.purchase_id}:succeeded`;
         if (!notifiedPurchaseStatesRef.current.has(successNoticeKey)) {
           notifiedPurchaseStatesRef.current.add(successNoticeKey);
+          triggerHapticNotification("success");
           setPurchaseNotice({
             tone: "success",
             title: "Спасибо за покупку",
