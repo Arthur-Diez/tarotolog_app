@@ -38,29 +38,10 @@ const ADSGRAM_INIT_TIMEOUT_MS = 6000;
 const ADSGRAM_READY_TICK_MS = 250;
 const ADSGRAM_SHOW_TIMEOUT_MS = 0;
 
-const TASK_BLOCK_ID_RE = /^task-(\d+)$/i;
-const INT_BLOCK_ID_RE = /^int-\d+$/i;
-const NUMERIC_BLOCK_ID_RE = /^\d+$/;
-
-function normalizeBlockId(value?: string | null): string | null {
-  const raw = (value ?? "").trim();
-  if (!raw) return null;
-  if (NUMERIC_BLOCK_ID_RE.test(raw)) return raw;
-  if (INT_BLOCK_ID_RE.test(raw)) return raw;
-
-  const taskMatch = raw.match(TASK_BLOCK_ID_RE);
-  if (taskMatch?.[1]) {
-    return `int-${taskMatch[1]}`;
-  }
-
-  return raw;
-}
-
 const resolveRewardBlockId = (value?: string | null) => {
   const fallback = (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ?? "";
-  const normalizedPrimary = normalizeBlockId(value);
-  if (normalizedPrimary) return normalizedPrimary;
-  return normalizeBlockId(fallback);
+  const normalized = (value ?? fallback).trim();
+  return normalized || null;
 };
 
 let adsgramController: AdsgramController | null = null;

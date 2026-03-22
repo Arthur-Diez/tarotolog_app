@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RefreshCw, X, Zap } from "lucide-react";
 
+import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useAdsgram } from "@/hooks/useAdsgram";
 import { useProfile } from "@/hooks/useProfile";
 import {
   ApiError,
@@ -26,11 +26,11 @@ const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
 const ADS_STATE_REFETCH_DEBOUNCE_MS = 3000;
 const TASK_ADSGRAM_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "int-25628";
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
 
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
 type CurrencyCode = "RUB" | "USD" | "EUR";
-type AdActionStage = "starting" | "ad_showing" | "completing";
+type AdActionStage = "starting" | "completing";
 
 interface PendingPurchaseStorage {
   purchase_id: string;
@@ -216,27 +216,8 @@ function cooldownSecondsFromIso(value: string | null | undefined): number {
   return Math.max(0, Math.floor((target - Date.now()) / 1000));
 }
 
-function mapAdsgramError(error?: string): string {
-  switch (error) {
-    case "tg_sdk_unavailable":
-      return "Проверь VPN/время/сеть";
-    case "sdk_missing":
-    case "controller_missing":
-    case "block_id_missing":
-      return "Реклама сейчас недоступна";
-    case "no_inventory":
-      return "Нет доступной рекламы, попробуйте позже";
-    case "network_error":
-      return "Проверь соединение и отключи блокировщики";
-    case "ad_error":
-    default:
-      return "Ошибка рекламы, попробуйте позже";
-  }
-}
-
 export default function EnergyPage() {
   const { profile, loading, refresh } = useProfile();
-  const adsgram = useAdsgram();
   const user = profile?.user;
   const energyBalance = user?.energy_balance ?? 0;
 
@@ -267,6 +248,7 @@ export default function EnergyPage() {
   const notifiedPurchaseStatesRef = useRef<Set<string>>(new Set());
   const currencyWasChangedManuallyRef = useRef(Boolean(readStoredCurrency()));
   const lastAdsReloadAtRef = useRef(0);
+  const taskRewardInFlightRef = useRef(false);
 
   const telegramLanguage = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -375,12 +357,6 @@ export default function EnergyPage() {
   }, [loadAdsState]);
 
   useEffect(() => {
-    if (!adsState?.ads_enabled) return;
-    const taskBlockId = adsState.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
-    void adsgram.preload({ blockId: taskBlockId }).catch(() => undefined);
-  }, [adsState?.ads_enabled, adsState?.adsgram_task_block_id, adsgram]);
-
-  useEffect(() => {
     if (!adsState) return;
 
     const tick = () => {
@@ -417,35 +393,25 @@ export default function EnergyPage() {
   }, [loadAdsState]);
 
   const handleTaskRewardClaim = useCallback(async () => {
-    if (adsAction) return;
+    if (adsAction || taskRewardInFlightRef.current) return;
     if (!adsState?.ads_enabled) {
       setAdsErrorText("Реклама отключена для активной подписки");
       return;
     }
     if (!adsState.task.available) return;
 
+    taskRewardInFlightRef.current = true;
     setAdsErrorText(null);
     setAdsAction("starting");
 
     try {
       const startResponse = await startEnergyRewardAd("task");
-      const blockId = startResponse.adsgram_block_id || adsState.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
-      if (!blockId) {
-        throw new Error("Не удалось определить рекламный блок");
-      }
-
-      setAdsAction("ad_showing");
-      const adResult = await adsgram.showPrepared({ blockId, warmupMs: 650 });
-      if (!adResult.ok) {
-        setAdsErrorText(mapAdsgramError(adResult.error));
-        await loadAdsState();
-        return;
-      }
-
       setAdsAction("completing");
       const completeResponse = await completeEnergyRewardAd({
         session_id: startResponse.session_id,
-        provider_payload: adResult.payload ?? {}
+        provider_payload: {
+          source: "adsgram_task_widget"
+        }
       });
 
       triggerHapticNotification("success");
@@ -462,8 +428,9 @@ export default function EnergyPage() {
       await loadAdsState();
     } finally {
       setAdsAction(null);
+      taskRewardInFlightRef.current = false;
     }
-  }, [adsAction, adsState, adsgram, loadAdsState, refresh]);
+  }, [adsAction, adsState, loadAdsState, refresh]);
 
   const applyPurchaseStatus = useCallback(
     async (purchase: PurchaseStatusResponse) => {
@@ -644,12 +611,12 @@ export default function EnergyPage() {
 
   const canCheckStatus = Boolean(pendingPurchaseId) && !checkingStatus;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
+  const taskBlockId = adsState?.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
 
   const taskButtonLabel = useMemo(() => {
     if (!adsState?.ads_enabled) return "Недоступно";
     if (adsAction) {
       if (adsAction === "starting") return "Готовим...";
-      if (adsAction === "ad_showing") return "Открываем задание...";
       return "Начисляем...";
     }
     if (!adsState?.task.available) {
@@ -686,19 +653,35 @@ export default function EnergyPage() {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    disabled={!adsState?.ads_enabled || !adsState?.task.available || Boolean(adsAction)}
-                    onClick={() => {
-                      void handleTaskRewardClaim();
-                    }}
-                  >
-                    {adsAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {taskButtonLabel}
-                  </Button>
-                  {!adsState?.task.available ? (
-                    <span className="text-xs text-[var(--text-tertiary)]">Cooldown 8 часов</span>
-                  ) : null}
+                  {adsState?.ads_enabled && adsState?.task.available ? (
+                    <div className="w-full space-y-2">
+                      <AdsgramTaskBanner
+                        blockId={taskBlockId}
+                        disabled={Boolean(adsAction)}
+                        onReward={() => {
+                          void handleTaskRewardClaim();
+                        }}
+                        onError={(message) => setAdsErrorText(message)}
+                        onBannerNotFound={() => setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже")}
+                        onTooLongSession={() => setAdsErrorText("Сессия задания устарела, обновите страницу")}
+                      />
+                      {adsAction ? (
+                        <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {taskButtonLabel}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <>
+                      <Button type="button" disabled>
+                        {taskButtonLabel}
+                      </Button>
+                      {!adsState?.task.available ? (
+                        <span className="text-xs text-[var(--text-tertiary)]">Cooldown 8 часов</span>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
