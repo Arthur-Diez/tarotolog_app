@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdsgramTaskEvent = Event & {
   detail?: unknown;
@@ -10,7 +10,7 @@ type AdsgramTaskBannerProps = {
   disabled?: boolean;
   debug?: boolean;
   className?: string;
-  onReward: () => void;
+  onReward: (detail?: unknown) => void;
   onError?: (message: string) => void;
   onBannerNotFound?: () => void;
   onTooLongSession?: () => void;
@@ -37,55 +37,69 @@ export function AdsgramTaskBanner({
   onTooLongSession
 }: AdsgramTaskBannerProps) {
   const taskRef = useRef<HTMLElement | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const isTaskBlockId = useMemo(() => /^task-\d+$/i.test(blockId.trim()), [blockId]);
-  const isTaskElementRegistered = useMemo(() => {
-    if (typeof window === "undefined") return true;
-    return Boolean(window.customElements?.get("adsgram-task"));
-  }, []);
+  const normalizedBlockId = useMemo(() => blockId.trim(), [blockId]);
+  const isTaskBlockId = useMemo(() => /^task-\d+$/i.test(normalizedBlockId), [normalizedBlockId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.customElements?.get("adsgram-task")) {
+      setReady(true);
+      return;
+    }
+    let cancelled = false;
+    window.customElements
+      .whenDefined("adsgram-task")
+      .then(() => {
+        if (!cancelled) setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReady(false);
+          onError?.("Task-реклама сейчас недоступна");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [onError]);
+
+  useEffect(() => {
+    if (!isTaskBlockId) {
+      onError?.("Неверный Task blockId");
+      return;
+    }
+  }, [isTaskBlockId, onError]);
 
   useEffect(() => {
     const node = taskRef.current;
-    if (!node || disabled) return;
+    if (!node || disabled || !ready) return;
 
-    const handleReward = () => onReward();
+    const handleReward = (event: AdsgramTaskEvent) => onReward(event.detail);
     const handleError = (event: Event) => onError?.(eventMessage(event as AdsgramTaskEvent));
     const handleBannerNotFound = () => onBannerNotFound?.();
     const handleTooLongSession = () => onTooLongSession?.();
 
     node.addEventListener("reward", handleReward);
     node.addEventListener("onError", handleError);
-    node.addEventListener("error", handleError);
     node.addEventListener("onBannerNotFound", handleBannerNotFound);
-    node.addEventListener("bannerNotFound", handleBannerNotFound);
     node.addEventListener("onTooLongSession", handleTooLongSession);
-    node.addEventListener("tooLongSession", handleTooLongSession);
 
     return () => {
       node.removeEventListener("reward", handleReward);
       node.removeEventListener("onError", handleError);
-      node.removeEventListener("error", handleError);
       node.removeEventListener("onBannerNotFound", handleBannerNotFound);
-      node.removeEventListener("bannerNotFound", handleBannerNotFound);
       node.removeEventListener("onTooLongSession", handleTooLongSession);
-      node.removeEventListener("tooLongSession", handleTooLongSession);
     };
-  }, [disabled, onBannerNotFound, onError, onReward, onTooLongSession]);
+  }, [disabled, onBannerNotFound, onError, onReward, onTooLongSession, ready]);
 
   if (!isTaskBlockId) {
-    return (
-      <div className="rounded-2xl border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 p-3 text-xs text-[var(--accent-gold)]">
-        Неверный Task blockId: ожидается формат <code>task-xxx</code>.
-      </div>
-    );
+    return null;
   }
 
-  if (!isTaskElementRegistered) {
-    return (
-      <div className="rounded-2xl border border-[var(--accent-gold)]/40 bg-[var(--accent-gold)]/10 p-3 text-xs text-[var(--accent-gold)]">
-        Компонент <code>adsgram-task</code> не загружен. Проверьте подключение SDK Adsgram.
-      </div>
-    );
+  if (!ready) {
+    return null;
   }
 
   return (
@@ -94,7 +108,7 @@ export function AdsgramTaskBanner({
         taskRef.current = node as HTMLElement | null;
       }}
       className={className}
-      data-block-id={blockId.trim()}
+      data-block-id={normalizedBlockId}
       data-debug={debug ? "true" : "false"}
       data-debug-console={debug ? "true" : "false"}
       style={

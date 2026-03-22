@@ -119,6 +119,10 @@ function isCurrencyCode(value: string | null | undefined): value is CurrencyCode
   return value === "RUB" || value === "USD" || value === "EUR";
 }
 
+function isTaskBlockId(value: string | null | undefined): value is string {
+  return Boolean(value && /^task-\d+$/i.test(value.trim()));
+}
+
 function readPendingPurchase(): PendingPurchaseStorage | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(PENDING_PURCHASE_STORAGE_KEY);
@@ -392,7 +396,7 @@ export default function EnergyPage() {
     };
   }, [loadAdsState]);
 
-  const handleTaskRewardClaim = useCallback(async () => {
+  const handleTaskRewardClaim = useCallback(async (taskEventDetail?: unknown) => {
     if (adsAction || taskRewardInFlightRef.current) return;
     if (!adsState?.ads_enabled) {
       setAdsErrorText("Реклама отключена для активной подписки");
@@ -409,10 +413,18 @@ export default function EnergyPage() {
       setAdsAction("completing");
       const completeResponse = await completeEnergyRewardAd({
         session_id: startResponse.session_id,
+        ads_completed_increment: 1,
         provider_payload: {
-          source: "adsgram_task_widget"
+          source: "adsgram_task_widget",
+          event_detail: taskEventDetail ?? null
         }
       });
+
+      if (!completeResponse.success || completeResponse.energy_credited <= 0) {
+        setAdsErrorText(completeResponse.message || "Не удалось зачислить награду");
+        await loadAdsState();
+        return;
+      }
 
       triggerHapticNotification("success");
       setPurchaseNotice({
@@ -611,7 +623,12 @@ export default function EnergyPage() {
 
   const canCheckStatus = Boolean(pendingPurchaseId) && !checkingStatus;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
-  const taskBlockId = adsState?.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
+  const taskBlockId = useMemo(() => {
+    const backendBlockId = adsState?.adsgram_task_block_id ?? null;
+    if (isTaskBlockId(backendBlockId)) return backendBlockId.trim();
+    if (isTaskBlockId(TASK_ADSGRAM_BLOCK_ID)) return TASK_ADSGRAM_BLOCK_ID.trim();
+    return null;
+  }, [adsState?.adsgram_task_block_id]);
 
   const taskButtonLabel = useMemo(() => {
     if (!adsState?.ads_enabled) return "Недоступно";
@@ -628,69 +645,51 @@ export default function EnergyPage() {
   return (
     <>
       <div className="space-y-6">
-        <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-5">
-          <div className="mb-3">
+        <section className="space-y-3">
+          <div>
             <p className="text-lg font-semibold text-[var(--text-primary)]">Бесплатная энергия</p>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Ежедневная награда находится на главной странице. Здесь доступно только Task-задание.
-            </p>
           </div>
 
           {adsLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-white/10" />
+          ) : adsState?.ads_enabled && adsState?.task.available && taskBlockId ? (
+            <div className="space-y-2">
+              <AdsgramTaskBanner
+                blockId={taskBlockId}
+                disabled={Boolean(adsAction)}
+                onReward={(detail) => {
+                  void handleTaskRewardClaim(detail);
+                }}
+                onError={(message) => {
+                  setAdsErrorText(message);
+                  void loadAdsState();
+                }}
+                onBannerNotFound={() => {
+                  setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже");
+                  void loadAdsState();
+                }}
+                onTooLongSession={() => {
+                  setAdsErrorText("Сессия задания устарела, обновите страницу");
+                  void loadAdsState();
+                }}
+              />
+              {adsAction ? (
+                <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {taskButtonLabel}
+                </div>
+              ) : null}
+            </div>
           ) : (
-            <div className="grid gap-3">
-              <div className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold text-[var(--text-primary)]">Task-награда</p>
-                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                      {adsState?.task.message || "Выполни задание и получи +1 энергию"}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
-                    +{adsState?.task.next_energy ?? 1} ⚡
-                  </span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {adsState?.ads_enabled && adsState?.task.available ? (
-                    <div className="w-full space-y-2">
-                      <AdsgramTaskBanner
-                        blockId={taskBlockId}
-                        disabled={Boolean(adsAction)}
-                        onReward={() => {
-                          void handleTaskRewardClaim();
-                        }}
-                        onError={(message) => setAdsErrorText(message)}
-                        onBannerNotFound={() => setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже")}
-                        onTooLongSession={() => setAdsErrorText("Сессия задания устарела, обновите страницу")}
-                      />
-                      {adsAction ? (
-                        <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          {taskButtonLabel}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <>
-                      <Button type="button" disabled>
-                        {taskButtonLabel}
-                      </Button>
-                      {!adsState?.task.available ? (
-                        <span className="text-xs text-[var(--text-tertiary)]">Cooldown 8 часов</span>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)]/70 px-4 py-3">
+              <p className="text-sm text-[var(--text-secondary)]">{taskButtonLabel}</p>
             </div>
           )}
 
           {adsErrorText ? (
-            <p className="mt-3 text-xs text-[var(--accent-gold)]">{adsErrorText}</p>
+            <p className="text-xs text-[var(--accent-gold)]">{adsErrorText}</p>
           ) : null}
-        </Card>
+        </section>
 
         <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
           <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">

@@ -438,7 +438,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           </div>
         ) : null}
       </div>
-      {debugAds || reward.status === "error" ? (
+      {debugAds ? (
         <div className="mt-3 rounded-xl border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
           <div>AdsGram blockId: {reward.adsgramBlockId ?? adsDebugState.blockId ?? "missing"}</div>
           <div>Controller: {adsDebugState.controllerReady ? "ready" : "missing"}</div>
