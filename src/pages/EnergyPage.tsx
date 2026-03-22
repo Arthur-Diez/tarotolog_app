@@ -26,6 +26,7 @@ const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
 const ENERGY_CURRENCY_STORAGE_KEY = "tarotolog_energy_currency";
 const AUTO_STATUS_POLL_INTERVAL_MS = 12_000;
 const AUTO_STATUS_POLL_MAX_ATTEMPTS = 12;
+const STATUS_AUTO_HIDE_MS = 7000;
 const BALANCE_ANIMATION_DURATION_MS = 850;
 const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
@@ -307,6 +308,7 @@ export default function EnergyPage() {
   const balanceAnimationFrameRef = useRef<number | null>(null);
   const balanceDeltaTimeoutRef = useRef<number | null>(null);
   const statusCheckInFlightRef = useRef(false);
+  const statusAutoHideTimeoutRef = useRef<number | null>(null);
   const autoPollAttemptsRef = useRef(0);
   const notifiedPurchaseStatesRef = useRef<Set<string>>(new Set());
   const currencyWasChangedManuallyRef = useRef(Boolean(readStoredCurrency()));
@@ -414,6 +416,24 @@ export default function EnergyPage() {
       setAdsLoading(false);
     }
   }, []);
+
+  const clearStatusAutoHideTimer = useCallback(() => {
+    if (statusAutoHideTimeoutRef.current !== null) {
+      window.clearTimeout(statusAutoHideTimeoutRef.current);
+      statusAutoHideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleStatusAutoHide = useCallback(() => {
+    clearStatusAutoHideTimer();
+    statusAutoHideTimeoutRef.current = window.setTimeout(() => {
+      setStatusText(null);
+      setErrorText(null);
+      setActivePurchase(null);
+      setUiState("idle");
+      statusAutoHideTimeoutRef.current = null;
+    }, STATUS_AUTO_HIDE_MS);
+  }, [clearStatusAutoHideTimer]);
 
   useEffect(() => {
     void loadAdsState();
@@ -529,6 +549,7 @@ export default function EnergyPage() {
 
       const isSucceeded = payment.payment_method === "telegram_stars" ? payment.status === "paid" : payment.status === "succeeded";
       if (isSucceeded) {
+        clearStatusAutoHideTimer();
         clearPendingPurchase();
         setPendingPurchase(null);
         setUiState("succeeded");
@@ -551,11 +572,13 @@ export default function EnergyPage() {
       }
 
       if (FAILED_STATUSES.has(payment.status)) {
+        clearStatusAutoHideTimer();
         clearPendingPurchase();
         setPendingPurchase(null);
         setUiState("failed");
         setStatusText(null);
         setErrorText("Оплата не завершена.");
+        scheduleStatusAutoHide();
 
         const failNoticeKey = `${payment.entity_id}:${payment.status}`;
         if (!notifiedPurchaseStatesRef.current.has(failNoticeKey)) {
@@ -573,7 +596,7 @@ export default function EnergyPage() {
       setErrorText(null);
       setStatusText("Платёж ещё обрабатывается. Мы проверяем статус автоматически.");
     },
-    [refresh]
+    [clearStatusAutoHideTimer, refresh, scheduleStatusAutoHide]
   );
 
   const checkPurchaseStatus = useCallback(
@@ -604,6 +627,7 @@ export default function EnergyPage() {
 
   const handleBuyPack = useCallback(
     async (pack: EnergyPackConfig) => {
+      clearStatusAutoHideTimer();
       setCreatingProductCode(pack.productCode);
       setUiState("creating");
       setStatusText(null);
@@ -649,11 +673,12 @@ export default function EnergyPage() {
         setCreatingProductCode(null);
       }
     },
-    [selectedCurrency]
+    [clearStatusAutoHideTimer, selectedCurrency]
   );
 
   const handleBuyStarsOffer = useCallback(
     async (offer: TelegramStarsOfferResponse) => {
+      clearStatusAutoHideTimer();
       setCreatingProductCode(offer.offer_id);
       setUiState("creating");
       setStatusText(null);
@@ -693,10 +718,12 @@ export default function EnergyPage() {
           return;
         }
         if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
-          await checkPurchaseStatus(pendingPayload, { silent: true });
+          clearPendingPurchase();
+          setPendingPurchase(null);
           setUiState("failed");
           setStatusText(null);
-          setErrorText("Оплата Telegram Stars не завершена.");
+          setErrorText(invoiceStatus === "cancelled" ? "Оплата отменена пользователем." : "Оплата Telegram Stars не завершена.");
+          scheduleStatusAutoHide();
           return;
         }
 
@@ -716,7 +743,14 @@ export default function EnergyPage() {
         setCreatingProductCode(null);
       }
     },
-    [checkPurchaseStatus]
+    [checkPurchaseStatus, clearStatusAutoHideTimer, scheduleStatusAutoHide]
+  );
+
+  useEffect(
+    () => () => {
+      clearStatusAutoHideTimer();
+    },
+    [clearStatusAutoHideTimer]
   );
 
   useEffect(() => {
@@ -897,8 +931,8 @@ export default function EnergyPage() {
             </div>
             <p className="text-sm text-[var(--text-secondary)]">
               {selectedPaymentMethod === "telegram_stars"
-                ? "Пакеты Telegram Stars загружаются с backend, включая бонусы и финальную цену."
-                : "Валюта карты определяется автоматически по языку и стране, но вы можете выбрать вручную."}
+                ? "Вы можете приобрести энергию официальной валютой Telegram - Telegram Stars."
+                : "Вы можете приобрести энергию в удобной для вас валюте, а если оплата картой не проходит - используйте Telegram Stars."}
             </p>
             {selectedPaymentMethod === "robokassa" ? (
               <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
