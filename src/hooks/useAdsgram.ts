@@ -13,6 +13,16 @@ type ShowPreparedOptions = AdsgramInitOptions & {
   warmupMs?: number;
 };
 
+function normalizeBlockIdForCompare(blockId?: string | null): string | null {
+  const raw = blockId?.trim() ?? null;
+  if (!raw) return null;
+  const taskMatch = raw.match(/^task-(\d+)$/i);
+  if (taskMatch?.[1]) {
+    return `int-${taskMatch[1]}`;
+  }
+  return raw;
+}
+
 export function useAdsgram() {
   const preload = useCallback(async (options: AdsgramInitOptions) => {
     await initAdsgramController(options);
@@ -29,7 +39,7 @@ export function useAdsgram() {
     async (options: ShowPreparedOptions) => {
       const warmupMs = Math.max(0, options.warmupMs ?? 450);
       const before = getAdsgramDebugState();
-      const targetBlockId = options.blockId?.trim() ?? null;
+      const targetBlockId = normalizeBlockIdForCompare(options.blockId);
       const needsWarmup =
         !before.controllerReady || (Boolean(targetBlockId) && before.blockId !== targetBlockId);
       const startedAt = Date.now();

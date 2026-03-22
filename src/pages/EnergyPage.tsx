@@ -26,13 +26,10 @@ const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
 const ADS_STATE_REFETCH_DEBOUNCE_MS = 3000;
 const TASK_ADSGRAM_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
-const REWARD_ADSGRAM_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ?? "21501";
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "int-25628";
 
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
 type CurrencyCode = "RUB" | "USD" | "EUR";
-type AdMode = "reward" | "task";
 type AdActionStage = "starting" | "ad_showing" | "completing";
 
 interface PendingPurchaseStorage {
@@ -259,8 +256,7 @@ export default function EnergyPage() {
   const [adsState, setAdsState] = useState<EnergyAdsStateResponse | null>(null);
   const [adsLoading, setAdsLoading] = useState(true);
   const [adsErrorText, setAdsErrorText] = useState<string | null>(null);
-  const [adsAction, setAdsAction] = useState<{ mode: AdMode; stage: AdActionStage } | null>(null);
-  const [rewardCooldownLeft, setRewardCooldownLeft] = useState<number>(0);
+  const [adsAction, setAdsAction] = useState<AdActionStage | null>(null);
   const [taskCooldownLeft, setTaskCooldownLeft] = useState<number>(0);
 
   const lastEnergyBalanceRef = useRef<number>(energyBalance);
@@ -365,7 +361,6 @@ export default function EnergyPage() {
       const next = await getEnergyAdsState();
       setAdsState(next);
       setAdsErrorText(null);
-      setRewardCooldownLeft(cooldownSecondsFromIso(next.reward_available_at));
       setTaskCooldownLeft(cooldownSecondsFromIso(next.task_available_at));
       lastAdsReloadAtRef.current = Date.now();
     } catch (error) {
@@ -381,25 +376,18 @@ export default function EnergyPage() {
 
   useEffect(() => {
     if (!adsState?.ads_enabled) return;
-    const rewardBlockId = adsState.adsgram_block_id || REWARD_ADSGRAM_BLOCK_ID;
     const taskBlockId = adsState.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
-    void adsgram.preload({ blockId: rewardBlockId }).catch(() => undefined);
     void adsgram.preload({ blockId: taskBlockId }).catch(() => undefined);
-  }, [adsState?.ads_enabled, adsState?.adsgram_block_id, adsState?.adsgram_task_block_id, adsgram]);
+  }, [adsState?.ads_enabled, adsState?.adsgram_task_block_id, adsgram]);
 
   useEffect(() => {
     if (!adsState) return;
 
     const tick = () => {
-      const rewardLeft = adsState.reward.available ? 0 : cooldownSecondsFromIso(adsState.reward_available_at);
       const taskLeft = adsState.task.available ? 0 : cooldownSecondsFromIso(adsState.task_available_at);
-
-      setRewardCooldownLeft(rewardLeft);
       setTaskCooldownLeft(taskLeft);
 
-      const shouldReload =
-        (!adsState.reward.available && rewardLeft === 0) ||
-        (!adsState.task.available && taskLeft === 0);
+      const shouldReload = !adsState.task.available && taskLeft === 0;
       if (shouldReload && Date.now() - lastAdsReloadAtRef.current > ADS_STATE_REFETCH_DEBOUNCE_MS) {
         void loadAdsState();
       }
@@ -428,63 +416,54 @@ export default function EnergyPage() {
     };
   }, [loadAdsState]);
 
-  const handleAdRewardClaim = useCallback(
-    async (mode: AdMode) => {
-      if (adsAction) return;
-      if (!adsState?.ads_enabled) {
-        setAdsErrorText("Реклама отключена для активной подписки");
+  const handleTaskRewardClaim = useCallback(async () => {
+    if (adsAction) return;
+    if (!adsState?.ads_enabled) {
+      setAdsErrorText("Реклама отключена для активной подписки");
+      return;
+    }
+    if (!adsState.task.available) return;
+
+    setAdsErrorText(null);
+    setAdsAction("starting");
+
+    try {
+      const startResponse = await startEnergyRewardAd("task");
+      const blockId = startResponse.adsgram_block_id || adsState.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID;
+      if (!blockId) {
+        throw new Error("Не удалось определить рекламный блок");
+      }
+
+      setAdsAction("ad_showing");
+      const adResult = await adsgram.showPrepared({ blockId, warmupMs: 650 });
+      if (!adResult.ok) {
+        setAdsErrorText(mapAdsgramError(adResult.error));
+        await loadAdsState();
         return;
       }
 
-      const modeAvailable = mode === "reward" ? adsState.reward.available : adsState.task.available;
-      if (!modeAvailable) return;
+      setAdsAction("completing");
+      const completeResponse = await completeEnergyRewardAd({
+        session_id: startResponse.session_id,
+        provider_payload: adResult.payload ?? {}
+      });
 
-      setAdsErrorText(null);
-      setAdsAction({ mode, stage: "starting" });
+      triggerHapticNotification("success");
+      setPurchaseNotice({
+        tone: "success",
+        title: "Спасибо за помощь проекту",
+        message: `${completeResponse.message} Вам начислено +${completeResponse.energy_credited} ⚡.`
+      });
 
-      try {
-        const startResponse = await startEnergyRewardAd(mode);
-        const fallbackBlockId =
-          mode === "task"
-            ? adsState.adsgram_task_block_id || TASK_ADSGRAM_BLOCK_ID
-            : adsState.adsgram_block_id || REWARD_ADSGRAM_BLOCK_ID;
-        const blockId = startResponse.adsgram_block_id || fallbackBlockId;
-        if (!blockId) {
-          throw new Error("Не удалось определить рекламный блок");
-        }
-
-        setAdsAction({ mode, stage: "ad_showing" });
-        const adResult = await adsgram.showPrepared({ blockId, warmupMs: 650 });
-        if (!adResult.ok) {
-          setAdsErrorText(mapAdsgramError(adResult.error));
-          await loadAdsState();
-          return;
-        }
-
-        setAdsAction({ mode, stage: "completing" });
-        const completeResponse = await completeEnergyRewardAd({
-          session_id: startResponse.session_id,
-          provider_payload: adResult.payload ?? {}
-        });
-
-        triggerHapticNotification("success");
-        setPurchaseNotice({
-          tone: "success",
-          title: "Спасибо за помощь проекту",
-          message: `${completeResponse.message} Вам начислено +${completeResponse.energy_credited} ⚡.`
-        });
-
-        await refresh();
-        await loadAdsState();
-      } catch (error) {
-        setAdsErrorText(normalizeErrorMessage(error, "Не удалось обработать рекламную награду"));
-        await loadAdsState();
-      } finally {
-        setAdsAction(null);
-      }
-    },
-    [adsAction, adsState, adsgram, loadAdsState, refresh]
-  );
+      await refresh();
+      await loadAdsState();
+    } catch (error) {
+      setAdsErrorText(normalizeErrorMessage(error, "Не удалось обработать рекламную награду"));
+      await loadAdsState();
+    } finally {
+      setAdsAction(null);
+    }
+  }, [adsAction, adsState, adsgram, loadAdsState, refresh]);
 
   const applyPurchaseStatus = useCallback(
     async (purchase: PurchaseStatusResponse) => {
@@ -666,34 +645,18 @@ export default function EnergyPage() {
   const canCheckStatus = Boolean(pendingPurchaseId) && !checkingStatus;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
 
-  const rewardButtonLabel = useMemo(() => {
-    if (!adsState?.ads_enabled) return "Недоступно";
-    if (adsAction?.mode === "reward") {
-      if (adsAction.stage === "starting") return "Готовим...";
-      if (adsAction.stage === "ad_showing") return "Загрузка рекламы...";
-      return "Начисляем...";
-    }
-    if (!adsState?.reward.available) {
-      return `Доступно через ${formatCountdown(rewardCooldownLeft)}`;
-    }
-    if (adsState.reward.next_reward_kind === "daily_x2") {
-      return `Смотреть рекламу (+${adsState.reward.next_energy})`;
-    }
-    return `Получить +${adsState.reward.next_energy} ⚡`;
-  }, [adsAction, adsState, rewardCooldownLeft]);
-
   const taskButtonLabel = useMemo(() => {
     if (!adsState?.ads_enabled) return "Недоступно";
-    if (adsAction?.mode === "task") {
-      if (adsAction.stage === "starting") return "Готовим...";
-      if (adsAction.stage === "ad_showing") return "Открываем задание...";
+    if (adsAction) {
+      if (adsAction === "starting") return "Готовим...";
+      if (adsAction === "ad_showing") return "Открываем задание...";
       return "Начисляем...";
     }
     if (!adsState?.task.available) {
       return `Доступно через ${formatCountdown(taskCooldownLeft)}`;
     }
     return `Получить +${adsState.task.next_energy} ⚡`;
-  }, [adsAction, adsState, taskCooldownLeft]);
+  }, [adsAction, adsState?.ads_enabled, adsState?.task.available, adsState?.task.next_energy, taskCooldownLeft]);
 
   return (
     <>
@@ -702,7 +665,7 @@ export default function EnergyPage() {
           <div className="mb-3">
             <p className="text-lg font-semibold text-[var(--text-primary)]">Бесплатная энергия</p>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Reward и Task работают независимо: daily x2, затем обычные +1 с cooldown.
+              Ежедневная награда находится на главной странице. Здесь доступно только Task-задание.
             </p>
           </div>
 
@@ -710,37 +673,6 @@ export default function EnergyPage() {
             <div className="h-24 animate-pulse rounded-xl bg-white/10" />
           ) : (
             <div className="grid gap-3">
-              <div className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold text-[var(--text-primary)]">
-                      {adsState?.reward.next_reward_kind === "daily_x2" ? "Ежедневная награда" : "Reward-награда"}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                      {adsState?.reward.message || "Смотри reward-рекламу и получай энергию"}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
-                    +{adsState?.reward.next_energy ?? 0} ⚡
-                  </span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    disabled={!adsState?.ads_enabled || !adsState?.reward.available || Boolean(adsAction)}
-                    onClick={() => {
-                      void handleAdRewardClaim("reward");
-                    }}
-                  >
-                    {adsAction?.mode === "reward" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {rewardButtonLabel}
-                  </Button>
-                  {!adsState?.reward.available ? (
-                    <span className="text-xs text-[var(--text-tertiary)]">Cooldown 4 часа</span>
-                  ) : null}
-                </div>
-              </div>
-
               <div className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -758,10 +690,10 @@ export default function EnergyPage() {
                     type="button"
                     disabled={!adsState?.ads_enabled || !adsState?.task.available || Boolean(adsAction)}
                     onClick={() => {
-                      void handleAdRewardClaim("task");
+                      void handleTaskRewardClaim();
                     }}
                   >
-                    {adsAction?.mode === "task" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {adsAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {taskButtonLabel}
                   </Button>
                   {!adsState?.task.available ? (
