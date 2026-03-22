@@ -115,6 +115,8 @@ export function AdsgramTaskBanner({
         {
           width: "100%",
           display: "block",
+          maxWidth: "100%",
+          overflow: "hidden",
           opacity: disabled ? 0.55 : 1,
           pointerEvents: disabled ? "none" : "auto",
           ["--adsgram-task-accent-color" as string]: "#80b9ff",
@@ -124,13 +126,14 @@ export function AdsgramTaskBanner({
           ["--adsgram-task-button-background" as string]: "linear-gradient(120deg,#7ab5ff,#6f85ff)",
           ["--adsgram-task-button-color" as string]: "#ffffff",
           ["--adsgram-task-border-radius" as string]: "16px",
-          ["--adsgram-task-padding" as string]: "12px"
+          ["--adsgram-task-padding" as string]: "12px",
+          ["--adsgram-task-button-border-radius" as string]: "12px"
         } as CSSProperties
       }
     >
       <span slot="reward">+1 ⚡</span>
-      <span slot="button">Выполнить</span>
-      <span slot="claim">Забрать</span>
+      <span slot="button">GO</span>
+      <span slot="claim">CLAIM</span>
       <span slot="done">Готово</span>
       <span slot="expired">Повторить</span>
     </adsgram-task>

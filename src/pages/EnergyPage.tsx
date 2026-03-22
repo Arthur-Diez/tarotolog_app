@@ -806,25 +806,27 @@ export default function EnergyPage() {
             <div className="h-24 animate-pulse rounded-xl bg-white/10" />
           ) : adsState?.ads_enabled && adsState?.task.available && taskBlockId ? (
             <div className="space-y-2">
-              <AdsgramTaskBanner
-                blockId={taskBlockId}
-                disabled={Boolean(adsAction)}
-                onReward={(detail) => {
-                  void handleTaskRewardClaim(detail);
-                }}
-                onError={(message) => {
-                  setAdsErrorText(message);
-                  void loadAdsState();
-                }}
-                onBannerNotFound={() => {
-                  setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже");
-                  void loadAdsState();
-                }}
-                onTooLongSession={() => {
-                  setAdsErrorText("Сессия задания устарела, обновите страницу");
-                  void loadAdsState();
-                }}
-              />
+              <div className="rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 p-2 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
+                <AdsgramTaskBanner
+                  blockId={taskBlockId}
+                  disabled={Boolean(adsAction)}
+                  onReward={(detail) => {
+                    void handleTaskRewardClaim(detail);
+                  }}
+                  onError={(message) => {
+                    setAdsErrorText(message);
+                    void loadAdsState();
+                  }}
+                  onBannerNotFound={() => {
+                    setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже");
+                    void loadAdsState();
+                  }}
+                  onTooLongSession={() => {
+                    setAdsErrorText("Сессия задания устарела, обновите страницу");
+                    void loadAdsState();
+                  }}
+                />
+              </div>
               {adsAction ? (
                 <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
