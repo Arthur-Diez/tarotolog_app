@@ -331,6 +331,11 @@ export interface SubscriptionStatusResponse {
   ends_at?: string | null;
 }
 
+export interface AdsConfigResponse {
+  ads_enabled: boolean;
+  task_block_id: string;
+}
+
 export interface DailyRewardStartResponse {
   reward_id: string | null;
   amount: number;
@@ -530,6 +535,14 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatusRespons
     headers: withAuthHeaders()
   });
   return handleResponse<SubscriptionStatusResponse>(res);
+}
+
+export async function getAdsConfig(): Promise<AdsConfigResponse> {
+  const res = await fetch(`${API_BASE}/ads/config`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdsConfigResponse>(res);
 }
 
 export async function startDailyReward(): Promise<DailyRewardStartResponse> {

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
 
 import { ApiError, claimDailyBonus, getDailyBonusStatus, startDailyBonus } from "@/lib/api";
 import { getAdsgramDebugState, type AdsgramError } from "@/lib/ads/adsgram";
 import { useAdsgram } from "@/hooks/useAdsgram";
+import { Button } from "@/components/ui/button";
+import { triggerHapticNotification } from "@/lib/telegram";
 
 type BonusStatus = "idle" | "loading_start" | "ad_showing" | "claiming" | "cooldown" | "error";
 
@@ -20,6 +23,13 @@ interface RewardState {
   status: BonusStatus;
   error: string | null;
 }
+
+interface BonusNotice {
+  title: string;
+  message: string;
+}
+
+const BONUS_DELTA_BADGE_DURATION_MS = 2400;
 
 function formatCountdown(totalSeconds: number): string {
   const safe = Math.max(0, totalSeconds);
@@ -82,6 +92,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const [processing, setProcessing] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const [adsDebugState, setAdsDebugState] = useState(() => getAdsgramDebugState());
+  const [bonusDelta, setBonusDelta] = useState<number | null>(null);
+  const [bonusNotice, setBonusNotice] = useState<BonusNotice | null>(null);
+  const [rewardPulse, setRewardPulse] = useState(false);
   const [reward, setReward] = useState<RewardState>({
     amount: 0,
     nextAvailableAt: null,
@@ -93,6 +106,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   });
 
   const adsgram = useAdsgram();
+  const bonusDeltaTimerRef = useRef<number | null>(null);
   const debugAds = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("debugAds") === "1";
@@ -117,6 +131,15 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       window.clearTimeout(retryId);
     };
   }, [adsgram, debugAds, refreshAdsDebug]);
+
+  useEffect(() => {
+    return () => {
+      if (bonusDeltaTimerRef.current !== null) {
+        window.clearTimeout(bonusDeltaTimerRef.current);
+        bonusDeltaTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let intervalId: number | undefined;
@@ -279,6 +302,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         claimResponse.nextAvailableAt
       );
       const claimCooldownSeconds = extractCooldownSeconds(claimNextAvailableAt);
+      const awardedAmount = Math.max(1, Number.isFinite(amount) ? amount : 1);
       setReward((current) => ({
         ...current,
         nextAvailableAt: claimNextAvailableAt ?? current.nextAvailableAt,
@@ -287,6 +311,21 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         status: claimCooldownSeconds && claimCooldownSeconds > 0 ? "cooldown" : "idle",
         error: null
       }));
+      triggerHapticNotification("success");
+      setRewardPulse(true);
+      window.setTimeout(() => setRewardPulse(false), 700);
+      setBonusDelta(awardedAmount);
+      if (bonusDeltaTimerRef.current !== null) {
+        window.clearTimeout(bonusDeltaTimerRef.current);
+      }
+      bonusDeltaTimerRef.current = window.setTimeout(() => {
+        setBonusDelta(null);
+        bonusDeltaTimerRef.current = null;
+      }, BONUS_DELTA_BADGE_DURATION_MS);
+      setBonusNotice({
+        title: "Спасибо за помощь проекту",
+        message: `Вам начислено +${awardedAmount} ⚡ энергии.`
+      });
       if (!claimNextAvailableAt) {
         await loadStatus();
       }
@@ -354,9 +393,20 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
           </p>
         </div>
-        <span className="rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)]">
-          +{reward.amount || 0} ⚡
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span
+            className={`rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
+              rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
+            }`}
+          >
+            +{reward.amount || 0} ⚡
+          </span>
+          {bonusDelta ? (
+            <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100 animate-pulse">
+              +{bonusDelta} ⚡ начислено
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
@@ -396,6 +446,27 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           <div>
             Last error:{" "}
             {adsDebugState.lastError ? `${adsDebugState.lastError} ${adsDebugState.lastErrorDetail ?? ""}` : "n/a"}
+          </div>
+        </div>
+      ) : null}
+      {bonusNotice ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-3xl border border-emerald-300/40 bg-[rgba(23,45,36,0.95)] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-lg font-semibold text-white">{bonusNotice.title}</h3>
+              <button
+                type="button"
+                onClick={() => setBonusNotice(null)}
+                className="rounded-full border border-white/20 p-2 text-white/75 transition hover:text-white"
+                aria-label="Закрыть уведомление"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-white/80">{bonusNotice.message}</p>
+            <Button className="mt-4 w-full" onClick={() => setBonusNotice(null)}>
+              Закрыть
+            </Button>
           </div>
         </div>
       ) : null}
