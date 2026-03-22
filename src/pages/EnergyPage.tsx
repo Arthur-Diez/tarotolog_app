@@ -8,14 +8,19 @@ import { useProfile } from "@/hooks/useProfile";
 import {
   ApiError,
   completeEnergyRewardAd,
+  createTelegramStarsPayment,
   createRobokassaPayment,
   getEnergyAdsState,
+  getTelegramStarsOffers,
+  getTelegramStarsPaymentStatus,
   getPurchaseStatus,
   startEnergyRewardAd,
   type EnergyAdsStateResponse,
-  type PurchaseStatusResponse
+  type PurchaseStatusResponse,
+  type TelegramStarsOfferResponse,
+  type TelegramStarsPaymentStatusResponse
 } from "@/lib/api";
-import { openExternalLink, triggerHapticNotification } from "@/lib/telegram";
+import { openExternalLink, openTelegramInvoice, triggerHapticNotification } from "@/lib/telegram";
 
 const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
 const ENERGY_CURRENCY_STORAGE_KEY = "tarotolog_energy_currency";
@@ -31,11 +36,14 @@ const TASK_ADSGRAM_BLOCK_ID =
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
 type CurrencyCode = "RUB" | "USD" | "EUR";
 type AdActionStage = "starting" | "completing";
+type PaymentMethod = "robokassa" | "telegram_stars";
 
 interface PendingPurchaseStorage {
-  purchase_id: string;
-  invoice_id: number;
-  product_code: string;
+  entity_id: string;
+  payment_method: PaymentMethod;
+  invoice_id?: number | null;
+  product_code?: string | null;
+  offer_id?: string | null;
   created_at: string;
 }
 
@@ -55,6 +63,17 @@ interface PurchaseNotice {
 interface CurrencyOption {
   code: CurrencyCode;
   label: string;
+}
+
+interface PaymentStatusView {
+  entity_id: string;
+  payment_method: PaymentMethod;
+  invoice_id?: number | null;
+  status: string;
+  currency: string;
+  code: string | null;
+  title: string | null;
+  energy_credited: number;
 }
 
 const ENERGY_PACKS: EnergyPackConfig[] = [
@@ -84,7 +103,12 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "EUR", label: "€ EUR" }
 ];
 
-const FAILED_STATUSES = new Set(["failed", "canceled", "refunded"]);
+const PAYMENT_METHOD_OPTIONS: Array<{ code: PaymentMethod; label: string }> = [
+  { code: "robokassa", label: "Карта" },
+  { code: "telegram_stars", label: "Telegram Stars" }
+];
+
+const FAILED_STATUSES = new Set(["failed", "canceled", "cancelled", "refunded"]);
 const EU_COUNTRY_CODES = new Set([
   "AT",
   "BE",
@@ -128,9 +152,15 @@ function readPendingPurchase(): PendingPurchaseStorage | null {
   const raw = window.localStorage.getItem(PENDING_PURCHASE_STORAGE_KEY);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as PendingPurchaseStorage;
-    if (!parsed?.purchase_id) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as PendingPurchaseStorage & { purchase_id?: string };
+    const entityId = parsed?.entity_id || parsed?.purchase_id || null;
+    if (!entityId) return null;
+    const method = parsed?.payment_method || "robokassa";
+    return {
+      ...parsed,
+      entity_id: entityId,
+      payment_method: method
+    };
   } catch {
     return null;
   }
@@ -220,6 +250,31 @@ function cooldownSecondsFromIso(value: string | null | undefined): number {
   return Math.max(0, Math.floor((target - Date.now()) / 1000));
 }
 
+function toPaymentStatusViewFromPurchase(purchase: PurchaseStatusResponse): PaymentStatusView {
+  return {
+    entity_id: purchase.purchase_id,
+    payment_method: "robokassa",
+    invoice_id: purchase.invoice_id,
+    status: purchase.status,
+    currency: purchase.currency,
+    code: purchase.product_code,
+    title: purchase.product_title,
+    energy_credited: purchase.energy_credited
+  };
+}
+
+function toPaymentStatusViewFromStarsPayment(payment: TelegramStarsPaymentStatusResponse): PaymentStatusView {
+  return {
+    entity_id: payment.payment_id,
+    payment_method: "telegram_stars",
+    status: payment.status,
+    currency: payment.currency,
+    code: payment.offer_code,
+    title: payment.offer_title,
+    energy_credited: payment.energy_credited
+  };
+}
+
 export default function EnergyPage() {
   const { profile, loading, refresh } = useProfile();
   const user = profile?.user;
@@ -228,8 +283,8 @@ export default function EnergyPage() {
   const [uiState, setUiState] = useState<PurchaseUiState>("idle");
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [activePurchase, setActivePurchase] = useState<PurchaseStatusResponse | null>(null);
-  const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
+  const [activePurchase, setActivePurchase] = useState<PaymentStatusView | null>(null);
+  const [pendingPurchase, setPendingPurchase] = useState<PendingPurchaseStorage | null>(null);
   const [creatingProductCode, setCreatingProductCode] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [displayedEnergyBalance, setDisplayedEnergyBalance] = useState<number>(energyBalance);
@@ -237,6 +292,10 @@ export default function EnergyPage() {
   const [isBalanceAnimating, setIsBalanceAnimating] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState<PurchaseNotice | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => readStoredCurrency() || "RUB");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("robokassa");
+  const [starsOffers, setStarsOffers] = useState<TelegramStarsOfferResponse[]>([]);
+  const [starsOffersLoading, setStarsOffersLoading] = useState(false);
+  const [starsOffersError, setStarsOffersError] = useState<string | null>(null);
 
   const [adsState, setAdsState] = useState<EnergyAdsStateResponse | null>(null);
   const [adsLoading, setAdsLoading] = useState(true);
@@ -360,6 +419,26 @@ export default function EnergyPage() {
     void loadAdsState();
   }, [loadAdsState]);
 
+  const loadStarsOffers = useCallback(async () => {
+    try {
+      setStarsOffersLoading(true);
+      const response = await getTelegramStarsOffers("energy_page");
+      const sorted = [...(response.offers || [])].sort((a, b) => a.amount_stars - b.amount_stars);
+      setStarsOffers(sorted);
+      setStarsOffersError(null);
+    } catch (error) {
+      setStarsOffersError(normalizeErrorMessage(error, "Не удалось загрузить предложения Telegram Stars"));
+    } finally {
+      setStarsOffersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedPaymentMethod !== "telegram_stars") return;
+    if (starsOffers.length > 0) return;
+    void loadStarsOffers();
+  }, [loadStarsOffers, selectedPaymentMethod, starsOffers.length]);
+
   useEffect(() => {
     if (!adsState) return;
 
@@ -445,24 +524,25 @@ export default function EnergyPage() {
   }, [adsAction, adsState, loadAdsState, refresh]);
 
   const applyPurchaseStatus = useCallback(
-    async (purchase: PurchaseStatusResponse) => {
-      setActivePurchase(purchase);
+    async (payment: PaymentStatusView) => {
+      setActivePurchase(payment);
 
-      if (purchase.status === "succeeded") {
+      const isSucceeded = payment.payment_method === "telegram_stars" ? payment.status === "paid" : payment.status === "succeeded";
+      if (isSucceeded) {
         clearPendingPurchase();
-        setPendingPurchaseId(null);
+        setPendingPurchase(null);
         setUiState("succeeded");
         setErrorText(null);
         setStatusText("Оплата подтверждена. Баланс обновляется...");
 
-        const successNoticeKey = `${purchase.purchase_id}:succeeded`;
+        const successNoticeKey = `${payment.entity_id}:succeeded`;
         if (!notifiedPurchaseStatesRef.current.has(successNoticeKey)) {
           notifiedPurchaseStatesRef.current.add(successNoticeKey);
           triggerHapticNotification("success");
           setPurchaseNotice({
             tone: "success",
             title: "Спасибо за покупку",
-            message: `Платёж подтверждён, начислено ${purchase.energy_credited} ⚡.`
+            message: `Платёж подтверждён, начислено ${payment.energy_credited} ⚡.`
           });
         }
 
@@ -470,14 +550,14 @@ export default function EnergyPage() {
         return;
       }
 
-      if (FAILED_STATUSES.has(purchase.status)) {
+      if (FAILED_STATUSES.has(payment.status)) {
         clearPendingPurchase();
-        setPendingPurchaseId(null);
+        setPendingPurchase(null);
         setUiState("failed");
         setStatusText(null);
         setErrorText("Оплата не завершена.");
 
-        const failNoticeKey = `${purchase.purchase_id}:${purchase.status}`;
+        const failNoticeKey = `${payment.entity_id}:${payment.status}`;
         if (!notifiedPurchaseStatesRef.current.has(failNoticeKey)) {
           notifiedPurchaseStatesRef.current.add(failNoticeKey);
           setPurchaseNotice({
@@ -489,7 +569,6 @@ export default function EnergyPage() {
         return;
       }
 
-      setPendingPurchaseId(purchase.purchase_id);
       setUiState("pending");
       setErrorText(null);
       setStatusText("Платёж ещё обрабатывается. Мы проверяем статус автоматически.");
@@ -498,13 +577,18 @@ export default function EnergyPage() {
   );
 
   const checkPurchaseStatus = useCallback(
-    async (purchaseId: string, options?: { silent?: boolean }) => {
-      if (!purchaseId || statusCheckInFlightRef.current) return;
+    async (pending: PendingPurchaseStorage, options?: { silent?: boolean }) => {
+      if (!pending.entity_id || statusCheckInFlightRef.current) return;
       statusCheckInFlightRef.current = true;
       setCheckingStatus(true);
       try {
-        const statusResponse = await getPurchaseStatus(purchaseId);
-        await applyPurchaseStatus(statusResponse);
+        if (pending.payment_method === "telegram_stars") {
+          const statusResponse = await getTelegramStarsPaymentStatus(pending.entity_id);
+          await applyPurchaseStatus(toPaymentStatusViewFromStarsPayment(statusResponse));
+        } else {
+          const statusResponse = await getPurchaseStatus(pending.entity_id);
+          await applyPurchaseStatus(toPaymentStatusViewFromPurchase(statusResponse));
+        }
       } catch (error) {
         if (!options?.silent) {
           setUiState("pending");
@@ -532,14 +616,15 @@ export default function EnergyPage() {
         }
 
         const pendingPayload: PendingPurchaseStorage = {
-          purchase_id: payment.purchase_id,
+          entity_id: payment.purchase_id,
           invoice_id: payment.invoice_id,
           product_code: payment.product_code,
+          payment_method: "robokassa",
           created_at: new Date().toISOString()
         };
         writePendingPurchase(pendingPayload);
-        setPendingPurchaseId(payment.purchase_id);
-        setActivePurchase({
+        setPendingPurchase(pendingPayload);
+        setActivePurchase(toPaymentStatusViewFromPurchase({
           purchase_id: payment.purchase_id,
           invoice_id: payment.invoice_id,
           status: payment.status,
@@ -550,7 +635,7 @@ export default function EnergyPage() {
           energy_credited: payment.energy_credited,
           created_at: pendingPayload.created_at,
           paid_at: null
-        });
+        }));
         setUiState("awaiting_confirmation");
         setStatusText("Мы ждём подтверждение оплаты. После оплаты вернитесь в мини-приложение.");
         autoPollAttemptsRef.current = 0;
@@ -567,17 +652,84 @@ export default function EnergyPage() {
     [selectedCurrency]
   );
 
+  const handleBuyStarsOffer = useCallback(
+    async (offer: TelegramStarsOfferResponse) => {
+      setCreatingProductCode(offer.offer_id);
+      setUiState("creating");
+      setStatusText(null);
+      setErrorText(null);
+
+      try {
+        const starsPayment = await createTelegramStarsPayment({ offer_id: offer.offer_id });
+        const invoiceUrl = starsPayment.invoice_url || starsPayment.invoice_link || starsPayment.payment_url || null;
+        if (!invoiceUrl || !starsPayment.payment_id) {
+          throw new Error("Не удалось создать Stars-платёж");
+        }
+
+        const pendingPayload: PendingPurchaseStorage = {
+          entity_id: starsPayment.payment_id,
+          payment_method: "telegram_stars",
+          offer_id: starsPayment.offer_id,
+          created_at: new Date().toISOString()
+        };
+        writePendingPurchase(pendingPayload);
+        setPendingPurchase(pendingPayload);
+        setActivePurchase({
+          entity_id: starsPayment.payment_id,
+          payment_method: "telegram_stars",
+          status: starsPayment.status,
+          currency: starsPayment.currency,
+          code: starsPayment.offer_code,
+          title: starsPayment.offer_title,
+          energy_credited: starsPayment.energy_credited
+        });
+        setUiState("awaiting_confirmation");
+        setStatusText("Откройте счёт в Telegram Stars и подтвердите оплату.");
+        autoPollAttemptsRef.current = 0;
+
+        const invoiceStatus = await openTelegramInvoice(invoiceUrl);
+        if (invoiceStatus === "paid") {
+          await checkPurchaseStatus(pendingPayload, { silent: true });
+          return;
+        }
+        if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+          await checkPurchaseStatus(pendingPayload, { silent: true });
+          setUiState("failed");
+          setStatusText(null);
+          setErrorText("Оплата Telegram Stars не завершена.");
+          return;
+        }
+
+        setUiState("pending");
+        setStatusText("Платёж создан. Мы автоматически проверим подтверждение.");
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          setUiState("failed");
+          setStatusText(null);
+          setErrorText("Оплата через Telegram Stars пока не включена на сервере.");
+          return;
+        }
+        setUiState("failed");
+        setStatusText(null);
+        setErrorText(normalizeErrorMessage(error, "Не удалось создать Stars-платёж. Попробуйте ещё раз."));
+      } finally {
+        setCreatingProductCode(null);
+      }
+    },
+    [checkPurchaseStatus]
+  );
+
   useEffect(() => {
     const pending = readPendingPurchase();
-    if (!pending?.purchase_id) return;
-    setPendingPurchaseId(pending.purchase_id);
+    if (!pending?.entity_id) return;
+    setPendingPurchase(pending);
     setUiState("pending");
     setStatusText("Найден незавершённый платёж. Проверяем статус...");
-    void checkPurchaseStatus(pending.purchase_id, { silent: true });
+    void checkPurchaseStatus(pending, { silent: true });
   }, [checkPurchaseStatus]);
 
   useEffect(() => {
-    if (!pendingPurchaseId || typeof window === "undefined") return;
+    if (!pendingPurchase || typeof window === "undefined") return;
     autoPollAttemptsRef.current = 0;
     let intervalId: number | null = null;
 
@@ -592,18 +744,18 @@ export default function EnergyPage() {
         return;
       }
       autoPollAttemptsRef.current += 1;
-      void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+      void checkPurchaseStatus(pendingPurchase, { silent: true });
     };
 
     const handleFocus = () => {
       autoPollAttemptsRef.current = 0;
-      void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+      void checkPurchaseStatus(pendingPurchase, { silent: true });
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         autoPollAttemptsRef.current = 0;
-        void checkPurchaseStatus(pendingPurchaseId, { silent: true });
+        void checkPurchaseStatus(pendingPurchase, { silent: true });
       }
     };
 
@@ -619,9 +771,9 @@ export default function EnergyPage() {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [checkPurchaseStatus, pendingPurchaseId]);
+  }, [checkPurchaseStatus, pendingPurchase]);
 
-  const canCheckStatus = Boolean(pendingPurchaseId) && !checkingStatus;
+  const canCheckStatus = Boolean(pendingPurchase?.entity_id) && !checkingStatus;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
   const taskBlockId = useMemo(() => {
     const backendBlockId = adsState?.adsgram_task_block_id ?? null;
@@ -722,71 +874,142 @@ export default function EnergyPage() {
         <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-6">
           <div className="mb-4 space-y-2">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Пополнение энергии</h2>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Валюта определяется автоматически по языку и стране, но вы можете выбрать вручную.
-            </p>
             <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
-              {CURRENCY_OPTIONS.map((option) => (
+              {PAYMENT_METHOD_OPTIONS.map((option) => (
                 <button
                   key={option.code}
                   type="button"
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    selectedCurrency === option.code
+                    selectedPaymentMethod === option.code
                       ? "bg-white/15 text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                   onClick={() => {
-                    currencyWasChangedManuallyRef.current = true;
-                    setSelectedCurrency(option.code);
+                    setSelectedPaymentMethod(option.code);
                   }}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="grid gap-3">
-            {ENERGY_PACKS.map((pack) => {
-              const creatingThisPack = creatingProductCode === pack.productCode;
-              const priceLabel = formatPrice(pack.pricesMinor[selectedCurrency], selectedCurrency);
-
-              return (
-                <div
-                  key={pack.productCode}
-                  className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-[var(--text-secondary)]">{pack.title}</p>
-                      <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{pack.energyAmount} ⚡</p>
-                    </div>
-                    <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
-                  </div>
-                  <Button
-                    className="mt-3 w-full"
-                    variant="default"
-                    disabled={Boolean(creatingProductCode) || checkingStatus}
+            <p className="text-sm text-[var(--text-secondary)]">
+              {selectedPaymentMethod === "telegram_stars"
+                ? "Пакеты Telegram Stars загружаются с backend, включая бонусы и финальную цену."
+                : "Валюта карты определяется автоматически по языку и стране, но вы можете выбрать вручную."}
+            </p>
+            {selectedPaymentMethod === "robokassa" ? (
+              <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
+                {CURRENCY_OPTIONS.map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      selectedCurrency === option.code
+                        ? "bg-white/15 text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    }`}
                     onClick={() => {
-                      void handleBuyPack(pack);
+                      currencyWasChangedManuallyRef.current = true;
+                      setSelectedCurrency(option.code);
                     }}
                   >
-                    {creatingThisPack ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Подготовка платежа...
-                      </span>
-                    ) : (
-                      "Купить"
-                    )}
-                  </Button>
-                </div>
-              );
-            })}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
+
+          {selectedPaymentMethod === "telegram_stars" ? (
+            <div className="space-y-3">
+              {starsOffersLoading ? <div className="h-24 animate-pulse rounded-xl bg-white/10" /> : null}
+              {starsOffersError ? <p className="text-sm text-red-100">{starsOffersError}</p> : null}
+              {!starsOffersLoading && !starsOffersError && starsOffers.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">Сейчас нет доступных Stars-офферов.</p>
+              ) : null}
+              <div className="grid gap-3">
+                {starsOffers.map((offer) => {
+                  const creatingThisOffer = creatingProductCode === offer.offer_id;
+                  return (
+                    <div
+                      key={offer.offer_id}
+                      className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-[var(--text-secondary)]">{offer.title}</p>
+                          <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{offer.total_energy} ⚡</p>
+                          {offer.bonus_energy > 0 ? (
+                            <p className="mt-1 text-xs text-emerald-100/90">Бонус: +{offer.bonus_energy} ⚡</p>
+                          ) : null}
+                        </div>
+                        <p className="text-base font-semibold text-[var(--accent-gold)]">{offer.amount_stars} ⭐</p>
+                      </div>
+                      <Button
+                        className="mt-3 w-full"
+                        variant="default"
+                        disabled={Boolean(creatingProductCode) || checkingStatus}
+                        onClick={() => {
+                          void handleBuyStarsOffer(offer);
+                        }}
+                      >
+                        {creatingThisOffer ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Подготовка платежа...
+                          </span>
+                        ) : (
+                          "Купить за Stars"
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {ENERGY_PACKS.map((pack) => {
+                const creatingThisPack = creatingProductCode === pack.productCode;
+                const priceLabel = formatPrice(pack.pricesMinor[selectedCurrency], selectedCurrency);
+
+                return (
+                  <div
+                    key={pack.productCode}
+                    className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[var(--text-secondary)]">{pack.title}</p>
+                        <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{pack.energyAmount} ⚡</p>
+                      </div>
+                      <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
+                    </div>
+                    <Button
+                      className="mt-3 w-full"
+                      variant="default"
+                      disabled={Boolean(creatingProductCode) || checkingStatus}
+                      onClick={() => {
+                        void handleBuyPack(pack);
+                      }}
+                    >
+                      {creatingThisPack ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Подготовка платежа...
+                        </span>
+                      ) : (
+                        "Купить"
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
 
-        {(statusText || errorText || activePurchase || pendingPurchaseId) && (
+        {(statusText || errorText || activePurchase || pendingPurchase?.entity_id) && (
           <Card
             className={`border p-5 ${
               uiState === "succeeded"
@@ -801,21 +1024,22 @@ export default function EnergyPage() {
 
             {activePurchase ? (
               <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                Покупка #{activePurchase.invoice_id} • {activePurchase.product_title || activePurchase.product_code} •{" "}
-                {activePurchase.currency} • статус: {activePurchase.status}
+                Покупка{activePurchase.invoice_id ? ` #${activePurchase.invoice_id}` : ""} •{" "}
+                {activePurchase.title || activePurchase.code} • {activePurchase.currency} • статус:{" "}
+                {activePurchase.status}
               </p>
             ) : null}
 
-            {pendingPurchaseId ? (
+            {pendingPurchase?.entity_id ? (
               <Button
                 size="sm"
                 variant="outline"
                 className="mt-3 gap-2 border-white/20"
                 disabled={!canCheckStatus}
                 onClick={() => {
-                  if (!pendingPurchaseId) return;
+                  if (!pendingPurchase) return;
                   autoPollAttemptsRef.current = 0;
-                  void checkPurchaseStatus(pendingPurchaseId);
+                  void checkPurchaseStatus(pendingPurchase);
                 }}
               >
                 {checkingStatus ? (
@@ -832,7 +1056,7 @@ export default function EnergyPage() {
               </Button>
             ) : null}
 
-            {pendingPurchaseId ? (
+            {pendingPurchase?.entity_id ? (
               <p className="mt-2 text-xs text-[var(--text-secondary)]">
                 Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
                 когда приложение активно.

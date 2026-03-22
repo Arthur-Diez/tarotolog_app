@@ -34,6 +34,7 @@ export interface TelegramWebApp {
   onEvent?: (event: "themeChanged", handler: () => void) => void;
   offEvent?: (event: "themeChanged", handler: () => void) => void;
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  openInvoice?: (url: string, callback?: (status: string) => void) => void;
   HapticFeedback?: {
     impactOccurred?: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
     notificationOccurred?: (type: "error" | "success" | "warning") => void;
@@ -102,6 +103,27 @@ export function openExternalLink(url: string): void {
   if (!popup) {
     window.location.assign(url);
   }
+}
+
+export async function openTelegramInvoice(url: string): Promise<string | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const webApp = window.Telegram?.WebApp;
+  if (typeof webApp?.openInvoice === "function") {
+    return new Promise((resolve) => {
+      try {
+        webApp.openInvoice?.(url, (status) => resolve(status ?? null));
+      } catch {
+        openExternalLink(url);
+        resolve(null);
+      }
+    });
+  }
+
+  openExternalLink(url);
+  return null;
 }
 
 export function triggerHapticNotification(type: "error" | "success" | "warning" = "success"): void {

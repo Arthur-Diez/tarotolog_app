@@ -464,6 +464,65 @@ export interface RobokassaCreatePaymentResponse {
   status: string;
 }
 
+export interface TelegramStarsCreatePaymentResponse {
+  payment_id: string;
+  purchase_id: string;
+  status: string;
+  invoice_url: string;
+  invoice_link: string;
+  payment_url: string;
+  invoice_payload: string;
+  offer_id: string | null;
+  offer_code: string | null;
+  offer_title: string | null;
+  amount_stars: number;
+  currency: string;
+  energy_amount: number;
+  bonus_energy: number;
+  energy_credited: number;
+}
+
+export interface TelegramStarsOfferResponse {
+  offer_id: string;
+  title: string;
+  label: string | null;
+  offer_code: string;
+  amount_stars: number;
+  energy_amount: number;
+  bonus_energy: number;
+  total_energy: number;
+  final_amount: string;
+  currency: string;
+  provider: string;
+  source: string | null;
+}
+
+export interface TelegramStarsOffersResponse {
+  provider: string;
+  purchase_type: string;
+  currency: string;
+  source: string;
+  offers: TelegramStarsOfferResponse[];
+}
+
+export interface TelegramStarsPaymentStatusResponse {
+  payment_id: string;
+  status: string;
+  fulfillment_status: string;
+  purchase_type: string;
+  offer_id: string | null;
+  offer_code: string | null;
+  offer_title: string | null;
+  amount_stars: number;
+  currency: string;
+  energy_amount: number;
+  bonus_energy: number;
+  energy_credited: number;
+  created_at: string | null;
+  paid_at: string | null;
+  fulfilled_at: string | null;
+}
+
 export interface PurchaseStatusResponse {
   purchase_id: string;
   invoice_id: number;
@@ -716,6 +775,36 @@ export async function createRobokassaPayment(
     })
   });
   return handleResponse<RobokassaCreatePaymentResponse>(res);
+}
+
+export async function getTelegramStarsOffers(source = "energy_page"): Promise<TelegramStarsOffersResponse> {
+  const searchParams = new URLSearchParams({ source });
+  const res = await fetch(`${API_BASE}/payments/telegram-stars/offers?${searchParams.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<TelegramStarsOffersResponse>(res);
+}
+
+export async function createTelegramStarsPayment(payload: {
+  offer_id?: string;
+  product_code?: string;
+  idempotency_key?: string;
+}): Promise<TelegramStarsCreatePaymentResponse> {
+  const res = await fetch(`${API_BASE}/payments/telegram-stars/create`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<TelegramStarsCreatePaymentResponse>(res);
+}
+
+export async function getTelegramStarsPaymentStatus(paymentId: string): Promise<TelegramStarsPaymentStatusResponse> {
+  const res = await fetch(`${API_BASE}/payments/${encodeURIComponent(paymentId)}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<TelegramStarsPaymentStatusResponse>(res);
 }
 
 export async function getPurchaseStatus(purchaseId: string): Promise<PurchaseStatusResponse> {
