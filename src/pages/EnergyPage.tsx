@@ -808,6 +808,7 @@ export default function EnergyPage() {
             <div className="space-y-2">
               <div className="rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 p-2 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
                 <AdsgramTaskBanner
+                  className="max-w-full"
                   blockId={taskBlockId}
                   disabled={Boolean(adsAction)}
                   onReward={(detail) => {

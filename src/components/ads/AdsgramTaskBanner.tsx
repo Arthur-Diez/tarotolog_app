@@ -113,27 +113,70 @@ export function AdsgramTaskBanner({
       data-debug-console={debug ? "true" : "false"}
       style={
         {
-          width: "100%",
-          display: "block",
+          width: "auto",
+          minWidth: "240px",
+          display: "inline-block",
           maxWidth: "100%",
           overflow: "hidden",
           opacity: disabled ? 0.55 : 1,
           pointerEvents: disabled ? "none" : "auto",
-          ["--adsgram-task-accent-color" as string]: "#80b9ff",
-          ["--adsgram-task-background" as string]: "rgba(14, 22, 38, 0.88)",
-          ["--adsgram-task-title-color" as string]: "#f3f6ff",
-          ["--adsgram-task-description-color" as string]: "#bdc9df",
-          ["--adsgram-task-button-background" as string]: "linear-gradient(120deg,#7ab5ff,#6f85ff)",
+          ["--adsgram-task-accent-color" as string]: "#8ec4ff",
+          ["--adsgram-task-background" as string]: "rgba(16, 25, 42, 0.92)",
+          ["--adsgram-task-title-color" as string]: "#f6f8ff",
+          ["--adsgram-task-description-color" as string]: "#c6d3ea",
+          ["--adsgram-task-button-background" as string]: "linear-gradient(135deg,#61B4FF,#4A8BFF)",
           ["--adsgram-task-button-color" as string]: "#ffffff",
           ["--adsgram-task-border-radius" as string]: "16px",
-          ["--adsgram-task-padding" as string]: "12px",
-          ["--adsgram-task-button-border-radius" as string]: "12px"
+          ["--adsgram-task-padding" as string]: "10px 12px",
+          ["--adsgram-task-button-border-radius" as string]: "11px"
         } as CSSProperties
       }
     >
-      <span slot="reward">+1 ⚡</span>
-      <span slot="button">GO</span>
-      <span slot="claim">CLAIM</span>
+      <span
+        slot="reward"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "4px",
+          fontWeight: 600,
+          color: "#eef5ff"
+        }}
+      >
+        +1 ⚡
+      </span>
+      <span
+        slot="button"
+        style={{
+          display: "inline-block",
+          minWidth: "58px",
+          textAlign: "center",
+          borderRadius: "10px",
+          padding: "6px 12px",
+          background: "linear-gradient(135deg,#64B8FF,#4C8FFF)",
+          color: "#ffffff",
+          fontWeight: 700,
+          letterSpacing: "0.02em",
+          boxShadow: "0 8px 20px rgba(76,143,255,0.4)"
+        }}
+      >
+        GO
+      </span>
+      <span
+        slot="claim"
+        style={{
+          display: "inline-block",
+          minWidth: "64px",
+          textAlign: "center",
+          borderRadius: "10px",
+          padding: "6px 12px",
+          background: "linear-gradient(135deg,#F1AE2F,#F08A2C)",
+          color: "#fffdf8",
+          fontWeight: 700,
+          letterSpacing: "0.02em"
+        }}
+      >
+        CLAIM
+      </span>
       <span slot="done">Готово</span>
       <span slot="expired">Повторить</span>
     </adsgram-task>

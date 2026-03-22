@@ -367,6 +367,13 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   }, [adsgram, debugAds, loadStatus, onBonusClaimed, processing, refreshAdsDebug]);
 
   const title = "🎁 Ежедневная энергия";
+  const promoX2Active =
+    !hasSubscription &&
+    reward.amount >= 2 &&
+    reward.status !== "cooldown" &&
+    reward.status !== "loading_start" &&
+    reward.status !== "ad_showing" &&
+    reward.status !== "claiming";
 
   const countdownLabel = useMemo(() => {
     if (cooldownSeconds === null) return "";
@@ -386,11 +393,20 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/80 p-4 shadow-[var(--surface-shadow)] backdrop-blur-xl">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
+            {promoX2Active ? (
+              <span className="rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-300/25 to-orange-300/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100 shadow-[0_6px_14px_rgba(245,158,11,0.25)]">
+                x2 прямо сейчас
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs text-[var(--text-tertiary)]">
             {hasSubscription
               ? "Подписка активна — реклама отключена"
-              : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
+              : promoX2Active
+                ? "Смотри рекламу прямо сейчас: +2 ⚡ вместо +1 ⚡"
+                : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -399,7 +415,14 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
             }`}
           >
-            +{reward.amount || 0} ⚡
+            {promoX2Active ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="text-[11px] text-[var(--text-tertiary)] line-through">+1 ⚡</span>
+                <span className="text-[var(--accent-gold)]">+{reward.amount || 0} ⚡</span>
+              </span>
+            ) : (
+              <>+{reward.amount || 0} ⚡</>
+            )}
           </span>
           {bonusDelta ? (
             <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100 animate-pulse">
