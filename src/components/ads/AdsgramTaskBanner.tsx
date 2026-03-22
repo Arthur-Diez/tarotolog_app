@@ -113,7 +113,7 @@ export function AdsgramTaskBanner({
       data-debug-console={debug ? "true" : "false"}
       style={
         {
-          width: "auto",
+          width: "min(100%, 340px)",
           minWidth: "240px",
           display: "inline-block",
           maxWidth: "100%",
@@ -138,6 +138,10 @@ export function AdsgramTaskBanner({
           display: "inline-flex",
           alignItems: "center",
           gap: "4px",
+          padding: "2px 8px",
+          borderRadius: "999px",
+          border: "1px solid rgba(255,255,255,0.2)",
+          background: "rgba(255,255,255,0.08)",
           fontWeight: 600,
           color: "#eef5ff"
         }}
@@ -148,10 +152,10 @@ export function AdsgramTaskBanner({
         slot="button"
         style={{
           display: "inline-block",
-          minWidth: "58px",
+          minWidth: "56px",
           textAlign: "center",
           borderRadius: "10px",
-          padding: "6px 12px",
+          padding: "5px 11px",
           background: "linear-gradient(135deg,#64B8FF,#4C8FFF)",
           color: "#ffffff",
           fontWeight: 700,

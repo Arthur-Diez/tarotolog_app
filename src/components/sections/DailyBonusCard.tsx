@@ -15,7 +15,7 @@ interface DailyBonusCardProps {
 }
 
 interface RewardState {
-  amount: number;
+  amount: number | null;
   nextAvailableAt: string | null;
   rewardSessionId: string | null;
   rewardId: string | null;
@@ -96,7 +96,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const [bonusNotice, setBonusNotice] = useState<BonusNotice | null>(null);
   const [rewardPulse, setRewardPulse] = useState(false);
   const [reward, setReward] = useState<RewardState>({
-    amount: 0,
+    amount: null,
     nextAvailableAt: null,
     rewardSessionId: null,
     rewardId: null,
@@ -367,13 +367,8 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   }, [adsgram, debugAds, loadStatus, onBonusClaimed, processing, refreshAdsDebug]);
 
   const title = "🎁 Ежедневная энергия";
-  const promoX2Active =
-    !hasSubscription &&
-    reward.amount >= 2 &&
-    reward.status !== "cooldown" &&
-    reward.status !== "loading_start" &&
-    reward.status !== "ad_showing" &&
-    reward.status !== "claiming";
+  const promoX2Active = !hasSubscription && (reward.amount ?? 0) >= 2;
+  const displayAmount = reward.amount ?? null;
 
   const countdownLabel = useMemo(() => {
     if (cooldownSeconds === null) return "";
@@ -406,7 +401,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               ? "Подписка активна — реклама отключена"
               : promoX2Active
                 ? "Смотри рекламу прямо сейчас: +2 ⚡ вместо +1 ⚡"
-                : `Смотри рекламу — получи +${reward.amount || 0} ⚡`}
+                : displayAmount !== null
+                  ? `Смотри рекламу — получи +${displayAmount} ⚡`
+                  : "Смотри рекламу — получи награду ⚡"}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -415,13 +412,15 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
             }`}
           >
-            {promoX2Active ? (
+            {displayAmount === null ? (
+              <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
+            ) : promoX2Active ? (
               <span className="inline-flex items-center gap-1.5">
                 <span className="text-[11px] text-[var(--text-tertiary)] line-through">+1 ⚡</span>
-                <span className="text-[var(--accent-gold)]">+{reward.amount || 0} ⚡</span>
+                <span className="text-[var(--accent-gold)]">+{displayAmount} ⚡</span>
               </span>
             ) : (
-              <>+{reward.amount || 0} ⚡</>
+              <>+{displayAmount} ⚡</>
             )}
           </span>
           {bonusDelta ? (
