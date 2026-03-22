@@ -113,9 +113,9 @@ export function AdsgramTaskBanner({
       data-debug-console={debug ? "true" : "false"}
       style={
         {
-          width: "min(100%, 340px)",
+          width: "100%",
           minWidth: "240px",
-          display: "inline-block",
+          display: "block",
           maxWidth: "100%",
           overflow: "hidden",
           opacity: disabled ? 0.55 : 1,
@@ -152,10 +152,10 @@ export function AdsgramTaskBanner({
         slot="button"
         style={{
           display: "inline-block",
-          minWidth: "56px",
+          minWidth: "52px",
           textAlign: "center",
           borderRadius: "10px",
-          padding: "5px 11px",
+          padding: "5px 10px",
           background: "linear-gradient(135deg,#64B8FF,#4C8FFF)",
           color: "#ffffff",
           fontWeight: 700,
@@ -163,7 +163,7 @@ export function AdsgramTaskBanner({
           boxShadow: "0 8px 20px rgba(76,143,255,0.4)"
         }}
       >
-        GO
+        go
       </span>
       <span
         slot="claim"

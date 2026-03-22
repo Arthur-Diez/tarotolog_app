@@ -405,6 +405,14 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
                   ? `Смотри рекламу — получи +${displayAmount} ⚡`
                   : "Смотри рекламу — получи награду ⚡"}
           </p>
+          {promoX2Active ? (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-300/20 via-orange-300/15 to-rose-300/15 px-3 py-1 text-[11px] font-semibold text-amber-100">
+              <span className="line-through opacity-80">+1 ⚡</span>
+              <span>→</span>
+              <span className="text-[var(--accent-gold)]">+2 ⚡</span>
+              <span className="opacity-90">акция дня</span>
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
