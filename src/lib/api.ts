@@ -336,6 +336,73 @@ export interface AdsConfigResponse {
   task_block_id: string;
 }
 
+export type AdRewardKind = "daily_x2" | "reward_regular" | "task_regular";
+
+export interface EnergyAdsRewardState {
+  available: boolean;
+  next_reward_kind: "daily_x2" | "reward_regular" | null;
+  next_energy: number;
+  available_at: string | null;
+  cooldown_seconds_left: number;
+  banner_type: "daily_x2" | "reward_regular" | "cooldown" | "unavailable";
+  message: string | null;
+}
+
+export interface EnergyAdsTaskState {
+  available: boolean;
+  next_reward_kind: "task_regular" | null;
+  next_energy: number;
+  available_at: string | null;
+  cooldown_seconds_left: number;
+  message: string | null;
+}
+
+export interface EnergyAdsStateResponse {
+  ads_enabled: boolean;
+  server_now: string;
+  local_date: string;
+  local_tz_offset_min: number;
+  reward_available_at: string | null;
+  task_available_at: string | null;
+  banner_type: string | null;
+  banner_text: string | null;
+  energy_balance: number | null;
+  adsgram_block_id: string | null;
+  adsgram_task_block_id: string | null;
+  reward: EnergyAdsRewardState;
+  task: EnergyAdsTaskState;
+}
+
+export interface EnergyAdsStartResponse {
+  session_id: string;
+  reward_kind: AdRewardKind;
+  expected_energy: number;
+  claimed_energy: number;
+  ads_required: number;
+  ads_completed: number;
+  cooldown_seconds: number;
+  session_status: "created" | "waiting_callback" | "rewarded" | "expired" | "cancelled";
+  expires_at: string | null;
+  local_date: string;
+  ad_provider: string | null;
+  ad_format: string | null;
+  adsgram_block_id: string | null;
+}
+
+export interface EnergyAdsCompleteResponse {
+  success: boolean;
+  session_id: string;
+  reward_kind: AdRewardKind;
+  energy_credited: number;
+  energy_balance: number;
+  cooldown_until: string | null;
+  reward_available_at: string | null;
+  task_available_at: string | null;
+  next_reward_kind: "daily_x2" | "reward_regular" | null;
+  next_task_kind: "task_regular" | null;
+  message: string;
+}
+
 export interface DailyRewardStartResponse {
   reward_id: string | null;
   amount: number;
@@ -543,6 +610,39 @@ export async function getAdsConfig(): Promise<AdsConfigResponse> {
     headers: withAuthHeaders()
   });
   return handleResponse<AdsConfigResponse>(res);
+}
+
+export async function getEnergyAdsState(): Promise<EnergyAdsStateResponse> {
+  const res = await fetch(`${API_BASE}/energy/ads/state`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<EnergyAdsStateResponse>(res);
+}
+
+export async function startEnergyRewardAd(mode: "reward" | "task"): Promise<EnergyAdsStartResponse> {
+  const endpoint = mode === "task" ? "/energy/ads/task/start" : "/energy/ads/reward/start";
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<EnergyAdsStartResponse>(res);
+}
+
+export async function completeEnergyRewardAd(payload: {
+  session_id: string;
+  provider_session_id?: string;
+  callback_token?: string;
+  ads_completed_increment?: number;
+  provider_payload?: Record<string, unknown>;
+}): Promise<EnergyAdsCompleteResponse> {
+  const res = await fetch(`${API_BASE}/energy/ads/complete`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<EnergyAdsCompleteResponse>(res);
 }
 
 export async function startDailyReward(): Promise<DailyRewardStartResponse> {
