@@ -381,8 +381,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     if (reward.status === "ad_showing") return "Загрузка рекламы...";
     if (reward.status === "claiming") return "Начисляем награду...";
     if (reward.status === "cooldown") return countdownLabel || "Доступно позже";
-    return "Забрать";
-  }, [countdownLabel, hasSubscription, reward.status]);
+    const safeAmount = Math.max(1, displayAmount ?? 1);
+    return `Забрать +${safeAmount} ⚡`;
+  }, [countdownLabel, displayAmount, hasSubscription, reward.status]);
 
   return (
     <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/80 p-4 shadow-[var(--surface-shadow)] backdrop-blur-xl">
@@ -391,8 +392,8 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           <div className="flex items-center gap-2">
             <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
             {promoX2Active ? (
-              <span className="rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-300/25 to-orange-300/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100 shadow-[0_6px_14px_rgba(245,158,11,0.25)]">
-                x2 прямо сейчас
+              <span className="rounded-full border border-amber-300/35 bg-amber-300/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100">
+                x2 сегодня
               </span>
             ) : null}
           </div>
@@ -400,19 +401,11 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
             {hasSubscription
               ? "Подписка активна — реклама отключена"
               : promoX2Active
-                ? "Смотри рекламу прямо сейчас: +2 ⚡ вместо +1 ⚡"
+                ? "Получите +2 ⚡ вместо +1 ⚡"
                 : displayAmount !== null
                   ? `Смотри рекламу — получи +${displayAmount} ⚡`
                   : "Смотри рекламу — получи награду ⚡"}
           </p>
-          {promoX2Active ? (
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-300/20 via-orange-300/15 to-rose-300/15 px-3 py-1 text-[11px] font-semibold text-amber-100">
-              <span className="line-through opacity-80">+1 ⚡</span>
-              <span>→</span>
-              <span className="text-[var(--accent-gold)]">+2 ⚡</span>
-              <span className="opacity-90">акция дня</span>
-            </div>
-          ) : null}
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
@@ -422,11 +415,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           >
             {displayAmount === null ? (
               <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
-            ) : promoX2Active ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="text-[11px] text-[var(--text-tertiary)] line-through">+1 ⚡</span>
-                <span className="text-[var(--accent-gold)]">+{displayAmount} ⚡</span>
-              </span>
             ) : (
               <>+{displayAmount} ⚡</>
             )}

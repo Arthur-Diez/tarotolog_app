@@ -113,9 +113,9 @@ export function AdsgramTaskBanner({
       data-debug-console={debug ? "true" : "false"}
       style={
         {
-          width: "100%",
-          minWidth: "240px",
-          display: "block",
+          width: "fit-content",
+          minWidth: "228px",
+          display: "inline-block",
           maxWidth: "100%",
           overflow: "hidden",
           opacity: disabled ? 0.55 : 1,
@@ -154,6 +154,8 @@ export function AdsgramTaskBanner({
           display: "inline-block",
           minWidth: "52px",
           textAlign: "center",
+          marginInlineStart: "8px",
+          marginInlineEnd: "8px",
           borderRadius: "10px",
           padding: "5px 10px",
           background: "linear-gradient(135deg,#64B8FF,#4C8FFF)",
@@ -171,6 +173,8 @@ export function AdsgramTaskBanner({
           display: "inline-block",
           minWidth: "64px",
           textAlign: "center",
+          marginInlineStart: "8px",
+          marginInlineEnd: "8px",
           borderRadius: "10px",
           padding: "6px 12px",
           background: "linear-gradient(135deg,#F1AE2F,#F08A2C)",
