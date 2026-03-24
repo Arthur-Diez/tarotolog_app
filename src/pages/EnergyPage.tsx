@@ -840,9 +840,9 @@ export default function EnergyPage() {
             <div className="h-24 animate-pulse rounded-xl bg-white/10" />
           ) : adsState?.ads_enabled && adsState?.task.available && taskBlockId ? (
             <div className="space-y-2">
-              <div className="inline-block w-fit max-w-[330px] rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 p-2 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
+              <div className="w-full rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 p-2 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
                 <AdsgramTaskBanner
-                  className="max-w-full"
+                  className="block w-full"
                   blockId={taskBlockId}
                   disabled={Boolean(adsAction)}
                   onReward={(detail) => {
