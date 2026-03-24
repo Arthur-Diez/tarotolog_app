@@ -536,6 +536,34 @@ export interface PurchaseStatusResponse {
   paid_at: string | null;
 }
 
+export interface ReferralProgramResponse {
+  referral_code: string;
+  referral_link: string;
+  share_inline_query: string;
+  total_invited: number;
+  total_activated: number;
+  total_purchased: number;
+  total_earned_energy_from_referrals: number;
+  preview_text: string;
+}
+
+export interface WalletHistoryItemResponse {
+  id: string;
+  created_at: string;
+  delta: number;
+  balance_after: number | null;
+  reason: string;
+  ref_type: string | null;
+  ref_id: string | null;
+  display_title: string;
+  display_subtitle: string | null;
+}
+
+export interface WalletHistoryResponse {
+  items: WalletHistoryItemResponse[];
+  next_cursor: string | null;
+}
+
 export interface ShareCreateResponse {
   share_token: string;
   expires_at: string;
@@ -813,6 +841,25 @@ export async function getPurchaseStatus(purchaseId: string): Promise<PurchaseSta
     headers: withAuthHeaders()
   });
   return handleResponse<PurchaseStatusResponse>(res);
+}
+
+export async function getReferralProgram(): Promise<ReferralProgramResponse> {
+  const res = await fetch(`${API_BASE}/referrals/program`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<ReferralProgramResponse>(res);
+}
+
+export async function getWalletHistory(cursor?: string, limit = 20): Promise<WalletHistoryResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  if (cursor) params.set("cursor", cursor);
+  const res = await fetch(`${API_BASE}/wallet/history?${params.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<WalletHistoryResponse>(res);
 }
 
 export async function createShare(payload: { reading_id: string; image: Blob }): Promise<ShareCreateResponse> {

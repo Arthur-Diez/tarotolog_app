@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, RefreshCw, X, Zap } from "lucide-react";
+import { Copy, Loader2, RefreshCw, Share2, Users, X, Zap } from "lucide-react";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,18 @@ import {
   createTelegramStarsPayment,
   createRobokassaPayment,
   getEnergyAdsState,
+  getReferralProgram,
   getTelegramStarsOffers,
   getTelegramStarsPaymentStatus,
   getPurchaseStatus,
+  getWalletHistory,
   startEnergyRewardAd,
   type EnergyAdsStateResponse,
   type PurchaseStatusResponse,
+  type ReferralProgramResponse,
   type TelegramStarsOfferResponse,
-  type TelegramStarsPaymentStatusResponse
+  type TelegramStarsPaymentStatusResponse,
+  type WalletHistoryItemResponse
 } from "@/lib/api";
 import { openExternalLink, openTelegramInvoice, triggerHapticNotification } from "@/lib/telegram";
 
@@ -251,6 +255,17 @@ function cooldownSecondsFromIso(value: string | null | undefined): number {
   return Math.max(0, Math.floor((target - Date.now()) / 1000));
 }
 
+function formatWalletHistoryTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
 function toPaymentStatusViewFromPurchase(purchase: PurchaseStatusResponse): PaymentStatusView {
   return {
     entity_id: purchase.purchase_id,
@@ -303,6 +318,18 @@ export default function EnergyPage() {
   const [adsErrorText, setAdsErrorText] = useState<string | null>(null);
   const [adsAction, setAdsAction] = useState<AdActionStage | null>(null);
   const [taskCooldownLeft, setTaskCooldownLeft] = useState<number>(0);
+  const [referralProgram, setReferralProgram] = useState<ReferralProgramResponse | null>(null);
+  const [referralLoading, setReferralLoading] = useState(true);
+  const [referralError, setReferralError] = useState<string | null>(null);
+  const [shareHintOpen, setShareHintOpen] = useState(false);
+  const [pendingInlineQuery, setPendingInlineQuery] = useState<string | null>(null);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<WalletHistoryItemResponse[]>([]);
+  const [historyNextCursor, setHistoryNextCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const lastEnergyBalanceRef = useRef<number>(energyBalance);
   const balanceAnimationFrameRef = useRef<number | null>(null);
@@ -439,6 +466,52 @@ export default function EnergyPage() {
     void loadAdsState();
   }, [loadAdsState]);
 
+  const loadReferralProgram = useCallback(async () => {
+    try {
+      setReferralLoading(true);
+      const response = await getReferralProgram();
+      setReferralProgram(response);
+      setReferralError(null);
+    } catch (error) {
+      setReferralError(normalizeErrorMessage(error, "Не удалось загрузить реферальную программу"));
+    } finally {
+      setReferralLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadReferralProgram();
+  }, [loadReferralProgram]);
+
+  const loadWalletHistory = useCallback(
+    async (options?: { reset?: boolean }) => {
+      const reset = Boolean(options?.reset);
+      try {
+        if (reset) {
+          setHistoryLoading(true);
+          setHistoryError(null);
+        } else {
+          setHistoryLoadingMore(true);
+        }
+        const response = await getWalletHistory(reset ? undefined : historyNextCursor ?? undefined);
+        setHistoryItems((prev) => {
+          const base = reset ? [] : prev;
+          const merged = [...base, ...response.items];
+          const deduped = new Map<string, WalletHistoryItemResponse>();
+          merged.forEach((item) => deduped.set(item.id, item));
+          return [...deduped.values()];
+        });
+        setHistoryNextCursor(response.next_cursor);
+      } catch (error) {
+        setHistoryError(normalizeErrorMessage(error, "Не удалось загрузить историю операций"));
+      } finally {
+        setHistoryLoading(false);
+        setHistoryLoadingMore(false);
+      }
+    },
+    [historyNextCursor]
+  );
+
   const loadStarsOffers = useCallback(async () => {
     try {
       setStarsOffersLoading(true);
@@ -458,6 +531,12 @@ export default function EnergyPage() {
     if (starsOffers.length > 0) return;
     void loadStarsOffers();
   }, [loadStarsOffers, selectedPaymentMethod, starsOffers.length]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    if (historyItems.length > 0) return;
+    void loadWalletHistory({ reset: true });
+  }, [historyItems.length, historyOpen, loadWalletHistory]);
 
   useEffect(() => {
     if (!adsState) return;
@@ -534,6 +613,10 @@ export default function EnergyPage() {
 
       await refresh();
       await loadAdsState();
+      void loadReferralProgram();
+      if (historyOpen) {
+        void loadWalletHistory({ reset: true });
+      }
     } catch (error) {
       setAdsErrorText(normalizeErrorMessage(error, "Не удалось обработать рекламную награду"));
       await loadAdsState();
@@ -541,7 +624,55 @@ export default function EnergyPage() {
       setAdsAction(null);
       taskRewardInFlightRef.current = false;
     }
-  }, [adsAction, adsState, loadAdsState, refresh]);
+  }, [adsAction, adsState, historyOpen, loadAdsState, loadReferralProgram, loadWalletHistory, refresh]);
+
+  const handleReferralInvite = useCallback(() => {
+    if (!referralProgram) {
+      setReferralError("Реферальная ссылка пока недоступна");
+      return;
+    }
+    const tg = window.Telegram?.WebApp;
+    if (tg?.switchInlineQuery && referralProgram.share_inline_query) {
+      setPendingInlineQuery(referralProgram.share_inline_query);
+      setShareHintOpen(true);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(referralProgram.referral_link)
+        .then(() => {
+          triggerHapticNotification("success");
+          setPurchaseNotice({
+            tone: "success",
+            title: "Ссылка скопирована",
+            message: "Реферальная ссылка скопирована, отправьте её другу в Telegram."
+          });
+        })
+        .catch(() => {
+          openExternalLink(referralProgram.referral_link);
+        });
+      return;
+    }
+    openExternalLink(referralProgram.referral_link);
+  }, [referralProgram]);
+
+  const handleReferralShareConfirm = useCallback(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!pendingInlineQuery || !tg?.switchInlineQuery) {
+      setShareHintOpen(false);
+      setReferralError("Telegram WebApp не поддерживает inline-пересылку");
+      return;
+    }
+    tg.switchInlineQuery(pendingInlineQuery, ["users", "groups", "channels", "bots"] as any);
+    setShareHintOpen(false);
+  }, [pendingInlineQuery]);
+
+  const handleOpenHistory = useCallback(() => {
+    setHistoryOpen(true);
+    if (historyItems.length === 0 && !historyLoading) {
+      void loadWalletHistory({ reset: true });
+    }
+  }, [historyItems.length, historyLoading, loadWalletHistory]);
 
   const applyPurchaseStatus = useCallback(
     async (payment: PaymentStatusView) => {
@@ -568,6 +699,10 @@ export default function EnergyPage() {
         }
 
         await refresh();
+        void loadReferralProgram();
+        if (historyOpen) {
+          void loadWalletHistory({ reset: true });
+        }
         return;
       }
 
@@ -596,7 +731,7 @@ export default function EnergyPage() {
       setErrorText(null);
       setStatusText("Платёж ещё обрабатывается. Мы проверяем статус автоматически.");
     },
-    [clearStatusAutoHideTimer, refresh, scheduleStatusAutoHide]
+    [clearStatusAutoHideTimer, historyOpen, loadReferralProgram, loadWalletHistory, refresh, scheduleStatusAutoHide]
   );
 
   const checkPurchaseStatus = useCallback(
@@ -878,6 +1013,84 @@ export default function EnergyPage() {
           {adsErrorText ? (
             <p className="text-xs text-[var(--accent-gold)]">{adsErrorText}</p>
           ) : null}
+
+          <div className="rounded-2xl border border-white/12 bg-[var(--surface-chip-bg)]/70 p-4 shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
+            {referralLoading ? (
+              <div className="space-y-2">
+                <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+                <div className="h-9 w-full animate-pulse rounded-full bg-white/10" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-[var(--text-primary)]">Реферальная программа</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      {referralProgram?.preview_text ||
+                        "Пригласите друзей и получайте бонусы: +2 ⚡ за активацию и +10 ⚡ за первую покупку."}
+                    </p>
+                  </div>
+                  <div className="rounded-full border border-emerald-300/35 bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-100">
+                    +{referralProgram?.total_earned_energy_from_referrals ?? 0} ⚡
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
+                    <p className="text-[var(--text-tertiary)]">Приглашено</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_invited ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
+                    <p className="text-[var(--text-tertiary)]">Активно</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_activated ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
+                    <p className="text-[var(--text-tertiary)]">Покупки</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_purchased ?? 0}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={!referralProgram}
+                    onClick={handleReferralInvite}
+                  >
+                    <Users className="h-4 w-4" />
+                    Пригласить друзей
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2 border-white/20"
+                    disabled={!referralProgram?.referral_link}
+                    onClick={() => {
+                      if (!referralProgram?.referral_link) return;
+                      if (navigator.clipboard?.writeText) {
+                        void navigator.clipboard.writeText(referralProgram.referral_link);
+                      } else {
+                        openExternalLink(referralProgram.referral_link);
+                        return;
+                      }
+                      triggerHapticNotification("success");
+                      setPurchaseNotice({
+                        tone: "success",
+                        title: "Ссылка скопирована",
+                        message: "Отправьте реферальную ссылку другу и получите бонус, когда он активируется."
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Скопировать ссылку
+                  </Button>
+                </div>
+
+                {referralError ? <p className="mt-2 text-xs text-[var(--accent-gold)]">{referralError}</p> : null}
+              </>
+            )}
+          </div>
         </section>
 
         <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
@@ -904,7 +1117,17 @@ export default function EnergyPage() {
                 ) : null}
               </div>
             )}
-            {user?.telegram.username ? <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p> : null}
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              {user?.telegram.username ? <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p> : null}
+              <button
+                type="button"
+                onClick={handleOpenHistory}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+              >
+                <RefreshCw className="h-3 w-3" />
+                История энергии
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1102,6 +1325,122 @@ export default function EnergyPage() {
           </Card>
         )}
       </div>
+
+      {shareHintOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
+            <div className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
+              <Share2 className="h-4 w-4 text-[var(--accent-gold)]" />
+              Поделиться через Telegram
+            </div>
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">
+              Выберите чат в списке и отправьте карточку приглашения. Друг перейдёт по кнопке и получит бонус.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 border-white/20"
+                onClick={() => {
+                  setShareHintOpen(false);
+                }}
+              >
+                Отмена
+              </Button>
+              <Button className="flex-1" onClick={handleReferralShareConfirm}>
+                Открыть чаты
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {historyOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-t-3xl border border-white/10 bg-[var(--bg-card)]/95 p-5 shadow-[0_35px_70px_rgba(0,0,0,0.72)] sm:rounded-3xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">История операций</h3>
+                <p className="text-xs text-[var(--text-secondary)]">Все изменения баланса энергии</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-white/15 p-2 text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+                onClick={() => setHistoryOpen(false)}
+                aria-label="Закрыть историю"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-[160px] flex-1 space-y-2 overflow-y-auto pr-1">
+              {historyLoading ? (
+                <div className="space-y-2">
+                  <div className="h-14 animate-pulse rounded-xl bg-white/10" />
+                  <div className="h-14 animate-pulse rounded-xl bg-white/10" />
+                  <div className="h-14 animate-pulse rounded-xl bg-white/10" />
+                </div>
+              ) : null}
+
+              {!historyLoading && historyItems.length === 0 && !historyError ? (
+                <p className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-[var(--text-secondary)]">
+                  Операций пока нет.
+                </p>
+              ) : null}
+
+              {historyItems.map((item) => {
+                const positive = item.delta >= 0;
+                const deltaLabel = `${positive ? "+" : ""}${item.delta} ⚡`;
+                return (
+                  <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--text-primary)]">{item.display_title}</p>
+                        {item.display_subtitle ? (
+                          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{item.display_subtitle}</p>
+                        ) : null}
+                        <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">{formatWalletHistoryTimestamp(item.created_at)}</p>
+                      </div>
+                      <div className={`text-sm font-semibold ${positive ? "text-emerald-200" : "text-red-200"}`}>{deltaLabel}</div>
+                    </div>
+                    {typeof item.balance_after === "number" ? (
+                      <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">Баланс после операции: {item.balance_after} ⚡</p>
+                    ) : null}
+                  </div>
+                );
+              })}
+
+              {historyError ? (
+                <p className="rounded-xl border border-red-400/35 bg-red-500/10 p-3 text-sm text-red-100">{historyError}</p>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 border-white/20"
+                onClick={() => void loadWalletHistory({ reset: true })}
+                disabled={historyLoading || historyLoadingMore}
+              >
+                Обновить
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => void loadWalletHistory({ reset: false })}
+                disabled={!historyNextCursor || historyLoading || historyLoadingMore}
+              >
+                {historyLoadingMore ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Загружаем...
+                  </span>
+                ) : (
+                  "Показать ещё"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {purchaseNotice ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center">
