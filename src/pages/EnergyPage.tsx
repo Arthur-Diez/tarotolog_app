@@ -520,7 +520,11 @@ export default function EnergyPage() {
       setStarsOffers(sorted);
       setStarsOffersError(null);
     } catch (error) {
-      setStarsOffersError(normalizeErrorMessage(error, "Не удалось загрузить предложения Telegram Stars"));
+      if (error instanceof ApiError && error.status === 404) {
+        setStarsOffersError("Telegram Stars временно недоступны. Используйте оплату картой.");
+      } else {
+        setStarsOffersError(normalizeErrorMessage(error, "Не удалось загрузить предложения Telegram Stars"));
+      }
     } finally {
       setStarsOffersLoading(false);
     }
@@ -748,6 +752,15 @@ export default function EnergyPage() {
           await applyPurchaseStatus(toPaymentStatusViewFromPurchase(statusResponse));
         }
       } catch (error) {
+        if (pending.payment_method === "telegram_stars" && error instanceof ApiError && error.status === 404) {
+          clearPendingPurchase();
+          setPendingPurchase(null);
+          setActivePurchase(null);
+          setUiState("idle");
+          setStatusText(null);
+          setErrorText(null);
+          return;
+        }
         if (!options?.silent) {
           setUiState("pending");
           setErrorText(normalizeErrorMessage(error, "Не удалось проверить статус оплаты. Попробуйте ещё раз."));
@@ -975,7 +988,7 @@ export default function EnergyPage() {
             <div className="h-24 animate-pulse rounded-xl bg-white/10" />
           ) : adsState?.ads_enabled && adsState?.task.available && taskBlockId ? (
             <div className="space-y-2">
-              <div className="w-full rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 p-2 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
+              <div className="w-full overflow-hidden rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
                 <AdsgramTaskBanner
                   className="block w-full"
                   blockId={taskBlockId}
@@ -1031,10 +1044,10 @@ export default function EnergyPage() {
                         "Пригласите друзей и получайте бонусы: +2 ⚡ за активацию и +10 ⚡ за первую покупку."}
                     </p>
                   </div>
-                  <div className="rounded-full border border-emerald-300/35 bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-100">
-                    +{referralProgram?.total_earned_energy_from_referrals ?? 0} ⚡
-                  </div>
                 </div>
+                <p className="mt-2 text-xs text-emerald-100/85">
+                  Заработано по рефералке: +{referralProgram?.total_earned_energy_from_referrals ?? 0} ⚡
+                </p>
 
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="rounded-xl border border-white/10 bg-white/5 py-2">
@@ -1355,8 +1368,8 @@ export default function EnergyPage() {
       ) : null}
 
       {historyOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4">
-          <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-t-3xl border border-white/10 bg-[var(--bg-card)]/95 p-5 shadow-[0_35px_70px_rgba(0,0,0,0.72)] sm:rounded-3xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/85 p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[rgba(11,10,18,0.97)] p-5 shadow-[0_40px_90px_rgba(0,0,0,0.82)] sm:rounded-3xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">История операций</h3>
@@ -1391,7 +1404,7 @@ export default function EnergyPage() {
                 const positive = item.delta >= 0;
                 const deltaLabel = `${positive ? "+" : ""}${item.delta} ⚡`;
                 return (
-                  <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div key={item.id} className="rounded-xl border border-white/15 bg-white/10 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-[var(--text-primary)]">{item.display_title}</p>
@@ -1443,28 +1456,30 @@ export default function EnergyPage() {
       ) : null}
 
       {purchaseNotice ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center">
+        <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 pb-safe">
           <div
-            className={`w-full max-w-md rounded-3xl border p-5 shadow-[0_30px_60px_rgba(0,0,0,0.55)] ${
+            className={`w-full max-w-md rounded-2xl border p-4 shadow-[0_24px_50px_rgba(0,0,0,0.58)] backdrop-blur-xl ${
               purchaseNotice.tone === "success"
-                ? "border-emerald-400/40 bg-[rgba(25,44,35,0.95)]"
-                : "border-red-400/40 bg-[rgba(52,24,28,0.95)]"
+                ? "border-emerald-400/40 bg-[rgba(20,43,33,0.94)]"
+                : "border-red-400/40 bg-[rgba(52,24,28,0.94)]"
             }`}
           >
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-lg font-semibold text-white">{purchaseNotice.title}</h3>
+              <div>
+                <h3 className="text-base font-semibold text-white">{purchaseNotice.title}</h3>
+                <p className="mt-1 text-sm text-white/80">{purchaseNotice.message}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setPurchaseNotice(null)}
-                className="rounded-full border border-white/20 p-2 text-white/75 transition hover:text-white"
+                className="rounded-full border border-white/20 p-1.5 text-white/75 transition hover:text-white"
                 aria-label="Закрыть"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="mt-2 text-sm text-white/80">{purchaseNotice.message}</p>
-            <Button className="mt-4 w-full" onClick={() => setPurchaseNotice(null)}>
-              Закрыть
+            <Button size="sm" className="mt-3 w-full" onClick={() => setPurchaseNotice(null)}>
+              Понятно
             </Button>
           </div>
         </div>

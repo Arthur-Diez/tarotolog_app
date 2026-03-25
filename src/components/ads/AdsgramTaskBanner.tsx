@@ -116,6 +116,7 @@ export function AdsgramTaskBanner({
           width: "100%",
           minWidth: "0",
           display: "block",
+          boxSizing: "border-box",
           maxWidth: "100%",
           overflow: "hidden",
           opacity: disabled ? 0.55 : 1,
@@ -127,7 +128,7 @@ export function AdsgramTaskBanner({
           ["--adsgram-task-button-background" as string]: "linear-gradient(135deg,#61B4FF,#4A8BFF)",
           ["--adsgram-task-button-color" as string]: "#ffffff",
           ["--adsgram-task-border-radius" as string]: "16px",
-          ["--adsgram-task-padding" as string]: "10px 12px",
+          ["--adsgram-task-padding" as string]: "8px 10px",
           ["--adsgram-task-button-border-radius" as string]: "11px"
         } as CSSProperties
       }
@@ -138,11 +139,12 @@ export function AdsgramTaskBanner({
           display: "inline-flex",
           alignItems: "center",
           gap: "4px",
-          padding: "2px 8px",
+          padding: "2px 7px",
           borderRadius: "999px",
           border: "1px solid rgba(255,255,255,0.2)",
           background: "rgba(255,255,255,0.08)",
           fontWeight: 600,
+          fontSize: "14px",
           color: "#eef5ff"
         }}
       >
@@ -152,13 +154,13 @@ export function AdsgramTaskBanner({
         slot="button"
         style={{
           display: "inline-block",
-          minWidth: "52px",
+          minWidth: "42px",
           textAlign: "center",
-          marginInlineStart: "6px",
-          position: "relative",
-          left: "-14px",
+          marginInlineStart: "0",
+          position: "static",
+          whiteSpace: "nowrap",
           borderRadius: "10px",
-          padding: "5px 10px",
+          padding: "4px 7px",
           background: "linear-gradient(135deg,#64B8FF,#4C8FFF)",
           color: "#ffffff",
           fontWeight: 700,
@@ -172,13 +174,13 @@ export function AdsgramTaskBanner({
         slot="claim"
         style={{
           display: "inline-block",
-          minWidth: "64px",
+          minWidth: "50px",
           textAlign: "center",
-          marginInlineStart: "6px",
-          position: "relative",
-          left: "-14px",
+          marginInlineStart: "0",
+          position: "static",
+          whiteSpace: "nowrap",
           borderRadius: "10px",
-          padding: "6px 12px",
+          padding: "5px 8px",
           background: "linear-gradient(135deg,#F1AE2F,#F08A2C)",
           color: "#fffdf8",
           fontWeight: 700,

@@ -31,6 +31,14 @@ interface BonusNotice {
 
 const BONUS_DELTA_BADGE_DURATION_MS = 2400;
 
+function getLocalDateKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function formatCountdown(totalSeconds: number): string {
   const safe = Math.max(0, totalSeconds);
   const hours = Math.floor(safe / 3600);
@@ -95,6 +103,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const [bonusDelta, setBonusDelta] = useState<number | null>(null);
   const [bonusNotice, setBonusNotice] = useState<BonusNotice | null>(null);
   const [rewardPulse, setRewardPulse] = useState(false);
+  const [claimedDailyDate, setClaimedDailyDate] = useState<string | null>(null);
   const [reward, setReward] = useState<RewardState>({
     amount: null,
     nextAvailableAt: null,
@@ -170,16 +179,19 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       console.info("daily-bonus: status_loaded", status);
       const nextAvailableAt = normalizeNextAvailableAt(status.next_available_at, status.nextAvailableAt);
       const cooldownSeconds = extractCooldownSeconds(nextAvailableAt);
-      const amount = status.amount ?? 0;
+      const amount = Math.max(1, status.amount ?? 0);
       const rewarded = status.status === "rewarded" || Boolean(status.rewarded_at ?? status.rewardedAt);
       const isCooldown =
         status.status === "cooldown" ||
         rewarded ||
         (cooldownSeconds !== null && cooldownSeconds > 0);
+      const today = getLocalDateKey();
+      const hasClaimedDailyBoostToday = claimedDailyDate === today;
+      const normalizedAmount = rewarded || hasClaimedDailyBoostToday ? 1 : amount;
 
       setReward((current) => ({
         ...current,
-        amount,
+        amount: normalizedAmount,
         nextAvailableAt,
         rewardSessionId: null,
         rewardId: null,
@@ -187,6 +199,10 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         status: isCooldown ? "cooldown" : "idle",
         error: null
       }));
+
+      if (claimedDailyDate && claimedDailyDate !== today) {
+        setClaimedDailyDate(null);
+      }
     } catch (error) {
       console.info("daily-bonus: status_failed", error);
       setReward((current) => ({
@@ -195,7 +211,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         error: "Не удалось загрузить бонус"
       }));
     }
-  }, []);
+  }, [claimedDailyDate]);
 
   useEffect(() => {
     void loadStatus();
@@ -303,8 +319,12 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       );
       const claimCooldownSeconds = extractCooldownSeconds(claimNextAvailableAt);
       const awardedAmount = Math.max(1, Number.isFinite(amount) ? amount : 1);
+      if (awardedAmount >= 2) {
+        setClaimedDailyDate(getLocalDateKey());
+      }
       setReward((current) => ({
         ...current,
+        amount: awardedAmount >= 2 ? 1 : Math.max(1, current.amount ?? 1),
         nextAvailableAt: claimNextAvailableAt ?? current.nextAvailableAt,
         rewardSessionId: null,
         rewardId: null,
@@ -326,9 +346,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         title: "Спасибо за помощь проекту",
         message: `Вам начислено +${awardedAmount} ⚡ энергии.`
       });
-      if (!claimNextAvailableAt) {
-        await loadStatus();
-      }
+      await loadStatus();
       if (onBonusClaimed) {
         await onBonusClaimed();
       }
@@ -468,22 +486,24 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         </div>
       ) : null}
       {bonusNotice ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-3xl border border-emerald-300/40 bg-[rgba(23,45,36,0.95)] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
+        <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 pb-safe">
+          <div className="w-full max-w-md rounded-2xl border border-emerald-300/35 bg-[rgba(18,38,31,0.94)] p-4 shadow-[0_22px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl">
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-lg font-semibold text-white">{bonusNotice.title}</h3>
+              <div>
+                <h3 className="text-base font-semibold text-white">{bonusNotice.title}</h3>
+                <p className="mt-1 text-sm text-white/80">{bonusNotice.message}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setBonusNotice(null)}
-                className="rounded-full border border-white/20 p-2 text-white/75 transition hover:text-white"
+                className="rounded-full border border-white/20 p-1.5 text-white/75 transition hover:text-white"
                 aria-label="Закрыть уведомление"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="mt-2 text-sm text-white/80">{bonusNotice.message}</p>
-            <Button className="mt-4 w-full" onClick={() => setBonusNotice(null)}>
-              Закрыть
+            <Button size="sm" className="mt-3 w-full" onClick={() => setBonusNotice(null)}>
+              Понятно
             </Button>
           </div>
         </div>
