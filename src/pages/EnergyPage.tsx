@@ -1368,8 +1368,8 @@ export default function EnergyPage() {
       ) : null}
 
       {historyOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/85 p-0 sm:items-center sm:p-4">
-          <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[rgba(11,10,18,0.97)] p-5 shadow-[0_40px_90px_rgba(0,0,0,0.82)] sm:rounded-3xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-transparent p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-t-3xl border border-white/15 bg-[#0b0d16] p-5 shadow-[0_40px_90px_rgba(0,0,0,0.78)] sm:rounded-3xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">История операций</h3>
@@ -1395,7 +1395,7 @@ export default function EnergyPage() {
               ) : null}
 
               {!historyLoading && historyItems.length === 0 && !historyError ? (
-                <p className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-[var(--text-secondary)]">
+                <p className="rounded-xl border border-white/15 bg-[#171a26] p-3 text-sm text-[var(--text-secondary)]">
                   Операций пока нет.
                 </p>
               ) : null}
@@ -1404,7 +1404,7 @@ export default function EnergyPage() {
                 const positive = item.delta >= 0;
                 const deltaLabel = `${positive ? "+" : ""}${item.delta} ⚡`;
                 return (
-                  <div key={item.id} className="rounded-xl border border-white/15 bg-white/10 p-3">
+                  <div key={item.id} className="rounded-xl border border-white/15 bg-[#1b1f2d] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-[var(--text-primary)]">{item.display_title}</p>
