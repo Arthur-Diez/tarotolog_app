@@ -515,7 +515,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!profile?.user?.id) {
+    if (!profile) {
       setIsDiscountAdmin(false);
       return () => {
         cancelled = true;
@@ -533,7 +533,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [profile?.user?.id]);
+  }, [profile]);
 
   const onPersonalFieldChange = <K extends keyof PersonalFormState>(key: K, value: PersonalFormState[K]) => {
     setPersonal((prev) => ({
