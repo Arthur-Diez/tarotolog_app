@@ -21,6 +21,14 @@ import {
 } from "@/lib/api";
 
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
+const ADMIN_TELEGRAM_ID = 5773954061;
+const ADMIN_USERNAME = "bytemed";
+
+function getTelegramUserId(): number | null {
+  if (typeof window === "undefined") return null;
+  const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  return typeof tgId === "number" ? tgId : null;
+}
 
 const DEFAULT_RULE_DRAFT = {
   code: "scheduled_weekend_15",
@@ -39,7 +47,17 @@ const DEFAULT_RULE_DRAFT = {
 export default function AdminDiscountsPage() {
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
-  const isAdmin = profile?.user?.id === ADMIN_USER_ID;
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const telegramUserId = useMemo(() => getTelegramUserId(), []);
+  const isAdminByIdentity = useMemo(() => {
+    const username = profile?.user?.telegram?.username?.trim().toLowerCase() ?? null;
+    const userId = profile?.user?.id ?? null;
+    return (
+      userId === ADMIN_USER_ID ||
+      username === ADMIN_USERNAME ||
+      telegramUserId === ADMIN_TELEGRAM_ID
+    );
+  }, [profile?.user?.id, profile?.user?.telegram?.username, telegramUserId]);
 
   const [rules, setRules] = useState<DiscountRuleResponse[]>([]);
   const [rulesLoading, setRulesLoading] = useState(false);
@@ -91,6 +109,30 @@ export default function AdminDiscountsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    if (isAdminByIdentity) {
+      setIsAdmin(true);
+    }
+
+    void adminGetDiscountStats()
+      .then((nextStats) => {
+        if (cancelled) return;
+        setIsAdmin(true);
+        setStats(nextStats);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (!isAdminByIdentity) {
+          setIsAdmin(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminByIdentity]);
+
+  useEffect(() => {
     if (!isAdmin) return;
     void loadRules();
     void loadStats();
@@ -98,7 +140,7 @@ export default function AdminDiscountsPage() {
 
   const activeRulesCount = useMemo(() => rules.filter((rule) => rule.is_active).length, [rules]);
 
-  if (loading && !profile) {
+  if ((loading && !profile) || isAdmin === null) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-[var(--text-secondary)]">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />

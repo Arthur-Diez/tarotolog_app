@@ -71,6 +71,15 @@ type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile
 
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 const DEV_DEBUG = import.meta.env.DEV;
+const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
+const ADMIN_TELEGRAM_ID = 5773954061;
+const ADMIN_USERNAME = "bytemed";
+
+function getTelegramUserId(): number | null {
+  if (typeof window === "undefined") return null;
+  const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  return typeof tgId === "number" ? tgId : null;
+}
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -221,6 +230,16 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
+  const telegramUserId = useMemo(() => getTelegramUserId(), []);
+  const isAdminByIdentity = useMemo(() => {
+    const username = user?.telegram?.username?.trim().toLowerCase() ?? null;
+    const userId = user?.id ?? null;
+    return (
+      userId === ADMIN_USER_ID ||
+      username === ADMIN_USERNAME ||
+      telegramUserId === ADMIN_TELEGRAM_ID
+    );
+  }, [telegramUserId, user?.id, user?.telegram?.username]);
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -515,8 +534,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (isAdminByIdentity) {
+      setIsDiscountAdmin(true);
+    }
+
     if (!profile) {
-      setIsDiscountAdmin(false);
+      if (!isAdminByIdentity) {
+        setIsDiscountAdmin(false);
+      }
       return () => {
         cancelled = true;
       };
@@ -527,13 +552,13 @@ export default function ProfilePage() {
         if (!cancelled) setIsDiscountAdmin(true);
       })
       .catch(() => {
-        if (!cancelled) setIsDiscountAdmin(false);
+        if (!cancelled && !isAdminByIdentity) setIsDiscountAdmin(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, isAdminByIdentity]);
 
   const onPersonalFieldChange = <K extends keyof PersonalFormState>(key: K, value: PersonalFormState[K]) => {
     setPersonal((prev) => ({
