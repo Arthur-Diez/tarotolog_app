@@ -30,6 +30,12 @@ function getTelegramUserId(): number | null {
   return typeof tgId === "number" ? tgId : null;
 }
 
+function getTelegramUsername(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.Telegram?.WebApp?.initDataUnsafe?.user?.username;
+  return typeof raw === "string" && raw.trim() ? raw.trim().toLowerCase() : null;
+}
+
 const DEFAULT_RULE_DRAFT = {
   code: "scheduled_weekend_15",
   title: "Плановая скидка -15%",
@@ -48,16 +54,18 @@ export default function AdminDiscountsPage() {
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const telegramUserId = useMemo(() => getTelegramUserId(), []);
+  const telegramUserId = getTelegramUserId();
+  const telegramUsername = getTelegramUsername();
   const isAdminByIdentity = useMemo(() => {
-    const username = profile?.user?.telegram?.username?.trim().toLowerCase() ?? null;
+    const backendUsername = profile?.user?.telegram?.username?.trim().toLowerCase() ?? null;
     const userId = profile?.user?.id ?? null;
     return (
       userId === ADMIN_USER_ID ||
-      username === ADMIN_USERNAME ||
-      telegramUserId === ADMIN_TELEGRAM_ID
+      backendUsername === ADMIN_USERNAME ||
+      telegramUserId === ADMIN_TELEGRAM_ID ||
+      telegramUsername === ADMIN_USERNAME
     );
-  }, [profile?.user?.id, profile?.user?.telegram?.username, telegramUserId]);
+  }, [profile?.user?.id, profile?.user?.telegram?.username, telegramUserId, telegramUsername]);
 
   const [rules, setRules] = useState<DiscountRuleResponse[]>([]);
   const [rulesLoading, setRulesLoading] = useState(false);

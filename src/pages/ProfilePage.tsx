@@ -81,6 +81,12 @@ function getTelegramUserId(): number | null {
   return typeof tgId === "number" ? tgId : null;
 }
 
+function getTelegramUsername(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.Telegram?.WebApp?.initDataUnsafe?.user?.username;
+  return typeof raw === "string" && raw.trim() ? raw.trim().toLowerCase() : null;
+}
+
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
@@ -230,16 +236,18 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const telegramUserId = useMemo(() => getTelegramUserId(), []);
+  const telegramUserId = getTelegramUserId();
+  const telegramUsername = getTelegramUsername();
   const isAdminByIdentity = useMemo(() => {
-    const username = user?.telegram?.username?.trim().toLowerCase() ?? null;
+    const backendUsername = user?.telegram?.username?.trim().toLowerCase() ?? null;
     const userId = user?.id ?? null;
     return (
       userId === ADMIN_USER_ID ||
-      username === ADMIN_USERNAME ||
-      telegramUserId === ADMIN_TELEGRAM_ID
+      backendUsername === ADMIN_USERNAME ||
+      telegramUserId === ADMIN_TELEGRAM_ID ||
+      telegramUsername === ADMIN_USERNAME
     );
-  }, [telegramUserId, user?.id, user?.telegram?.username]);
+  }, [telegramUserId, telegramUsername, user?.id, user?.telegram?.username]);
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
