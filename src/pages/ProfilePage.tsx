@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_WIDGET_KEYS, WIDGET_KEYS, type UpdateProfilePayload, type WidgetKey } from "@/lib/api";
+import {
+  DEFAULT_WIDGET_KEYS,
+  WIDGET_KEYS,
+  adminGetDiscountStats,
+  type UpdateProfilePayload,
+  type WidgetKey
+} from "@/lib/api";
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
@@ -65,7 +71,6 @@ type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile
 
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 const DEV_DEBUG = import.meta.env.DEV;
-const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -212,10 +217,10 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
+  const [isDiscountAdmin, setIsDiscountAdmin] = useState(false);
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const isDiscountAdmin = user?.id === ADMIN_USER_ID;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -507,6 +512,28 @@ export default function ProfilePage() {
       setActiveSave(null);
     }
   }, [activeSave, clearError, saveError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!profile?.user?.id) {
+      setIsDiscountAdmin(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void adminGetDiscountStats()
+      .then(() => {
+        if (!cancelled) setIsDiscountAdmin(true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsDiscountAdmin(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.user?.id]);
 
   const onPersonalFieldChange = <K extends keyof PersonalFormState>(key: K, value: PersonalFormState[K]) => {
     setPersonal((prev) => ({
