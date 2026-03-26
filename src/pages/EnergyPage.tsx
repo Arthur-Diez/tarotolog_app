@@ -542,7 +542,7 @@ export default function EnergyPage() {
         provider: selectedPaymentMethod,
         currency: offersCurrency,
         source: "energy_page",
-        trigger_type: "manual"
+        trigger_type: "auto"
       });
       const sorted = [...(response.offers || [])].sort((a, b) => {
         if (a.final_energy_amount !== b.final_energy_amount) {

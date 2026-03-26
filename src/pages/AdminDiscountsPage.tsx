@@ -10,10 +10,16 @@ import {
   adminAssignDiscountRule,
   adminCreateDiscountRule,
   adminGetDiscountStats,
+  adminListDiscountUsages,
   adminGetUserOfferDebug,
   adminListAssignments,
   adminListDiscountRules,
+  adminResolveDiscountDebug,
+  adminSimulateDiscountDismiss,
+  adminSimulateDiscountPurchase,
+  adminSimulateDiscountShow,
   adminToggleDiscountRule,
+  type DiscountResolveDebugResponse,
   type AdminUserOfferDebugResponse,
   type DiscountAssignmentResponse,
   type DiscountRuleResponse,
@@ -108,6 +114,17 @@ export default function AdminDiscountsPage() {
   const [debugUserId, setDebugUserId] = useState("");
   const [debugData, setDebugData] = useState<AdminUserOfferDebugResponse | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [resolveData, setResolveData] = useState<DiscountResolveDebugResponse | null>(null);
+  const [debugUsages, setDebugUsages] = useState<Record<string, unknown>[]>([]);
+  const [simulateLoading, setSimulateLoading] = useState(false);
+  const [simulateError, setSimulateError] = useState<string | null>(null);
+  const [simulateUsageId, setSimulateUsageId] = useState("");
+  const [simulatePaymentId, setSimulatePaymentId] = useState("");
+  const [testProvider, setTestProvider] = useState<"robokassa" | "telegram_stars">("robokassa");
+  const [testCurrency, setTestCurrency] = useState("RUB");
+  const [testTriggerType, setTestTriggerType] = useState("auto");
+  const [testSource, setTestSource] = useState("energy_page");
+  const [testBalanceOverride, setTestBalanceOverride] = useState("");
 
   const loadRules = useCallback(async () => {
     try {
@@ -137,6 +154,26 @@ export default function AdminDiscountsPage() {
       setStatsLoading(false);
     }
   }, []);
+
+  const runResolveDebug = useCallback(async () => {
+    const targetUserId = debugUserId.trim();
+    if (!targetUserId) return;
+    const payloadBalanceOverride =
+      testBalanceOverride.trim().length > 0 ? Number(testBalanceOverride) : undefined;
+    const response = await adminResolveDiscountDebug({
+      user_id: targetUserId,
+      provider: testProvider,
+      currency: testProvider === "telegram_stars" ? "XTR" : (testCurrency as "RUB" | "USD" | "EUR"),
+      trigger_type: testTriggerType,
+      source: testSource.trim() || "energy_page",
+      balance_override: Number.isFinite(payloadBalanceOverride as number)
+        ? payloadBalanceOverride
+        : undefined
+    });
+    setResolveData(response);
+    const usageRows = await adminListDiscountUsages(targetUserId, 30);
+    setDebugUsages(usageRows.items ?? []);
+  }, [debugUserId, testBalanceOverride, testCurrency, testProvider, testSource, testTriggerType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -329,8 +366,10 @@ export default function AdminDiscountsPage() {
             onClick={async () => {
               try {
                 setDebugLoading(true);
+                setSimulateError(null);
                 const next = await adminGetUserOfferDebug(debugUserId.trim());
                 setDebugData(next);
+                await runResolveDebug();
               } finally {
                 setDebugLoading(false);
               }
@@ -339,9 +378,163 @@ export default function AdminDiscountsPage() {
             {debugLoading ? "..." : "Проверить"}
           </Button>
         </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="provider"
+            value={testProvider}
+            onChange={(e) => setTestProvider(e.target.value === "telegram_stars" ? "telegram_stars" : "robokassa")}
+          />
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="currency"
+            value={testCurrency}
+            onChange={(e) => setTestCurrency(e.target.value.toUpperCase())}
+          />
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="trigger_type"
+            value={testTriggerType}
+            onChange={(e) => setTestTriggerType(e.target.value)}
+          />
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="source"
+            value={testSource}
+            onChange={(e) => setTestSource(e.target.value)}
+          />
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="balance_override (optional)"
+            value={testBalanceOverride}
+            onChange={(e) => setTestBalanceOverride(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="border-white/20"
+              disabled={simulateLoading || !debugUserId.trim()}
+              onClick={async () => {
+                try {
+                  setSimulateLoading(true);
+                  setSimulateError(null);
+                  await runResolveDebug();
+                } catch (error) {
+                  setSimulateError(error instanceof Error ? error.message : "Resolve failed");
+                } finally {
+                  setSimulateLoading(false);
+                }
+              }}
+            >
+              Resolve rule
+            </Button>
+            <Button
+              variant="outline"
+              className="border-white/20"
+              disabled={simulateLoading || !debugUserId.trim()}
+              onClick={async () => {
+                try {
+                  setSimulateLoading(true);
+                  setSimulateError(null);
+                  const result = await adminSimulateDiscountShow({
+                    user_id: debugUserId.trim(),
+                    provider: testProvider,
+                    currency: testProvider === "telegram_stars" ? "XTR" : (testCurrency as "RUB" | "USD" | "EUR"),
+                    source: testSource.trim() || "admin_simulate",
+                    trigger_type: testTriggerType.trim() || "auto",
+                    balance_override: testBalanceOverride.trim().length > 0 ? Number(testBalanceOverride) : undefined,
+                    trigger_snapshot: { from: "admin-panel" }
+                  });
+                  setResolveData(result.resolve);
+                  setDebugUsages((await adminListDiscountUsages(debugUserId.trim(), 30)).items ?? []);
+                  const tracked = result.shown.items.find((item) => item.usage_id)?.usage_id ?? "";
+                  if (tracked) setSimulateUsageId(tracked);
+                } catch (error) {
+                  setSimulateError(error instanceof Error ? error.message : "Show simulation failed");
+                } finally {
+                  setSimulateLoading(false);
+                }
+              }}
+            >
+              Simulate show
+            </Button>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="usage_id for dismiss/purchase"
+            value={simulateUsageId}
+            onChange={(e) => setSimulateUsageId(e.target.value)}
+          />
+          <input
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs"
+            placeholder="payment_id (optional for purchase)"
+            value={simulatePaymentId}
+            onChange={(e) => setSimulatePaymentId(e.target.value)}
+          />
+          <Button
+            variant="outline"
+            className="border-white/20"
+            disabled={simulateLoading || !simulateUsageId.trim()}
+            onClick={async () => {
+              try {
+                setSimulateLoading(true);
+                setSimulateError(null);
+                await adminSimulateDiscountDismiss(simulateUsageId.trim());
+                if (debugUserId.trim()) {
+                  setDebugUsages((await adminListDiscountUsages(debugUserId.trim(), 30)).items ?? []);
+                }
+              } catch (error) {
+                setSimulateError(error instanceof Error ? error.message : "Dismiss simulation failed");
+              } finally {
+                setSimulateLoading(false);
+              }
+            }}
+          >
+            Simulate dismiss
+          </Button>
+          <Button
+            variant="outline"
+            className="border-white/20"
+            disabled={simulateLoading || !simulateUsageId.trim()}
+            onClick={async () => {
+              try {
+                setSimulateLoading(true);
+                setSimulateError(null);
+                await adminSimulateDiscountPurchase({
+                  usage_id: simulateUsageId.trim(),
+                  payment_id: simulatePaymentId.trim() || undefined
+                });
+                if (debugUserId.trim()) {
+                  setDebugUsages((await adminListDiscountUsages(debugUserId.trim(), 30)).items ?? []);
+                }
+              } catch (error) {
+                setSimulateError(error instanceof Error ? error.message : "Purchase simulation failed");
+              } finally {
+                setSimulateLoading(false);
+              }
+            }}
+          >
+            Simulate purchase
+          </Button>
+        </div>
+        {simulateError ? <p className="mt-2 text-xs text-red-200">{simulateError}</p> : null}
         {debugData ? (
           <pre className="mt-3 max-h-64 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] text-emerald-100/90">
             {JSON.stringify(debugData, null, 2)}
+          </pre>
+        ) : null}
+        {resolveData ? (
+          <pre className="mt-3 max-h-72 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] text-sky-100/90">
+            {JSON.stringify(resolveData, null, 2)}
+          </pre>
+        ) : null}
+        {debugUsages.length > 0 ? (
+          <pre className="mt-3 max-h-56 overflow-auto rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] text-fuchsia-100/90">
+            {JSON.stringify(debugUsages, null, 2)}
           </pre>
         ) : null}
       </Card>

@@ -509,6 +509,12 @@ export interface MarkOffersShownResponse {
   items: MarkOfferShownItem[];
 }
 
+export interface DiscountUsageResponse {
+  usage_id: string;
+  resolution_status: string;
+  resolved_at: string | null;
+}
+
 export interface TelegramStarsCreatePaymentResponse {
   payment_id: string;
   purchase_id: string;
@@ -669,6 +675,39 @@ export interface AdminUserOfferDebugResponse {
   user_id: string;
   state: Record<string, unknown>;
   current_offer: Record<string, unknown> | null;
+}
+
+export interface DiscountResolveDebugCandidate {
+  trigger_type: string;
+  offer: PaymentOfferResponse;
+  selected: boolean;
+}
+
+export interface DiscountResolveDebugResponse {
+  user_id: string;
+  provider: string;
+  currency: string;
+  source: string;
+  requested_trigger_type: string;
+  resolved_triggers: string[];
+  local_date: string;
+  can_show_offer: boolean;
+  balance: number;
+  user_context: Record<string, unknown>;
+  selected_offers: PaymentOfferResponse[];
+  candidates: DiscountResolveDebugCandidate[];
+  state: Record<string, unknown>;
+  current_offer: Record<string, unknown> | null;
+}
+
+export interface DiscountDebugUsagesResponse {
+  user_id: string;
+  items: Record<string, unknown>[];
+}
+
+export interface DiscountSimulateShowResponse {
+  resolve: DiscountResolveDebugResponse;
+  shown: MarkOffersShownResponse;
 }
 
 export interface ShareCreateResponse {
@@ -1073,6 +1112,81 @@ export async function adminGetUserOfferDebug(userId: string): Promise<AdminUserO
     headers: withAuthHeaders()
   });
   return handleResponse<AdminUserOfferDebugResponse>(res);
+}
+
+export async function adminResolveDiscountDebug(params: {
+  user_id: string;
+  provider: "robokassa" | "telegram_stars";
+  currency?: "RUB" | "USD" | "EUR" | "XTR";
+  source?: string;
+  trigger_type?: string;
+  local_date?: string;
+  balance_override?: number;
+}): Promise<DiscountResolveDebugResponse> {
+  const search = new URLSearchParams();
+  search.set("user_id", params.user_id);
+  search.set("provider", params.provider);
+  if (params.currency) search.set("currency", params.currency);
+  if (params.source) search.set("source", params.source);
+  if (params.trigger_type) search.set("trigger_type", params.trigger_type);
+  if (params.local_date) search.set("local_date", params.local_date);
+  if (params.balance_override !== undefined) search.set("balance_override", String(params.balance_override));
+
+  const res = await fetch(`${API_BASE}/admin/discounts/debug/resolve?${search.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DiscountResolveDebugResponse>(res);
+}
+
+export async function adminListDiscountUsages(userId: string, limit = 100): Promise<DiscountDebugUsagesResponse> {
+  const res = await fetch(
+    `${API_BASE}/admin/discounts/debug/usages?user_id=${encodeURIComponent(userId)}&limit=${limit}`,
+    {
+      method: "GET",
+      headers: withAuthHeaders()
+    }
+  );
+  return handleResponse<DiscountDebugUsagesResponse>(res);
+}
+
+export async function adminSimulateDiscountShow(payload: {
+  user_id: string;
+  provider?: "robokassa" | "telegram_stars";
+  currency?: "RUB" | "USD" | "EUR" | "XTR";
+  source?: string;
+  trigger_type?: string;
+  local_date?: string;
+  balance_override?: number;
+  trigger_snapshot?: Record<string, unknown>;
+}): Promise<DiscountSimulateShowResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/debug/simulate/show`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DiscountSimulateShowResponse>(res);
+}
+
+export async function adminSimulateDiscountDismiss(usage_id: string): Promise<DiscountUsageResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/debug/simulate/dismiss`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({ usage_id })
+  });
+  return handleResponse<DiscountUsageResponse>(res);
+}
+
+export async function adminSimulateDiscountPurchase(payload: {
+  usage_id: string;
+  payment_id?: string;
+}): Promise<DiscountUsageResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/debug/simulate/purchase`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DiscountUsageResponse>(res);
 }
 
 export async function getTelegramStarsPaymentStatus(paymentId: string): Promise<TelegramStarsPaymentStatusResponse> {
