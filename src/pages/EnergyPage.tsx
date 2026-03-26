@@ -83,22 +83,34 @@ interface PaymentStatusView {
 
 const ENERGY_PACKS: EnergyPackConfig[] = [
   {
-    productCode: "energy_50",
+    productCode: "energy_10",
     title: "Пакет Старт",
     energyAmount: 10,
-    pricesMinor: { RUB: 14900, USD: 299, EUR: 299 }
+    pricesMinor: { RUB: 19900, USD: 399, EUR: 399 }
+  },
+  {
+    productCode: "energy_25",
+    title: "Пакет Фокус",
+    energyAmount: 25,
+    pricesMinor: { RUB: 44900, USD: 899, EUR: 899 }
+  },
+  {
+    productCode: "energy_60",
+    title: "Пакет Поток",
+    energyAmount: 60,
+    pricesMinor: { RUB: 89900, USD: 1699, EUR: 1699 }
   },
   {
     productCode: "energy_100",
-    title: "Пакет Фокус",
-    energyAmount: 25,
-    pricesMinor: { RUB: 29900, USD: 699, EUR: 699 }
+    title: "Пакет Профи",
+    energyAmount: 100,
+    pricesMinor: { RUB: 149000, USD: 2499, EUR: 2499 }
   },
   {
-    productCode: "energy_250",
-    title: "Пакет Поток",
-    energyAmount: 60,
-    pricesMinor: { RUB: 59900, USD: 1499, EUR: 1499 }
+    productCode: "energy_200",
+    title: "Пакет Максимум",
+    energyAmount: 200,
+    pricesMinor: { RUB: 249000, USD: 3999, EUR: 3999 }
   }
 ];
 
