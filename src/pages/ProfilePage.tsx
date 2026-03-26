@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile
 
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 const DEV_DEBUG = import.meta.env.DEV;
+const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -207,11 +209,13 @@ function getLanguageLabel(code: string | null): string {
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
+  const isDiscountAdmin = user?.id === ADMIN_USER_ID;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -1136,6 +1140,16 @@ export default function ProfilePage() {
             >
               {saving && activeSave === "personal" ? "Сохраняем..." : "Сохранить"}
             </Button>
+            {isDiscountAdmin ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-white/20"
+                onClick={() => navigate("/admin/discounts")}
+              >
+                Админка скидок
+              </Button>
+            ) : null}
           </form>
         </CardContent>
       </Card>

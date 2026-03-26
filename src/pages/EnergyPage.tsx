@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Loader2, RefreshCw, Share2, Users, X, Zap } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
 const ADS_STATE_REFETCH_DEBOUNCE_MS = 3000;
 const OFFERS_COUNTDOWN_TICK_MS = 1000;
-const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 const TASK_ADSGRAM_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
 
@@ -310,7 +308,6 @@ function toPaymentStatusViewFromStarsPayment(payment: TelegramStarsPaymentStatus
 }
 
 export default function EnergyPage() {
-  const navigate = useNavigate();
   const { profile, loading, refresh } = useProfile();
   const user = profile?.user;
   const energyBalance = user?.energy_balance ?? 0;
@@ -1104,7 +1101,6 @@ export default function EnergyPage() {
   }, [checkPurchaseStatus, pendingPurchase]);
 
   const canCheckStatus = Boolean(pendingPurchase?.entity_id) && !checkingStatus;
-  const isDiscountAdmin = user?.id === ADMIN_USER_ID;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
   const taskBlockId = useMemo(() => {
     const backendBlockId = adsState?.adsgram_task_block_id ?? null;
@@ -1319,16 +1315,6 @@ export default function EnergyPage() {
                 ? "Вы можете приобрести энергию официальной валютой Telegram - Telegram Stars."
                 : "Вы можете приобрести энергию в удобной для вас валюте, а если оплата картой не проходит - используйте Telegram Stars."}
             </p>
-            {isDiscountAdmin ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-fit border-white/20"
-                onClick={() => navigate("/admin/discounts")}
-              >
-                Админка скидок
-              </Button>
-            ) : null}
             {selectedPaymentMethod === "robokassa" ? (
               <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
                 {CURRENCY_OPTIONS.map((option) => (
