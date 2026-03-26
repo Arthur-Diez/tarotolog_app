@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   DEFAULT_WIDGET_KEYS,
   WIDGET_KEYS,
+  adminGetDiscountStats,
   type UpdateProfilePayload,
   type WidgetKey
 } from "@/lib/api";
@@ -249,6 +250,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
+  const [isDiscountAdminByBackend, setIsDiscountAdminByBackend] = useState(false);
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
@@ -269,7 +271,35 @@ export default function ProfilePage() {
     );
   }, [telegramUserId, telegramUsername, telegramFromInitData.id, telegramFromInitData.username, user?.id, user?.telegram?.username, user?.is_admin]);
 
-  const isDiscountAdmin = isAdminByIdentity;
+  useEffect(() => {
+    let cancelled = false;
+    let retries = 0;
+    const maxRetries = 5;
+
+    const probe = async () => {
+      if (cancelled) return;
+      try {
+        await adminGetDiscountStats();
+        if (!cancelled) setIsDiscountAdminByBackend(true);
+        return;
+      } catch {
+        if (cancelled) return;
+        retries += 1;
+        if (retries < maxRetries) {
+          window.setTimeout(() => {
+            void probe();
+          }, 1200);
+        }
+      }
+    };
+
+    void probe();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isDiscountAdmin = isAdminByIdentity || isDiscountAdminByBackend;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -1273,6 +1303,16 @@ export default function ProfilePage() {
               {getLanguageLabel(diag.effectiveLang)}
             </span>
           </div>
+          {isDiscountAdmin ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full border-white/20"
+              onClick={() => navigate("/admin/discounts")}
+            >
+              Админка скидок
+            </Button>
+          ) : null}
         </div>
       </Card>
       <TimezoneSelectorUnified
