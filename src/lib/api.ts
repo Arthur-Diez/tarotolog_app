@@ -152,6 +152,7 @@ export interface BirthProfile {
 
 export interface ProfileResponse {
   user: {
+    id?: string | null;
     display_name: string | null;
     energy_balance: number;
     lang: string | null;
@@ -464,6 +465,49 @@ export interface RobokassaCreatePaymentResponse {
   status: string;
 }
 
+export interface PaymentOfferResponse {
+  offer_id: string;
+  offer_code: string;
+  title: string;
+  label: string | null;
+  provider: "robokassa" | "telegram_stars";
+  purchase_type: string;
+  currency: string;
+  base_amount: string;
+  final_amount: string;
+  discount_amount: string | null;
+  discount_percent: string | null;
+  energy_amount: number;
+  bonus_energy: number;
+  final_energy_amount: number;
+  stars_amount: number | null;
+  trigger_type: string;
+  priority: number;
+  source: string | null;
+  valid_until: string | null;
+  rule_id: string | null;
+  assignment_id: string | null;
+}
+
+export interface PaymentOffersResponse {
+  provider: "robokassa" | "telegram_stars";
+  purchase_type: string;
+  currency: string;
+  source: string;
+  trigger_type: string;
+  offers: PaymentOfferResponse[];
+}
+
+export interface MarkOfferShownItem {
+  offer_id: string;
+  usage_id: string | null;
+  status: "tracked" | "skipped";
+}
+
+export interface MarkOffersShownResponse {
+  items: MarkOfferShownItem[];
+}
+
 export interface TelegramStarsCreatePaymentResponse {
   payment_id: string;
   purchase_id: string;
@@ -562,6 +606,68 @@ export interface WalletHistoryItemResponse {
 export interface WalletHistoryResponse {
   items: WalletHistoryItemResponse[];
   next_cursor: string | null;
+}
+
+export interface DiscountRuleResponse {
+  id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  is_active: boolean;
+  priority: number;
+  trigger_type: string;
+  target_provider: string | null;
+  target_purchase_type: string | null;
+  target_currency: string | null;
+  target_offer_code: string | null;
+  discount_type: string;
+  discount_value: string;
+  bonus_energy: number;
+  bonus_percent: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  cooldown_hours: number | null;
+  global_cooldown_hours: number | null;
+  max_shows_per_day: number | null;
+  max_uses_total: number | null;
+  max_uses_per_user: number | null;
+  stackable: boolean;
+  stop_processing: boolean;
+  audience_filter: Record<string, unknown>;
+  source: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  meta: Record<string, unknown>;
+}
+
+export interface DiscountAssignmentResponse {
+  id: string;
+  user_id: string;
+  rule_id: string;
+  is_active: boolean;
+  assigned_at: string | null;
+  activated_at: string | null;
+  expires_at: string | null;
+  usage_count: number;
+  show_count: number;
+  last_shown_at: string | null;
+  last_used_at: string | null;
+  meta: Record<string, unknown>;
+}
+
+export interface DiscountStatsResponse {
+  active_rules: number;
+  total_rules: number;
+  usages_shown: number;
+  usages_purchased: number;
+  usages_dismissed: number;
+  conversion_rate: number;
+}
+
+export interface AdminUserOfferDebugResponse {
+  user_id: string;
+  state: Record<string, unknown>;
+  current_offer: Record<string, unknown> | null;
 }
 
 export interface ShareCreateResponse {
@@ -790,19 +896,70 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
   return handleResponse<HoroscopeFreeTodayResponse>(res);
 }
 
-export async function createRobokassaPayment(
-  product_code: string,
-  currency_code?: "RUB" | "USD" | "EUR"
-): Promise<RobokassaCreatePaymentResponse> {
+export async function createRobokassaPayment(payload: {
+  product_code?: string;
+  offer_id?: string;
+  usage_id?: string;
+  currency_code?: "RUB" | "USD" | "EUR";
+  idempotency_key?: string;
+}): Promise<RobokassaCreatePaymentResponse> {
   const res = await fetch(`${API_BASE}/payments/robokassa/create`, {
     method: "POST",
     headers: withAuthHeaders(undefined, true),
-    body: JSON.stringify({
-      product_code,
-      ...(currency_code ? { currency_code } : {})
-    })
+    body: JSON.stringify(payload)
   });
   return handleResponse<RobokassaCreatePaymentResponse>(res);
+}
+
+export async function getPaymentOffers(params: {
+  provider: "robokassa" | "telegram_stars";
+  currency?: "RUB" | "USD" | "EUR" | "XTR";
+  source?: string;
+  trigger_type?: string;
+}): Promise<PaymentOffersResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("provider", params.provider);
+  if (params.currency) searchParams.set("currency", params.currency);
+  if (params.source) searchParams.set("source", params.source);
+  if (params.trigger_type) searchParams.set("trigger_type", params.trigger_type);
+
+  const res = await fetch(`${API_BASE}/payments/offers?${searchParams.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<PaymentOffersResponse>(res);
+}
+
+export async function markPaymentOffersShown(payload: {
+  offer_ids: string[];
+  source?: string;
+  local_date?: string;
+  trigger_snapshot?: Record<string, unknown>;
+}): Promise<MarkOffersShownResponse> {
+  const res = await fetch(`${API_BASE}/payments/offers/mark-shown`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<MarkOffersShownResponse>(res);
+}
+
+export async function markPaymentOfferDismissed(usage_id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/payments/offers/mark-dismissed`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({ usage_id })
+  });
+  await handleResponse<Record<string, unknown>>(res);
+}
+
+export async function markPaymentOfferExpired(usage_id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/payments/offers/mark-expired`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({ usage_id })
+  });
+  await handleResponse<Record<string, unknown>>(res);
 }
 
 export async function getTelegramStarsOffers(source = "energy_page"): Promise<TelegramStarsOffersResponse> {
@@ -817,6 +974,7 @@ export async function getTelegramStarsOffers(source = "energy_page"): Promise<Te
 export async function createTelegramStarsPayment(payload: {
   offer_id?: string;
   product_code?: string;
+  usage_id?: string;
   idempotency_key?: string;
 }): Promise<TelegramStarsCreatePaymentResponse> {
   const res = await fetch(`${API_BASE}/payments/telegram-stars/create`, {
@@ -825,6 +983,95 @@ export async function createTelegramStarsPayment(payload: {
     body: JSON.stringify(payload)
   });
   return handleResponse<TelegramStarsCreatePaymentResponse>(res);
+}
+
+export async function adminListDiscountRules(): Promise<DiscountRuleResponse[]> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DiscountRuleResponse[]>(res);
+}
+
+export async function adminCreateDiscountRule(
+  payload: Record<string, unknown>
+): Promise<DiscountRuleResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DiscountRuleResponse>(res);
+}
+
+export async function adminUpdateDiscountRule(
+  ruleId: string,
+  payload: Record<string, unknown>
+): Promise<DiscountRuleResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/${encodeURIComponent(ruleId)}`, {
+    method: "PATCH",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DiscountRuleResponse>(res);
+}
+
+export async function adminToggleDiscountRule(ruleId: string): Promise<DiscountRuleResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/${encodeURIComponent(ruleId)}/toggle`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<DiscountRuleResponse>(res);
+}
+
+export async function adminArchiveDiscountRule(ruleId: string): Promise<{ status: string }> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/${encodeURIComponent(ruleId)}`, {
+    method: "DELETE",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<{ status: string }>(res);
+}
+
+export async function adminAssignDiscountRule(payload: {
+  user_id: string;
+  rule_id: string;
+  expires_at?: string | null;
+  meta?: Record<string, unknown>;
+}): Promise<DiscountAssignmentResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/assignments`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<DiscountAssignmentResponse>(res);
+}
+
+export async function adminListAssignments(userId?: string): Promise<DiscountAssignmentResponse[]> {
+  const params = new URLSearchParams();
+  if (userId) params.set("user_id", userId);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`${API_BASE}/admin/discounts/assignments${suffix}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DiscountAssignmentResponse[]>(res);
+}
+
+export async function adminGetDiscountStats(): Promise<DiscountStatsResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/stats`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DiscountStatsResponse>(res);
+}
+
+export async function adminGetUserOfferDebug(userId: string): Promise<AdminUserOfferDebugResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/debug/user-offer?user_id=${encodeURIComponent(userId)}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminUserOfferDebugResponse>(res);
 }
 
 export async function getTelegramStarsPaymentStatus(paymentId: string): Promise<TelegramStarsPaymentStatusResponse> {

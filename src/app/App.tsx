@@ -6,6 +6,7 @@ import HomeScreen from "@/pages/HomeScreen";
 import CalendarPage from "@/pages/CalendarPage";
 import DiaryPage from "@/pages/DiaryPage";
 import EnergyPage from "@/pages/EnergyPage";
+import AdminDiscountsPage from "@/pages/AdminDiscountsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import HoroscopePage from "@/pages/HoroscopePage";
 import InterpretationPage from "@/pages/InterpretationPage";
@@ -123,6 +124,7 @@ export default function App() {
               <Route path="/" element={<HomeScreen telegramUser={telegramUser} />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/energy" element={<EnergyPage />} />
+              <Route path="/admin/discounts" element={<AdminDiscountsPage />} />
               <Route path="/diary" element={<DiaryPage />} />
               <Route
                 path="/spreads"

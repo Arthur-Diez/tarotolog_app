@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Loader2, RefreshCw, Share2, Users, X, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -11,16 +12,19 @@ import {
   createTelegramStarsPayment,
   createRobokassaPayment,
   getEnergyAdsState,
+  getPaymentOffers,
   getReferralProgram,
-  getTelegramStarsOffers,
   getTelegramStarsPaymentStatus,
   getPurchaseStatus,
   getWalletHistory,
+  markPaymentOfferDismissed,
+  markPaymentOfferExpired,
+  markPaymentOffersShown,
   startEnergyRewardAd,
   type EnergyAdsStateResponse,
+  type PaymentOfferResponse,
   type PurchaseStatusResponse,
   type ReferralProgramResponse,
-  type TelegramStarsOfferResponse,
   type TelegramStarsPaymentStatusResponse,
   type WalletHistoryItemResponse
 } from "@/lib/api";
@@ -35,6 +39,8 @@ const BALANCE_ANIMATION_DURATION_MS = 850;
 const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
 const ADS_STATE_REFETCH_DEBOUNCE_MS = 3000;
+const OFFERS_COUNTDOWN_TICK_MS = 1000;
+const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 const TASK_ADSGRAM_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
 
@@ -50,13 +56,6 @@ interface PendingPurchaseStorage {
   product_code?: string | null;
   offer_id?: string | null;
   created_at: string;
-}
-
-interface EnergyPackConfig {
-  productCode: string;
-  title: string;
-  energyAmount: number;
-  pricesMinor: Record<CurrencyCode, number>;
 }
 
 interface PurchaseNotice {
@@ -80,39 +79,6 @@ interface PaymentStatusView {
   title: string | null;
   energy_credited: number;
 }
-
-const ENERGY_PACKS: EnergyPackConfig[] = [
-  {
-    productCode: "energy_10",
-    title: "Пакет Старт",
-    energyAmount: 10,
-    pricesMinor: { RUB: 19900, USD: 399, EUR: 399 }
-  },
-  {
-    productCode: "energy_25",
-    title: "Пакет Фокус",
-    energyAmount: 25,
-    pricesMinor: { RUB: 44900, USD: 899, EUR: 899 }
-  },
-  {
-    productCode: "energy_60",
-    title: "Пакет Поток",
-    energyAmount: 60,
-    pricesMinor: { RUB: 89900, USD: 1699, EUR: 1699 }
-  },
-  {
-    productCode: "energy_100",
-    title: "Пакет Профи",
-    energyAmount: 100,
-    pricesMinor: { RUB: 149000, USD: 2499, EUR: 2499 }
-  },
-  {
-    productCode: "energy_200",
-    title: "Пакет Максимум",
-    energyAmount: 200,
-    pricesMinor: { RUB: 249000, USD: 3999, EUR: 3999 }
-  }
-];
 
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "RUB", label: "₽ RUB" },
@@ -214,8 +180,9 @@ function normalizeErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function formatPrice(minor: number, currency: CurrencyCode): string {
-  const amount = minor / 100;
+function formatFiatAmount(amountValue: string, currency: CurrencyCode): string {
+  const amount = Number(amountValue || "0");
+  if (!Number.isFinite(amount)) return `0 ${currency}`;
   if (currency === "RUB") {
     return `${Math.round(amount).toLocaleString("ru-RU")} ₽`;
   }
@@ -226,6 +193,45 @@ function formatPrice(minor: number, currency: CurrencyCode): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);
+}
+
+function formatOfferPrice(offer: PaymentOfferResponse, fallbackCurrency: CurrencyCode): string {
+  if (offer.provider === "telegram_stars") {
+    const stars = offer.stars_amount ?? Math.round(Number(offer.final_amount || "0"));
+    return `${stars} ⭐`;
+  }
+  const normalized = offer.currency === "USD" || offer.currency === "EUR" || offer.currency === "RUB" ? offer.currency : fallbackCurrency;
+  return formatFiatAmount(offer.final_amount, normalized as CurrencyCode);
+}
+
+function hasOfferDiscount(offer: PaymentOfferResponse): boolean {
+  const discountAmount = Number(offer.discount_amount || "0");
+  const baseAmount = Number(offer.base_amount || "0");
+  const finalAmount = Number(offer.final_amount || "0");
+  const discountPercent = Number(offer.discount_percent || "0");
+  return discountAmount > 0 || discountPercent > 0 || (baseAmount > 0 && finalAmount > 0 && finalAmount < baseAmount);
+}
+
+function formatOfferOldPrice(offer: PaymentOfferResponse, fallbackCurrency: CurrencyCode): string | null {
+  if (!hasOfferDiscount(offer)) return null;
+  if (offer.provider === "telegram_stars") {
+    const baseStars = Math.round(Number(offer.base_amount || "0"));
+    return baseStars > 0 ? `${baseStars} ⭐` : null;
+  }
+  const normalized = offer.currency === "USD" || offer.currency === "EUR" || offer.currency === "RUB" ? offer.currency : fallbackCurrency;
+  return formatFiatAmount(offer.base_amount, normalized as CurrencyCode);
+}
+
+function formatOfferRemaining(validUntil: string | null): string | null {
+  if (!validUntil) return null;
+  const target = new Date(validUntil).getTime();
+  if (!Number.isFinite(target)) return null;
+  const diffSeconds = Math.max(0, Math.floor((target - Date.now()) / 1000));
+  if (diffSeconds <= 0) return "00:00:00";
+  const hours = Math.floor(diffSeconds / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
 }
 
 function resolveAutodetectedCurrency(params: {
@@ -304,6 +310,7 @@ function toPaymentStatusViewFromStarsPayment(payment: TelegramStarsPaymentStatus
 }
 
 export default function EnergyPage() {
+  const navigate = useNavigate();
   const { profile, loading, refresh } = useProfile();
   const user = profile?.user;
   const energyBalance = user?.energy_balance ?? 0;
@@ -321,9 +328,10 @@ export default function EnergyPage() {
   const [purchaseNotice, setPurchaseNotice] = useState<PurchaseNotice | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => readStoredCurrency() || "RUB");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("robokassa");
-  const [starsOffers, setStarsOffers] = useState<TelegramStarsOfferResponse[]>([]);
-  const [starsOffersLoading, setStarsOffersLoading] = useState(false);
-  const [starsOffersError, setStarsOffersError] = useState<string | null>(null);
+  const [paymentOffers, setPaymentOffers] = useState<PaymentOfferResponse[]>([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [offersError, setOffersError] = useState<string | null>(null);
+  const [offerUsageMap, setOfferUsageMap] = useState<Record<string, string | null>>({});
 
   const [adsState, setAdsState] = useState<EnergyAdsStateResponse | null>(null);
   const [adsLoading, setAdsLoading] = useState(true);
@@ -353,6 +361,11 @@ export default function EnergyPage() {
   const currencyWasChangedManuallyRef = useRef(Boolean(readStoredCurrency()));
   const lastAdsReloadAtRef = useRef(0);
   const taskRewardInFlightRef = useRef(false);
+  const trackedOfferIdsRef = useRef<Set<string>>(new Set());
+  const handledExpiredUsageRef = useRef<Set<string>>(new Set());
+  const handledDismissedUsageRef = useRef<Set<string>>(new Set());
+  const offerExpiryInFlightRef = useRef(false);
+  const activeOfferUsageIdsRef = useRef<Set<string>>(new Set());
 
   const telegramLanguage = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -524,29 +537,83 @@ export default function EnergyPage() {
     [historyNextCursor]
   );
 
-  const loadStarsOffers = useCallback(async () => {
+  const loadPaymentOffers = useCallback(async () => {
+    const offersCurrency = selectedPaymentMethod === "telegram_stars" ? "XTR" : selectedCurrency;
     try {
-      setStarsOffersLoading(true);
-      const response = await getTelegramStarsOffers("energy_page");
-      const sorted = [...(response.offers || [])].sort((a, b) => a.amount_stars - b.amount_stars);
-      setStarsOffers(sorted);
-      setStarsOffersError(null);
+      setOffersLoading(true);
+      const response = await getPaymentOffers({
+        provider: selectedPaymentMethod,
+        currency: offersCurrency,
+        source: "energy_page",
+        trigger_type: "manual"
+      });
+      const sorted = [...(response.offers || [])].sort((a, b) => {
+        if (a.final_energy_amount !== b.final_energy_amount) {
+          return a.final_energy_amount - b.final_energy_amount;
+        }
+        return Number(a.final_amount || "0") - Number(b.final_amount || "0");
+      });
+      setPaymentOffers(sorted);
+      setOfferUsageMap((prev) => {
+        const allowed = new Set(sorted.map((offer) => offer.offer_id));
+        const next: Record<string, string | null> = {};
+        Object.entries(prev).forEach(([offerId, usageId]) => {
+          if (allowed.has(offerId)) {
+            next[offerId] = usageId;
+          }
+        });
+        return next;
+      });
+      setOffersError(null);
+
+      const unseenOfferIds = sorted
+        .map((offer) => offer.offer_id)
+        .filter((offerId) => !trackedOfferIdsRef.current.has(offerId));
+      if (unseenOfferIds.length > 0) {
+        try {
+          const marked = await markPaymentOffersShown({
+            offer_ids: unseenOfferIds,
+            source: "energy_page",
+            trigger_snapshot: {
+              provider: selectedPaymentMethod,
+              currency: offersCurrency
+            }
+          });
+          setOfferUsageMap((prev) => {
+            const next = { ...prev };
+            marked.items.forEach((item) => {
+              trackedOfferIdsRef.current.add(item.offer_id);
+              if (item.usage_id) {
+                next[item.offer_id] = item.usage_id;
+              } else if (!(item.offer_id in next)) {
+                next[item.offer_id] = null;
+              }
+            });
+            return next;
+          });
+        } catch (trackError) {
+          console.warn("[EnergyPage] offer shown tracking failed", trackError);
+        }
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
-        setStarsOffersError("Telegram Stars временно недоступны. Используйте оплату картой.");
+        setOffersError(
+          selectedPaymentMethod === "telegram_stars"
+            ? "Telegram Stars временно недоступны. Используйте оплату картой."
+            : "Платёжные офферы пока недоступны."
+        );
       } else {
-        setStarsOffersError(normalizeErrorMessage(error, "Не удалось загрузить предложения Telegram Stars"));
+        setOffersError(normalizeErrorMessage(error, "Не удалось загрузить предложения оплаты"));
       }
+      setPaymentOffers([]);
     } finally {
-      setStarsOffersLoading(false);
+      setOffersLoading(false);
     }
-  }, []);
+  }, [selectedCurrency, selectedPaymentMethod]);
 
   useEffect(() => {
-    if (selectedPaymentMethod !== "telegram_stars") return;
-    if (starsOffers.length > 0) return;
-    void loadStarsOffers();
-  }, [loadStarsOffers, selectedPaymentMethod, starsOffers.length]);
+    void loadPaymentOffers();
+  }, [loadPaymentOffers]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -589,6 +656,68 @@ export default function EnergyPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [loadAdsState]);
+
+  useEffect(() => {
+    if (paymentOffers.length === 0) return;
+    const intervalId = window.setInterval(() => {
+      if (offerExpiryInFlightRef.current) return;
+
+      const expiredUsageIds = paymentOffers
+        .map((offer) => offerUsageMap[offer.offer_id])
+        .filter((usageId): usageId is string => Boolean(usageId))
+        .filter((usageId) => !handledExpiredUsageRef.current.has(usageId))
+        .filter((usageId) => {
+          const relatedOffer = paymentOffers.find((offer) => offerUsageMap[offer.offer_id] === usageId);
+          if (!relatedOffer?.valid_until) return false;
+          const expireAt = new Date(relatedOffer.valid_until).getTime();
+          return Number.isFinite(expireAt) && Date.now() >= expireAt;
+        });
+
+      if (expiredUsageIds.length === 0) return;
+      offerExpiryInFlightRef.current = true;
+      void (async () => {
+        try {
+          await Promise.all(
+            expiredUsageIds.map(async (usageId) => {
+              handledExpiredUsageRef.current.add(usageId);
+              await markPaymentOfferExpired(usageId);
+            })
+          );
+          await loadPaymentOffers();
+        } catch {
+          expiredUsageIds.forEach((usageId) => handledExpiredUsageRef.current.delete(usageId));
+        } finally {
+          offerExpiryInFlightRef.current = false;
+        }
+      })();
+    }, OFFERS_COUNTDOWN_TICK_MS);
+    return () => window.clearInterval(intervalId);
+  }, [loadPaymentOffers, offerUsageMap, paymentOffers]);
+
+  useEffect(() => {
+    const currentUsageIds = new Set(
+      paymentOffers
+        .map((offer) => offerUsageMap[offer.offer_id])
+        .filter((usageId): usageId is string => Boolean(usageId))
+    );
+
+    const previousUsageIds = activeOfferUsageIdsRef.current;
+    const becameHidden = [...previousUsageIds].filter((usageId) => !currentUsageIds.has(usageId));
+    if (becameHidden.length > 0) {
+      void Promise.all(
+        becameHidden.map(async (usageId) => {
+          if (handledDismissedUsageRef.current.has(usageId)) return;
+          handledDismissedUsageRef.current.add(usageId);
+          try {
+            await markPaymentOfferDismissed(usageId);
+          } catch {
+            handledDismissedUsageRef.current.delete(usageId);
+          }
+        })
+      );
+    }
+    activeOfferUsageIdsRef.current = currentUsageIds;
+  }, [offerUsageMap, paymentOffers]);
 
   const handleTaskRewardClaim = useCallback(async (taskEventDetail?: unknown) => {
     if (adsAction || taskRewardInFlightRef.current) return;
@@ -715,6 +844,7 @@ export default function EnergyPage() {
         }
 
         await refresh();
+        void loadPaymentOffers();
         void loadReferralProgram();
         if (historyOpen) {
           void loadWalletHistory({ reset: true });
@@ -747,7 +877,7 @@ export default function EnergyPage() {
       setErrorText(null);
       setStatusText("Платёж ещё обрабатывается. Мы проверяем статус автоматически.");
     },
-    [clearStatusAutoHideTimer, historyOpen, loadReferralProgram, loadWalletHistory, refresh, scheduleStatusAutoHide]
+    [clearStatusAutoHideTimer, historyOpen, loadPaymentOffers, loadReferralProgram, loadWalletHistory, refresh, scheduleStatusAutoHide]
   );
 
   const checkPurchaseStatus = useCallback(
@@ -785,16 +915,21 @@ export default function EnergyPage() {
     [applyPurchaseStatus]
   );
 
-  const handleBuyPack = useCallback(
-    async (pack: EnergyPackConfig) => {
+  const handleBuyRobokassaOffer = useCallback(
+    async (offer: PaymentOfferResponse) => {
       clearStatusAutoHideTimer();
-      setCreatingProductCode(pack.productCode);
+      setCreatingProductCode(offer.offer_id);
       setUiState("creating");
       setStatusText(null);
       setErrorText(null);
 
       try {
-        const payment = await createRobokassaPayment(pack.productCode, selectedCurrency);
+        const usageId = offerUsageMap[offer.offer_id] ?? undefined;
+        const payment = await createRobokassaPayment({
+          offer_id: offer.offer_id,
+          usage_id: usageId,
+          currency_code: selectedCurrency
+        });
         if (!payment.payment_url || !payment.purchase_id) {
           throw new Error("Не удалось создать платёж");
         }
@@ -833,11 +968,11 @@ export default function EnergyPage() {
         setCreatingProductCode(null);
       }
     },
-    [clearStatusAutoHideTimer, selectedCurrency]
+    [clearStatusAutoHideTimer, offerUsageMap, selectedCurrency]
   );
 
   const handleBuyStarsOffer = useCallback(
-    async (offer: TelegramStarsOfferResponse) => {
+    async (offer: PaymentOfferResponse) => {
       clearStatusAutoHideTimer();
       setCreatingProductCode(offer.offer_id);
       setUiState("creating");
@@ -845,7 +980,8 @@ export default function EnergyPage() {
       setErrorText(null);
 
       try {
-        const starsPayment = await createTelegramStarsPayment({ offer_id: offer.offer_id });
+        const usageId = offerUsageMap[offer.offer_id] ?? undefined;
+        const starsPayment = await createTelegramStarsPayment({ offer_id: offer.offer_id, usage_id: usageId });
         const invoiceUrl = starsPayment.invoice_url || starsPayment.invoice_link || starsPayment.payment_url || null;
         if (!invoiceUrl || !starsPayment.payment_id) {
           throw new Error("Не удалось создать Stars-платёж");
@@ -903,7 +1039,7 @@ export default function EnergyPage() {
         setCreatingProductCode(null);
       }
     },
-    [checkPurchaseStatus, clearStatusAutoHideTimer, scheduleStatusAutoHide]
+    [checkPurchaseStatus, clearStatusAutoHideTimer, offerUsageMap, scheduleStatusAutoHide]
   );
 
   useEffect(
@@ -968,6 +1104,7 @@ export default function EnergyPage() {
   }, [checkPurchaseStatus, pendingPurchase]);
 
   const canCheckStatus = Boolean(pendingPurchase?.entity_id) && !checkingStatus;
+  const isDiscountAdmin = user?.id === ADMIN_USER_ID;
   const formattedEnergyBalance = Math.round(displayedEnergyBalance).toLocaleString("ru-RU");
   const taskBlockId = useMemo(() => {
     const backendBlockId = adsState?.adsgram_task_block_id ?? null;
@@ -1182,6 +1319,16 @@ export default function EnergyPage() {
                 ? "Вы можете приобрести энергию официальной валютой Telegram - Telegram Stars."
                 : "Вы можете приобрести энергию в удобной для вас валюте, а если оплата картой не проходит - используйте Telegram Stars."}
             </p>
+            {isDiscountAdmin ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-fit border-white/20"
+                onClick={() => navigate("/admin/discounts")}
+              >
+                Админка скидок
+              </Button>
+            ) : null}
             {selectedPaymentMethod === "robokassa" ? (
               <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
                 {CURRENCY_OPTIONS.map((option) => (
@@ -1205,84 +1352,89 @@ export default function EnergyPage() {
             ) : null}
           </div>
 
-          {selectedPaymentMethod === "telegram_stars" ? (
-            <div className="space-y-3">
-              {starsOffersLoading ? <div className="h-24 animate-pulse rounded-xl bg-white/10" /> : null}
-              {starsOffersError ? <p className="text-sm text-red-100">{starsOffersError}</p> : null}
-              {!starsOffersLoading && !starsOffersError && starsOffers.length === 0 ? (
-                <p className="text-sm text-[var(--text-secondary)]">Сейчас нет доступных Stars-офферов.</p>
-              ) : null}
-              <div className="grid gap-3">
-                {starsOffers.map((offer) => {
-                  const creatingThisOffer = creatingProductCode === offer.offer_id;
-                  return (
-                    <div
-                      key={offer.offer_id}
-                      className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm text-[var(--text-secondary)]">{offer.title}</p>
-                          <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{offer.total_energy} ⚡</p>
-                          {offer.bonus_energy > 0 ? (
-                            <p className="mt-1 text-xs text-emerald-100/90">Бонус: +{offer.bonus_energy} ⚡</p>
-                          ) : null}
-                        </div>
-                        <p className="text-base font-semibold text-[var(--accent-gold)]">{offer.amount_stars} ⭐</p>
-                      </div>
-                      <Button
-                        className="mt-3 w-full"
-                        variant="default"
-                        disabled={Boolean(creatingProductCode) || checkingStatus}
-                        onClick={() => {
-                          void handleBuyStarsOffer(offer);
-                        }}
-                      >
-                        {creatingThisOffer ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Подготовка платежа...
-                          </span>
-                        ) : (
-                          "Купить за Stars"
-                        )}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
+          <div className="space-y-3">
+            {offersLoading ? <div className="h-24 animate-pulse rounded-xl bg-white/10" /> : null}
+            {offersError ? <p className="text-sm text-red-100">{offersError}</p> : null}
+            {!offersLoading && !offersError && paymentOffers.length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">
+                {selectedPaymentMethod === "telegram_stars"
+                  ? "Сейчас нет доступных Stars-офферов."
+                  : "Сейчас нет доступных предложений для оплаты картой."}
+              </p>
+            ) : null}
+
             <div className="grid gap-3">
-              {ENERGY_PACKS.map((pack) => {
-                const creatingThisPack = creatingProductCode === pack.productCode;
-                const priceLabel = formatPrice(pack.pricesMinor[selectedCurrency], selectedCurrency);
+              {paymentOffers.map((offer) => {
+                const creatingThisOffer = creatingProductCode === offer.offer_id;
+                const totalEnergy = offer.final_energy_amount || offer.energy_amount + offer.bonus_energy;
+                const hasDiscount = hasOfferDiscount(offer);
+                const oldPrice = formatOfferOldPrice(offer, selectedCurrency);
+                const priceLabel = formatOfferPrice(offer, selectedCurrency);
+                const remaining = formatOfferRemaining(offer.valid_until);
+                const discountPercent = Number(offer.discount_percent || "0");
+                const discountBadge =
+                  discountPercent > 0
+                    ? `-${Math.round(discountPercent)}%`
+                    : hasDiscount
+                      ? "Акция"
+                      : null;
 
                 return (
                   <div
-                    key={pack.productCode}
+                    key={offer.offer_id}
                     className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm text-[var(--text-secondary)]">{pack.title}</p>
-                        <p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{pack.energyAmount} ⚡</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm text-[var(--text-secondary)]">{offer.title}</p>
+                          {discountBadge ? (
+                            <span className="rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
+                              {discountBadge}
+                            </span>
+                          ) : null}
+                          {offer.trigger_type !== "manual" ? (
+                            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">
+                              {offer.trigger_type.replaceAll("_", " ")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-end gap-2">
+                          <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
+                          {offer.bonus_energy > 0 ? (
+                            <p className="text-xs text-emerald-100/90">+{offer.bonus_energy} бонус</p>
+                          ) : null}
+                        </div>
+                        {remaining ? (
+                          <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">Акция активна: {remaining}</p>
+                        ) : null}
                       </div>
-                      <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
+                      <div className="text-right">
+                        <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
+                        {oldPrice ? (
+                          <p className="text-xs text-[var(--text-tertiary)] line-through">{oldPrice}</p>
+                        ) : null}
+                      </div>
                     </div>
                     <Button
                       className="mt-3 w-full"
                       variant="default"
                       disabled={Boolean(creatingProductCode) || checkingStatus}
                       onClick={() => {
-                        void handleBuyPack(pack);
+                        if (selectedPaymentMethod === "telegram_stars") {
+                          void handleBuyStarsOffer(offer);
+                          return;
+                        }
+                        void handleBuyRobokassaOffer(offer);
                       }}
                     >
-                      {creatingThisPack ? (
+                      {creatingThisOffer ? (
                         <span className="inline-flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Подготовка платежа...
                         </span>
+                      ) : selectedPaymentMethod === "telegram_stars" ? (
+                        "Купить за Stars"
                       ) : (
                         "Купить"
                       )}
@@ -1291,7 +1443,7 @@ export default function EnergyPage() {
                 );
               })}
             </div>
-          )}
+          </div>
         </Card>
 
         {(statusText || errorText || activePurchase || pendingPurchase?.entity_id) && (
