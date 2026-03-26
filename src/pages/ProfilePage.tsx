@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import {
   DEFAULT_WIDGET_KEYS,
   WIDGET_KEYS,
-  adminGetDiscountStats,
   type UpdateProfilePayload,
   type WidgetKey
 } from "@/lib/api";
@@ -85,6 +84,24 @@ function getTelegramUsername(): string | null {
   if (typeof window === "undefined") return null;
   const raw = window.Telegram?.WebApp?.initDataUnsafe?.user?.username;
   return typeof raw === "string" && raw.trim() ? raw.trim().toLowerCase() : null;
+}
+
+function getTelegramUserFromInitData(): { id: number | null; username: string | null } {
+  if (typeof window === "undefined") return { id: null, username: null };
+  const initData = window.Telegram?.WebApp?.initData;
+  if (!initData) return { id: null, username: null };
+  try {
+    const params = new URLSearchParams(initData);
+    const userRaw = params.get("user");
+    if (!userRaw) return { id: null, username: null };
+    const user = JSON.parse(userRaw) as { id?: unknown; username?: unknown };
+    return {
+      id: typeof user.id === "number" ? user.id : null,
+      username: typeof user.username === "string" && user.username.trim() ? user.username.trim().toLowerCase() : null
+    };
+  } catch {
+    return { id: null, username: null };
+  }
 }
 
 function trimToNull(value: string): string | null {
@@ -232,22 +249,27 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
-  const [isDiscountAdmin, setIsDiscountAdmin] = useState(false);
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
   const telegramUserId = getTelegramUserId();
   const telegramUsername = getTelegramUsername();
+  const telegramFromInitData = getTelegramUserFromInitData();
   const isAdminByIdentity = useMemo(() => {
     const backendUsername = user?.telegram?.username?.trim().toLowerCase() ?? null;
     const userId = user?.id ?? null;
     return (
+      user?.is_admin === true ||
       userId === ADMIN_USER_ID ||
       backendUsername === ADMIN_USERNAME ||
       telegramUserId === ADMIN_TELEGRAM_ID ||
-      telegramUsername === ADMIN_USERNAME
+      telegramUsername === ADMIN_USERNAME ||
+      telegramFromInitData.id === ADMIN_TELEGRAM_ID ||
+      telegramFromInitData.username === ADMIN_USERNAME
     );
-  }, [telegramUserId, telegramUsername, user?.id, user?.telegram?.username]);
+  }, [telegramUserId, telegramUsername, telegramFromInitData.id, telegramFromInitData.username, user?.id, user?.telegram?.username, user?.is_admin]);
+
+  const isDiscountAdmin = isAdminByIdentity;
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -539,34 +561,6 @@ export default function ProfilePage() {
       setActiveSave(null);
     }
   }, [activeSave, clearError, saveError]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (isAdminByIdentity) {
-      setIsDiscountAdmin(true);
-    }
-
-    if (!profile) {
-      if (!isAdminByIdentity) {
-        setIsDiscountAdmin(false);
-      }
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void adminGetDiscountStats()
-      .then(() => {
-        if (!cancelled) setIsDiscountAdmin(true);
-      })
-      .catch(() => {
-        if (!cancelled && !isAdminByIdentity) setIsDiscountAdmin(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profile, isAdminByIdentity]);
 
   const onPersonalFieldChange = <K extends keyof PersonalFormState>(key: K, value: PersonalFormState[K]) => {
     setPersonal((prev) => ({

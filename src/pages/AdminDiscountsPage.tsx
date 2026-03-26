@@ -36,6 +36,24 @@ function getTelegramUsername(): string | null {
   return typeof raw === "string" && raw.trim() ? raw.trim().toLowerCase() : null;
 }
 
+function getTelegramUserFromInitData(): { id: number | null; username: string | null } {
+  if (typeof window === "undefined") return { id: null, username: null };
+  const initData = window.Telegram?.WebApp?.initData;
+  if (!initData) return { id: null, username: null };
+  try {
+    const params = new URLSearchParams(initData);
+    const userRaw = params.get("user");
+    if (!userRaw) return { id: null, username: null };
+    const user = JSON.parse(userRaw) as { id?: unknown; username?: unknown };
+    return {
+      id: typeof user.id === "number" ? user.id : null,
+      username: typeof user.username === "string" && user.username.trim() ? user.username.trim().toLowerCase() : null
+    };
+  } catch {
+    return { id: null, username: null };
+  }
+}
+
 const DEFAULT_RULE_DRAFT = {
   code: "scheduled_weekend_15",
   title: "Плановая скидка -15%",
@@ -56,16 +74,20 @@ export default function AdminDiscountsPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const telegramUserId = getTelegramUserId();
   const telegramUsername = getTelegramUsername();
+  const telegramFromInitData = getTelegramUserFromInitData();
   const isAdminByIdentity = useMemo(() => {
     const backendUsername = profile?.user?.telegram?.username?.trim().toLowerCase() ?? null;
     const userId = profile?.user?.id ?? null;
     return (
+      profile?.user?.is_admin === true ||
       userId === ADMIN_USER_ID ||
       backendUsername === ADMIN_USERNAME ||
       telegramUserId === ADMIN_TELEGRAM_ID ||
-      telegramUsername === ADMIN_USERNAME
+      telegramUsername === ADMIN_USERNAME ||
+      telegramFromInitData.id === ADMIN_TELEGRAM_ID ||
+      telegramFromInitData.username === ADMIN_USERNAME
     );
-  }, [profile?.user?.id, profile?.user?.telegram?.username, telegramUserId, telegramUsername]);
+  }, [profile?.user?.id, profile?.user?.telegram?.username, profile?.user?.is_admin, telegramUserId, telegramUsername, telegramFromInitData.id, telegramFromInitData.username]);
 
   const [rules, setRules] = useState<DiscountRuleResponse[]>([]);
   const [rulesLoading, setRulesLoading] = useState(false);

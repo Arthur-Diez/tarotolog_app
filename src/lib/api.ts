@@ -153,6 +153,7 @@ export interface BirthProfile {
 export interface ProfileResponse {
   user: {
     id?: string | null;
+    is_admin?: boolean;
     display_name: string | null;
     energy_balance: number;
     lang: string | null;
