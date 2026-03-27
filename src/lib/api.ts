@@ -642,6 +642,11 @@ export interface DiscountRuleResponse {
   stop_processing: boolean;
   audience_filter: Record<string, unknown>;
   source: string | null;
+  is_test: boolean;
+  display_order: number | null;
+  archived_at: string | null;
+  created_by: string | null;
+  updated_by: string | null;
   created_at: string | null;
   updated_at: string | null;
   meta: Record<string, unknown>;
@@ -708,6 +713,45 @@ export interface DiscountDebugUsagesResponse {
 export interface DiscountSimulateShowResponse {
   resolve: DiscountResolveDebugResponse;
   shown: MarkOffersShownResponse;
+}
+
+export interface AdminAccessResponse {
+  allowed: boolean;
+  user_id: string;
+}
+
+export interface AdminDashboardSummaryResponse {
+  users_total: number;
+  users_today: number;
+  ads_main_today: number;
+  ads_task_today: number;
+  purchases_today: number;
+  revenue_rub_today: string;
+  revenue_usd_today: string;
+  revenue_eur_today: string;
+}
+
+export interface AdminUserSearchItem {
+  user_id: string;
+  display_name: string | null;
+  username: string | null;
+  telegram_user_id: number | null;
+  created_at: string | null;
+}
+
+export interface AdminUserSearchResponse {
+  query: string;
+  items: AdminUserSearchItem[];
+}
+
+export interface AdminAnalyticsResponse {
+  active_rules: number;
+  archived_rules: number;
+  test_rules: number;
+  users_with_assignments: number;
+  total_usages: number;
+  purchased_usages: number;
+  conversion_rate: number;
 }
 
 export interface ShareCreateResponse {
@@ -1033,6 +1077,63 @@ export async function adminListDiscountRules(): Promise<DiscountRuleResponse[]> 
   return handleResponse<DiscountRuleResponse[]>(res);
 }
 
+export async function adminProbeDiscountAccess(): Promise<AdminAccessResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/access`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminAccessResponse>(res);
+}
+
+export async function adminGetDashboardSummary(): Promise<AdminDashboardSummaryResponse> {
+  const res = await fetch(`${API_BASE}/admin/dashboard/summary`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminDashboardSummaryResponse>(res);
+}
+
+export async function adminGetRecentPurchases(limit = 20): Promise<{ items: Record<string, unknown>[] }> {
+  const res = await fetch(`${API_BASE}/admin/dashboard/recent-purchases?limit=${limit}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<{ items: Record<string, unknown>[] }>(res);
+}
+
+export async function adminGetRecentUsages(limit = 30): Promise<{ items: Record<string, unknown>[] }> {
+  const res = await fetch(`${API_BASE}/admin/dashboard/recent-usages?limit=${limit}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<{ items: Record<string, unknown>[] }>(res);
+}
+
+export async function adminGetRecentActions(limit = 30): Promise<{ items: Record<string, unknown>[] }> {
+  const res = await fetch(`${API_BASE}/admin/dashboard/recent-actions?limit=${limit}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<{ items: Record<string, unknown>[] }>(res);
+}
+
+export async function adminSearchUsers(q: string, limit = 20): Promise<AdminUserSearchResponse> {
+  const query = new URLSearchParams({ q, limit: String(limit) });
+  const res = await fetch(`${API_BASE}/admin/users/search?${query.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminUserSearchResponse>(res);
+}
+
+export async function adminGetDiscountRule(ruleId: string): Promise<DiscountRuleResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/${encodeURIComponent(ruleId)}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DiscountRuleResponse>(res);
+}
+
 export async function adminCreateDiscountRule(
   payload: Record<string, unknown>
 ): Promise<DiscountRuleResponse> {
@@ -1073,6 +1174,26 @@ export async function adminArchiveDiscountRule(ruleId: string): Promise<{ status
   return handleResponse<{ status: string }>(res);
 }
 
+export async function adminDuplicateDiscountRule(ruleId: string): Promise<DiscountRuleResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/${encodeURIComponent(ruleId)}/duplicate`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<DiscountRuleResponse>(res);
+}
+
+export async function adminReorderDiscountRules(
+  items: Array<{ rule_id: string; display_order?: number; priority?: number }>
+): Promise<{ status: string; updated: number }> {
+  const res = await fetch(`${API_BASE}/admin/discounts/rules/reorder`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({ items })
+  });
+  return handleResponse<{ status: string; updated: number }>(res);
+}
+
 export async function adminAssignDiscountRule(payload: {
   user_id: string;
   rule_id: string;
@@ -1098,12 +1219,53 @@ export async function adminListAssignments(userId?: string): Promise<DiscountAss
   return handleResponse<DiscountAssignmentResponse[]>(res);
 }
 
+export async function adminDisableAssignment(assignmentId: string): Promise<{ status: string; assignment_id: string }> {
+  const res = await fetch(`${API_BASE}/admin/discounts/assignments/${encodeURIComponent(assignmentId)}/disable`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<{ status: string; assignment_id: string }>(res);
+}
+
+export async function adminExpireAssignment(assignmentId: string): Promise<{ status: string; assignment_id: string }> {
+  const res = await fetch(`${API_BASE}/admin/discounts/assignments/${encodeURIComponent(assignmentId)}/expire`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<{ status: string; assignment_id: string }>(res);
+}
+
+export async function adminListAssignmentsHistory(params?: {
+  user_id?: string;
+  limit?: number;
+}): Promise<{ items: Record<string, unknown>[] }> {
+  const query = new URLSearchParams();
+  if (params?.user_id) query.set("user_id", params.user_id);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetch(`${API_BASE}/admin/discounts/assignments/history${suffix}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<{ items: Record<string, unknown>[] }>(res);
+}
+
 export async function adminGetDiscountStats(): Promise<DiscountStatsResponse> {
   const res = await fetch(`${API_BASE}/admin/discounts/stats`, {
     method: "GET",
     headers: withAuthHeaders()
   });
   return handleResponse<DiscountStatsResponse>(res);
+}
+
+export async function adminGetDiscountAnalytics(): Promise<AdminAnalyticsResponse> {
+  const res = await fetch(`${API_BASE}/admin/discounts/analytics`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminAnalyticsResponse>(res);
 }
 
 export async function adminGetUserOfferDebug(userId: string): Promise<AdminUserOfferDebugResponse> {

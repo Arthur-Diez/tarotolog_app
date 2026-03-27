@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   DEFAULT_WIDGET_KEYS,
   WIDGET_KEYS,
-  adminGetDiscountStats,
+  adminProbeDiscountAccess,
   type UpdateProfilePayload,
   type WidgetKey
 } from "@/lib/api";
@@ -72,38 +72,6 @@ type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
 const DEV_DEBUG = import.meta.env.DEV;
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
-const ADMIN_TELEGRAM_ID = 5773954061;
-const ADMIN_USERNAME = "bytemed";
-
-function getTelegramUserId(): number | null {
-  if (typeof window === "undefined") return null;
-  const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  return typeof tgId === "number" ? tgId : null;
-}
-
-function getTelegramUsername(): string | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.Telegram?.WebApp?.initDataUnsafe?.user?.username;
-  return typeof raw === "string" && raw.trim() ? raw.trim().toLowerCase() : null;
-}
-
-function getTelegramUserFromInitData(): { id: number | null; username: string | null } {
-  if (typeof window === "undefined") return { id: null, username: null };
-  const initData = window.Telegram?.WebApp?.initData;
-  if (!initData) return { id: null, username: null };
-  try {
-    const params = new URLSearchParams(initData);
-    const userRaw = params.get("user");
-    if (!userRaw) return { id: null, username: null };
-    const user = JSON.parse(userRaw) as { id?: unknown; username?: unknown };
-    return {
-      id: typeof user.id === "number" ? user.id : null,
-      username: typeof user.username === "string" && user.username.trim() ? user.username.trim().toLowerCase() : null
-    };
-  } catch {
-    return { id: null, username: null };
-  }
-}
 
 function trimToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -254,22 +222,7 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const telegramUserId = getTelegramUserId();
-  const telegramUsername = getTelegramUsername();
-  const telegramFromInitData = getTelegramUserFromInitData();
-  const isAdminByIdentity = useMemo(() => {
-    const backendUsername = user?.telegram?.username?.trim().toLowerCase() ?? null;
-    const userId = user?.id ?? null;
-    return (
-      user?.is_admin === true ||
-      userId === ADMIN_USER_ID ||
-      backendUsername === ADMIN_USERNAME ||
-      telegramUserId === ADMIN_TELEGRAM_ID ||
-      telegramUsername === ADMIN_USERNAME ||
-      telegramFromInitData.id === ADMIN_TELEGRAM_ID ||
-      telegramFromInitData.username === ADMIN_USERNAME
-    );
-  }, [telegramUserId, telegramUsername, telegramFromInitData.id, telegramFromInitData.username, user?.id, user?.telegram?.username, user?.is_admin]);
+  const isAdminByIdentity = useMemo(() => user?.id === ADMIN_USER_ID, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,8 +232,8 @@ export default function ProfilePage() {
     const probe = async () => {
       if (cancelled) return;
       try {
-        await adminGetDiscountStats();
-        if (!cancelled) setIsDiscountAdminByBackend(true);
+        const access = await adminProbeDiscountAccess();
+        if (!cancelled) setIsDiscountAdminByBackend(access.allowed && access.user_id === ADMIN_USER_ID);
         return;
       } catch {
         if (cancelled) return;
