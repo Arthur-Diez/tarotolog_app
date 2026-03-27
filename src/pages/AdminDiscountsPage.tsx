@@ -219,18 +219,40 @@ export default function AdminDiscountsPage() {
   const [resolveData, setResolveData] = useState<DiscountResolveDebugResponse | null>(null);
   const [debugUsages, setDebugUsages] = useState<Record<string, unknown>[]>([]);
 
-  const strictAdminByProfile = profile?.user?.id === ADMIN_USER_ID;
+  const strictAdminByProfile = Boolean(profile?.user?.is_admin) || profile?.user?.id === ADMIN_USER_ID;
 
-  const checkAccess = useCallback(async () => {
-    try {
-      setAccessLoading(true);
-      const access = await adminProbeDiscountAccess();
-      setAccessGranted(access.allowed && access.user_id === ADMIN_USER_ID);
-    } catch {
-      setAccessGranted(false);
-    } finally {
-      setAccessLoading(false);
-    }
+  const checkAccess = useCallback(() => {
+    let cancelled = false;
+    let retries = 0;
+    const maxRetries = 5;
+
+    const probe = async () => {
+      if (cancelled) return;
+      try {
+        const access = await adminProbeDiscountAccess();
+        if (!cancelled) {
+          setAccessGranted(access.allowed && access.user_id === ADMIN_USER_ID);
+          setAccessLoading(false);
+        }
+      } catch {
+        if (cancelled) return;
+        retries += 1;
+        if (retries < maxRetries) {
+          window.setTimeout(() => {
+            void probe();
+          }, 900);
+          return;
+        }
+        setAccessGranted(false);
+        setAccessLoading(false);
+      }
+    };
+
+    setAccessLoading(true);
+    void probe();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const loadDashboard = useCallback(async () => {
@@ -294,9 +316,7 @@ export default function AdminDiscountsPage() {
     setDebugUsages(usages.items ?? []);
   }, [testBalanceOverride, testCurrency, testProvider, testSource, testTriggerType, testUserId]);
 
-  useEffect(() => {
-    void checkAccess();
-  }, [checkAccess]);
+  useEffect(() => checkAccess(), [checkAccess]);
 
   useEffect(() => {
     if (!accessGranted) return;
@@ -348,7 +368,7 @@ export default function AdminDiscountsPage() {
     );
   }
 
-  if (!strictAdminByProfile || !accessGranted) {
+  if (!strictAdminByProfile && !accessGranted) {
     return (
       <Card className="border border-red-500/30 bg-red-500/10 p-6">
         <div className="flex items-start gap-3">

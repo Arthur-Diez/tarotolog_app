@@ -222,7 +222,10 @@ export default function ProfilePage() {
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
-  const isAdminByIdentity = useMemo(() => user?.id === ADMIN_USER_ID, [user?.id]);
+  const isAdminByIdentity = useMemo(
+    () => Boolean(user?.is_admin) || user?.id === ADMIN_USER_ID,
+    [user?.id, user?.is_admin]
+  );
 
   useEffect(() => {
     let cancelled = false;
