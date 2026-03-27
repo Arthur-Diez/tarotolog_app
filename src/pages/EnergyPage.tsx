@@ -39,6 +39,18 @@ const BALANCE_DELTA_BADGE_DURATION_MS = 2600;
 const ADS_COUNTDOWN_TICK_MS = 1000;
 const ADS_STATE_REFETCH_DEBOUNCE_MS = 3000;
 const OFFERS_COUNTDOWN_TICK_MS = 1000;
+const DISCOUNT_TRIGGER_LABELS: Record<string, string> = {
+  first_purchase: "Акция на первую покупку!",
+  zero_balance: "Предложение при нулевом балансе",
+  low_energy: "Предложение при низкой энергии",
+  comeback: "С возвращением!",
+  post_ads: "Бонус после рекламы",
+  exit_intent: "Спецпредложение",
+  scheduled: "Акция",
+  manual: "Персональное предложение",
+  vip: "VIP-предложение",
+  personal: "Персональная акция"
+};
 const TASK_ADSGRAM_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
 
@@ -196,7 +208,7 @@ function formatFiatAmount(amountValue: string, currency: CurrencyCode): string {
 function formatOfferPrice(offer: PaymentOfferResponse, fallbackCurrency: CurrencyCode): string {
   if (offer.provider === "telegram_stars") {
     const stars = offer.stars_amount ?? Math.round(Number(offer.final_amount || "0"));
-    return `${stars} ⭐`;
+    return `${stars}\u00A0⭐`;
   }
   const normalized = offer.currency === "USD" || offer.currency === "EUR" || offer.currency === "RUB" ? offer.currency : fallbackCurrency;
   return formatFiatAmount(offer.final_amount, normalized as CurrencyCode);
@@ -214,7 +226,7 @@ function formatOfferOldPrice(offer: PaymentOfferResponse, fallbackCurrency: Curr
   if (!hasOfferDiscount(offer)) return null;
   if (offer.provider === "telegram_stars") {
     const baseStars = Math.round(Number(offer.base_amount || "0"));
-    return baseStars > 0 ? `${baseStars} ⭐` : null;
+    return baseStars > 0 ? `${baseStars}\u00A0⭐` : null;
   }
   const normalized = offer.currency === "USD" || offer.currency === "EUR" || offer.currency === "RUB" ? offer.currency : fallbackCurrency;
   return formatFiatAmount(offer.base_amount, normalized as CurrencyCode);
@@ -262,6 +274,14 @@ function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor((safe % 3600) / 60);
   const seconds = safe % 60;
   return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+}
+
+function formatTriggerLabel(triggerType: string): string {
+  const normalized = String(triggerType || "")
+    .trim()
+    .toLowerCase();
+  if (!normalized) return "Акция";
+  return DISCOUNT_TRIGGER_LABELS[normalized] ?? normalized.replaceAll("_", " ");
 }
 
 function cooldownSecondsFromIso(value: string | null | undefined): number {
@@ -1358,6 +1378,17 @@ export default function EnergyPage() {
                 const priceLabel = formatOfferPrice(offer, selectedCurrency);
                 const remaining = formatOfferRemaining(offer.valid_until);
                 const discountPercent = Number(offer.discount_percent || "0");
+                const bonusPercent =
+                  offer.energy_amount > 0 && offer.bonus_energy > 0
+                    ? Math.floor((offer.bonus_energy / offer.energy_amount) * 100)
+                    : 0;
+                const bonusLabel =
+                  bonusPercent > 0
+                    ? `+${bonusPercent}% энергии`
+                    : offer.bonus_energy > 0
+                      ? `+${offer.bonus_energy} бонус`
+                      : null;
+                const hasEnergyUpgrade = totalEnergy > offer.energy_amount;
                 const discountBadge =
                   discountPercent > 0
                     ? `-${Math.round(discountPercent)}%`
@@ -1380,25 +1411,26 @@ export default function EnergyPage() {
                             </span>
                           ) : null}
                           {offer.trigger_type !== "manual" ? (
-                            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">
-                              {offer.trigger_type.replaceAll("_", " ")}
+                            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-[var(--text-tertiary)]">
+                              {formatTriggerLabel(offer.trigger_type)}
                             </span>
                           ) : null}
                         </div>
                         <div className="mt-1 flex flex-wrap items-end gap-2">
-                          <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
-                          {offer.bonus_energy > 0 ? (
-                            <p className="text-xs text-emerald-100/90">+{offer.bonus_energy} бонус</p>
+                          {hasEnergyUpgrade ? (
+                            <p className="text-sm text-[var(--text-tertiary)] line-through">{offer.energy_amount} ⚡</p>
                           ) : null}
+                          <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                         </div>
+                        {bonusLabel ? <p className="text-xs text-emerald-100/90">{bonusLabel}</p> : null}
                         {remaining ? (
                           <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">Акция активна: {remaining}</p>
                         ) : null}
                       </div>
                       <div className="text-right">
-                        <p className="text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
+                        <p className="whitespace-nowrap text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
                         {oldPrice ? (
-                          <p className="text-xs text-[var(--text-tertiary)] line-through">{oldPrice}</p>
+                          <p className="whitespace-nowrap text-xs text-[var(--text-tertiary)] line-through">{oldPrice}</p>
                         ) : null}
                       </div>
                     </div>
