@@ -52,7 +52,10 @@ const DISCOUNT_TRIGGER_LABELS: Record<string, string> = {
   personal: "Персональная акция"
 };
 const TASK_ADSGRAM_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-25628";
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-26361";
+const OFFER_URL = "https://offer.tarotologai.ru";
+const PRIVACY_URL = "https://privacy.tarotologai.ru";
+const CONTACT_EMAIL = "tarotologai@gmail.com";
 
 type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeeded" | "failed" | "pending";
 type CurrencyCode = "RUB" | "USD" | "EUR";
@@ -1461,6 +1464,41 @@ export default function EnergyPage() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="mt-5 border-t border-white/10 pt-4 text-xs text-[var(--text-secondary)]">
+            <p className="leading-relaxed">
+              Нажимая «Купить», вы соглашаетесь с{" "}
+              <button
+                type="button"
+                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+                onClick={() => {
+                  openExternalLink(OFFER_URL);
+                }}
+              >
+                Пользовательским соглашением
+              </button>{" "}
+              и{" "}
+              <button
+                type="button"
+                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+                onClick={() => {
+                  openExternalLink(PRIVACY_URL);
+                }}
+              >
+                Политикой обработки данных
+              </button>
+              .
+            </p>
+            <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
+              Контакты:{" "}
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+              >
+                {CONTACT_EMAIL}
+              </a>
+            </p>
           </div>
         </Card>
 

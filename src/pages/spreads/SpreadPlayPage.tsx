@@ -77,7 +77,7 @@ const INTERPRETATION_LOADING_HINTS_LONG_WAIT = [
   }
 ] as const;
 const ADSGRAM_INTERSTITIAL_BLOCK_ID =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-22108";
+  (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_INTERSTITIAL_ID ?? "int-26360";
 const DEALT_CARD_HEIGHT = 240;
 const DEALT_SPACER_MIN = 64;
 const DEALT_SPACER_MAX_RATIO = 0.16;

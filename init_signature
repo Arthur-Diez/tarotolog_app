@@ -1,0 +1,12 @@
+spawn ssh -o StrictHostKeyChecking=no root@72.56.19.46 cd /opt/tarotolog/tarotapi && /opt/tarotolog/venv/bin/python -c 'import asyncio,asyncpg,os; from dotenv import load_dotenv; load_dotenv(/opt/tarotolog/.env);
+async def m():
+ c=await asyncpg.connect(user=os.getenv(POSTGRES_USER),password=os.getenv(POSTGRES_PASSWORD),database=os.getenv(POSTGRES_DB),host=os.getenv(POSTGRES_HOST),port=int(os.getenv(POSTGRES_PORT,5432)));
+ rows=await c.fetch(SELECT
+root@72.56.19.46's password: 
+bash: -c: line 1: unexpected EOF while looking for matching `''
+spawn ssh -o StrictHostKeyChecking=no root@72.56.19.46 cd /opt/tarotolog/tarotapi && /opt/tarotolog/venv/bin/python -c 'import asyncio,asyncpg,os,traceback; from dotenv import load_dotenv; load_dotenv(/opt/tarotolog/.env);
+async def m():
+ c=await asyncpg.connect(user=os.getenv(POSTGRES_USER),password=os.getenv(POSTGRES_PASSWORD),database=os.getenv(POSTGRES_DB),host=os.getenv(POSTGRES_HOST),port=int(os.getenv(POSTGRES_PORT,5432)));
+ rows=await c.fetch(SELECT
+root@72.56.19.46's password: 
+bash: -c: line 1: unexpected EOF while looking for matching `''
