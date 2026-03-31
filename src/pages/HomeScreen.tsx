@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Calculator,
   HeartHandshake,
+  Info,
   LayoutDashboard,
   MoonStar,
   Orbit,
@@ -11,11 +12,9 @@ import {
   Sun
 } from "lucide-react";
 
-import { EnergyGauge } from "@/components/layout/EnergyGauge";
 import { Header } from "@/components/layout/Header";
 import { DailyBonusCard } from "@/components/sections/DailyBonusCard";
 import { SectionGrid } from "@/components/sections/SectionGrid";
-import { useEnergy } from "@/hooks/useEnergy";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { DEFAULT_WIDGET_KEYS, type WidgetKey } from "@/lib/api";
@@ -67,8 +66,6 @@ const sections = [
   }
 ];
 
-const MAX_ENERGY = 500;
-
 interface HomeScreenProps {
   telegramUser?: TelegramUser | null;
 }
@@ -84,8 +81,6 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       : DEFAULT_WIDGET_KEYS;
 
   const energyBalance = profileData?.energy_balance ?? 0;
-  const { level, glowIntensity } = useEnergy(energyBalance);
-  const gaugeMax = Math.max(MAX_ENERGY, energyBalance || 0);
 
   const displayName =
     profileData?.display_name ??
@@ -168,7 +163,24 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       {!subscriptionLoading ? (
         <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
       ) : null}
-      <EnergyGauge level={level} glowIntensity={glowIntensity} max={gaugeMax} />
+      <section className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/85 p-5 shadow-[var(--surface-shadow)] backdrop-blur-2xl">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 rounded-2xl border border-[var(--surface-border-strong)] bg-[var(--surface-chip-bg)] p-2 text-[var(--accent-gold)]">
+            <Info className="h-5 w-5" strokeWidth={1.5} />
+          </span>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Тестовый режим проекта</h3>
+            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+              Сейчас над проектом работает целая команда и над нашим новым ИИ, приложение и телеграмм бот работают в
+              тестовом режиме. Окончательный релиз глобального обновления планируется на вторую половину апреля.
+            </p>
+            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+              Использование приложения до момента релиза — на ваше усмотрение.
+            </p>
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Ваша команда TarotologAI</p>
+          </div>
+        </div>
+      </section>
       <SectionGrid sections={sections} onSectionSelect={handleSectionSelect} />
       {loading && !profile ? skeletons : null}
       {!loading &&
