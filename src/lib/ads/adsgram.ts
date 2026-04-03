@@ -37,6 +37,8 @@ export type AdsgramInitOptions = {
 const ADSGRAM_INIT_TIMEOUT_MS = 6000;
 const ADSGRAM_READY_TICK_MS = 250;
 const ADSGRAM_SHOW_TIMEOUT_MS = 0;
+const ADSGRAM_SCRIPT_SRC = "https://sad.adsgram.ai/js/sad.min.js";
+const ADSGRAM_SCRIPT_ID = "adsgram-sdk-script";
 
 const resolveRewardBlockId = (value?: string | null) => {
   const fallback = (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_BLOCK_ID ?? "";
@@ -47,6 +49,7 @@ const resolveRewardBlockId = (value?: string | null) => {
 let adsgramController: AdsgramController | null = null;
 let adsgramBlockId: string | null = null;
 let initPromise: Promise<AdsgramController | null> | null = null;
+let sdkLoadPromise: Promise<boolean> | null = null;
 let lastEvent: string | null = null;
 let lastError: AdsgramError | null = null;
 let lastErrorDetail: string | null = null;
@@ -81,6 +84,53 @@ function getAdsgram(): AdsgramSDK | null {
   return (window as Window & { Adsgram?: AdsgramSDK }).Adsgram ?? null;
 }
 
+async function ensureAdsgramSdkLoaded(): Promise<boolean> {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return false;
+  }
+
+  if (getAdsgram()?.init) {
+    return true;
+  }
+
+  if (sdkLoadPromise) {
+    return sdkLoadPromise;
+  }
+
+  sdkLoadPromise = new Promise<boolean>((resolve) => {
+    const existing = document.getElementById(ADSGRAM_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      const startedAt = Date.now();
+      const poll = () => {
+        if (getAdsgram()?.init) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() - startedAt >= ADSGRAM_INIT_TIMEOUT_MS) {
+          resolve(false);
+          return;
+        }
+        window.setTimeout(poll, ADSGRAM_READY_TICK_MS);
+      };
+      poll();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = ADSGRAM_SCRIPT_ID;
+    script.src = ADSGRAM_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(Boolean(getAdsgram()?.init));
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  }).finally(() => {
+    sdkLoadPromise = null;
+  });
+
+  return sdkLoadPromise;
+}
+
 function classifyAdsgramError(error: unknown): AdsgramError {
   const message = normalizeDetail(error)?.toLowerCase() ?? "";
   if (!message) return "ad_error";
@@ -97,6 +147,7 @@ async function waitForAdsgramSdk(
   timeoutMs = ADSGRAM_INIT_TIMEOUT_MS,
   tickMs = ADSGRAM_READY_TICK_MS
 ): Promise<AdsgramSDK | null> {
+  await ensureAdsgramSdkLoaded();
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     const sdk = getAdsgram();
