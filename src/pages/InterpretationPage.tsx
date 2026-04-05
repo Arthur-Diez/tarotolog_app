@@ -27,6 +27,8 @@ import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
 import { faceUrl } from "@/lib/cardAsset";
 import ShareCard from "@/components/sections/ShareCard";
 import { isDeckWithReversals, normalizeCardReversedForDeck } from "@/lib/tarotOrientation";
+import { openInlineQueryWithFallback } from "@/lib/telegram";
+import { API_BASE } from "@/lib/api";
 
 interface LocationState {
   reading?: ViewReadingResponse;
@@ -523,14 +525,33 @@ export default function InterpretationPage() {
   }, [buildShareBlob, reading?.id]);
 
   const handleShareHintConfirm = useCallback(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!pendingShareQuery || !tg?.switchInlineQuery) {
+    if (!pendingShareQuery) {
       setShareError("Telegram WebApp не поддерживает отправку.");
       setShareStatus("error");
       setShareHintOpen(false);
       return;
     }
-    tg.switchInlineQuery(pendingShareQuery, ["users", "groups", "channels", "bots"] as any);
+
+    const token = pendingShareQuery.startsWith("share_reading:")
+      ? pendingShareQuery.replace("share_reading:", "").trim()
+      : "";
+    const fallbackUrl = token
+      ? `${API_BASE}/share/${encodeURIComponent(token)}/image`
+      : "https://t.me/Tarotolog_bot/tarotolog_ai";
+
+    const result = openInlineQueryWithFallback({
+      inlineQuery: pendingShareQuery,
+      fallbackUrl,
+      fallbackText: "Мой расклад в Tarotolog AI ✨"
+    });
+
+    if (result.error && result.mode !== "fallback") {
+      setShareError("Не удалось открыть список чатов для отправки.");
+      setShareStatus("error");
+      setShareHintOpen(false);
+      return;
+    }
+
     setShareHintOpen(false);
   }, [pendingShareQuery]);
 
@@ -560,7 +581,7 @@ export default function InterpretationPage() {
                 className="flex-1 rounded-full bg-[var(--accent-pink)] px-4 py-2 text-sm font-semibold text-white"
                 onClick={handleShareHintConfirm}
               >
-                Понятно
+                Открыть чаты
               </button>
             </div>
           </div>

@@ -27,7 +27,12 @@ import {
   type TelegramStarsPaymentStatusResponse,
   type WalletHistoryItemResponse
 } from "@/lib/api";
-import { openExternalLink, openTelegramInvoice, triggerHapticNotification } from "@/lib/telegram";
+import {
+  openExternalLink,
+  openInlineQueryWithFallback,
+  openTelegramInvoice,
+  triggerHapticNotification
+} from "@/lib/telegram";
 
 const PENDING_PURCHASE_STORAGE_KEY = "tarotolog_pending_purchase";
 const ENERGY_CURRENCY_STORAGE_KEY = "tarotolog_energy_currency";
@@ -822,15 +827,20 @@ export default function EnergyPage() {
   }, [referralProgram]);
 
   const handleReferralShareConfirm = useCallback(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!pendingInlineQuery || !tg?.switchInlineQuery) {
+    if (!pendingInlineQuery || !referralProgram) {
       setShareHintOpen(false);
       setReferralError("Telegram WebApp не поддерживает inline-пересылку");
       return;
     }
-    tg.switchInlineQuery(pendingInlineQuery, ["users", "groups", "channels", "bots"] as any);
+
+    openInlineQueryWithFallback({
+      inlineQuery: pendingInlineQuery,
+      fallbackUrl: referralProgram.referral_link,
+      fallbackText: "Присоединяйся к Tarotolog AI и забирай бонус ⚡"
+    });
+
     setShareHintOpen(false);
-  }, [pendingInlineQuery]);
+  }, [pendingInlineQuery, referralProgram]);
 
   const handleOpenHistory = useCallback(() => {
     setHistoryOpen(true);
@@ -1562,12 +1572,19 @@ export default function EnergyPage() {
       {shareHintOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
           <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
-            <div className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
+            <div className="overflow-hidden rounded-[18px] border border-white/10">
+              <img
+                src="/assets/tarot/rws/share-instruction.png"
+                alt="Инструкция отправки"
+                className="h-auto w-full"
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-primary)]">
               <Share2 className="h-4 w-4 text-[var(--accent-gold)]" />
               Поделиться через Telegram
             </div>
             <p className="mt-3 text-sm text-[var(--text-secondary)]">
-              Выберите чат в списке и отправьте карточку приглашения. Друг перейдёт по кнопке и получит бонус.
+              Перед отправкой нажмите на карточку приглашения, затем поставьте зелёную галочку ✅.
             </p>
             <div className="mt-4 flex gap-3">
               <Button

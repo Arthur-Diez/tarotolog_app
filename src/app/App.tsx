@@ -58,6 +58,18 @@ export default function App() {
   }, [location.pathname, spreadsView.screen]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>(".app-scroll").forEach((node) => {
+        node.scrollTop = 0;
+      });
+    });
+  }, [location.pathname]);
+
+  useEffect(() => {
     document.body.classList.toggle("spread-play-fullbleed", isSpreadPlayRoute);
     return () => {
       document.body.classList.remove("spread-play-fullbleed");

@@ -31,37 +31,37 @@ const sections = [
   {
     id: "compatibility",
     title: "Совместимость",
-    description: "Синергия и отношения с партнёром",
+    description: "Ведется тестирование",
     icon: <HeartHandshake className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "horoscope",
     title: "Гороскоп",
-    description: "Ежедневные подсказки от звезд",
+    description: "Ведется тестирование",
     icon: <Sun className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   },
   {
     id: "matrix",
     title: "Матрица судьбы",
-    description: "Раскрой предназначение и таланты",
+    description: "Ведется тестирование",
     icon: <Orbit className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "natal",
     title: "Натальная карта",
-    description: "Твой личный космический паспорт",
+    description: "Ведется тестирование",
     icon: <Star className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   },
   {
     id: "numerology",
     title: "Нумерология",
-    description: "Числа дня и жизненные циклы",
+    description: "Ведется тестирование",
     icon: <Calculator className="h-5 w-5 text-[var(--accent-pink)]" strokeWidth={1.4} />
   },
   {
     id: "astroforecast",
     title: "Астропрогноз",
-    description: "Сильные периоды и транзиты",
+    description: "Ведется тестирование",
     icon: <MoonStar className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
   }
 ];

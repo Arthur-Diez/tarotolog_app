@@ -34,6 +34,7 @@ export interface TelegramWebApp {
   onEvent?: (event: "themeChanged", handler: () => void) => void;
   offEvent?: (event: "themeChanged", handler: () => void) => void;
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  openTelegramLink?: (url: string) => void;
   openInvoice?: (url: string, callback?: (status: string) => void) => void;
   HapticFeedback?: {
     impactOccurred?: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
@@ -102,6 +103,58 @@ export function openExternalLink(url: string): void {
   const popup = window.open(url, "_blank", "noopener,noreferrer");
   if (!popup) {
     window.location.assign(url);
+  }
+}
+
+export function openTelegramShareDialog(params: { url: string; text?: string }): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(params.url)}${
+    params.text ? `&text=${encodeURIComponent(params.text)}` : ""
+  }`;
+  const webApp = window.Telegram?.WebApp;
+
+  if (typeof webApp?.openTelegramLink === "function") {
+    webApp.openTelegramLink(shareUrl);
+    return;
+  }
+
+  openExternalLink(shareUrl);
+}
+
+export function openInlineQueryWithFallback(params: {
+  inlineQuery: string;
+  fallbackUrl: string;
+  fallbackText?: string;
+}): { mode: "inline" | "fallback"; error?: string } {
+  if (typeof window === "undefined") {
+    return { mode: "fallback", error: "window_unavailable" };
+  }
+
+  const webApp = window.Telegram?.WebApp;
+
+  const fallback = (error?: string) => {
+    openTelegramShareDialog({ url: params.fallbackUrl, text: params.fallbackText });
+    return { mode: "fallback" as const, error };
+  };
+
+  if (typeof webApp?.switchInlineQuery !== "function") {
+    return fallback("inline_not_supported");
+  }
+
+  try {
+    webApp.switchInlineQuery(params.inlineQuery, {
+      allow_user_chats: true,
+      allow_group_chats: true,
+      allow_channel_chats: true,
+      allow_bot_chats: true
+    });
+    return { mode: "inline" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "inline_failed";
+    return fallback(message);
   }
 }
 
