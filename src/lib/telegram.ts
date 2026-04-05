@@ -43,14 +43,7 @@ export interface TelegramWebApp {
   };
   switchInlineQuery?: (
     query: string,
-    options?: {
-      choose_chat?: boolean;
-      allow_user_chats?: boolean;
-      allow_bot_chats?: boolean;
-      allow_group_chats?: boolean;
-      allow_channel_chats?: boolean;
-      query?: string;
-    }
+    chooseChatTypes?: Array<"users" | "bots" | "groups" | "channels">
   ) => void;
 }
 
@@ -145,12 +138,7 @@ export function openInlineQueryWithFallback(params: {
   }
 
   try {
-    webApp.switchInlineQuery(params.inlineQuery, {
-      allow_user_chats: true,
-      allow_group_chats: true,
-      allow_channel_chats: true,
-      allow_bot_chats: true
-    });
+    webApp.switchInlineQuery(params.inlineQuery, ["users", "groups", "channels", "bots"]);
     return { mode: "inline" };
   } catch (error) {
     const message = error instanceof Error ? error.message : "inline_failed";

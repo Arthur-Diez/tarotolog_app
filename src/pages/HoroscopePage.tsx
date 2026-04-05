@@ -258,6 +258,8 @@ export default function HoroscopePage() {
     () => normalizeLocalizedContent(content?.localized_json),
     [content?.localized_json]
   );
+  const hasLuckySection = localizedSections.some((section) => section.key === "lucky");
+  const showMarkdown = Boolean(textMd) && !localizedSections.length;
 
   const zodiacLabel = horoscope?.meta?.zodiac_sign ?? birthProfile?.zodiac_sign ?? mockProfile.zodiacSign;
   const genderFromProfile = getGenderLabel(birthProfile?.gender);
@@ -388,7 +390,7 @@ export default function HoroscopePage() {
 
         {isOpened && horoscope ? (
           <div className="space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
-            {textMd ? <HoroscopeMarkdown text={textMd} /> : null}
+            {showMarkdown ? <HoroscopeMarkdown text={textMd} /> : null}
             {localizedSections.length ? (
               <div className="space-y-4 text-sm text-[var(--text-secondary)]">
                 {localizedSections.map((section) => (
@@ -401,13 +403,13 @@ export default function HoroscopePage() {
                 ))}
               </div>
             ) : null}
-            {bestTime || luckyColor ? (
+            {(bestTime || luckyColor) && !hasLuckySection ? (
               <div className="space-y-1 text-sm text-[var(--text-primary)]">
                 {bestTime ? <p>🎯 Лучшее время: {bestTime}</p> : null}
                 {luckyColor ? <p>🎨 Цвет дня: {luckyColor}</p> : null}
               </div>
             ) : null}
-            {!textMd && !localizedSections.length && !bestTime && !luckyColor ? (
+            {!showMarkdown && !localizedSections.length && !bestTime && !luckyColor ? (
               <p className="text-sm text-[var(--text-secondary)]">Нет данных. Попробуйте ещё раз позже.</p>
             ) : null}
             <Button className="w-full" onClick={handlePersonalize}>
@@ -451,8 +453,23 @@ function getGenderLabel(value?: string | null): string | null {
 
 function normalizeLocalizedContent(raw: unknown): NormalizedLocalizedContent {
   const sections: StructuredSection[] = [];
+  const sectionTitleIndex = new Map<string, number>();
   let bestTime: string | null = null;
   let luckyColor: string | null = null;
+
+  const pushSection = (section: StructuredSection) => {
+    const normalizedTitle = section.title.trim().toLowerCase();
+    const existingIndex = sectionTitleIndex.get(normalizedTitle);
+    if (existingIndex === undefined) {
+      sectionTitleIndex.set(normalizedTitle, sections.length);
+      sections.push(section);
+      return;
+    }
+    const existing = sections[existingIndex];
+    if ((section.body || "").length > (existing.body || "").length) {
+      sections[existingIndex] = section;
+    }
+  };
 
   if (!raw) {
     return { sections, bestTime, luckyColor };
@@ -463,12 +480,12 @@ function normalizeLocalizedContent(raw: unknown): NormalizedLocalizedContent {
   if (record) {
     const dayTheme = readString(record.day_theme);
     if (dayTheme) {
-      sections.push({ key: "day_theme", emoji: "🌗", title: "Тема дня", body: dayTheme });
+      pushSection({ key: "day_theme", emoji: "🌗", title: "Тема дня", body: dayTheme });
     }
 
     const mood = readString(record.mood);
     if (mood) {
-      sections.push({ key: "mood", emoji: "🧠", title: "Настрой", body: mood });
+      pushSection({ key: "mood", emoji: "🧠", title: "Настрой", body: mood });
     }
 
     const blockConfigs: Array<{ key: string; emoji: string; title: string }> = [
@@ -481,7 +498,7 @@ function normalizeLocalizedContent(raw: unknown): NormalizedLocalizedContent {
     blockConfigs.forEach(({ key, emoji, title }) => {
       const block = readFocusAdvice(record[key]);
       if (block) {
-        sections.push({ key, emoji, title, body: block });
+        pushSection({ key, emoji, title, body: block });
       }
     });
 
@@ -500,20 +517,20 @@ function normalizeLocalizedContent(raw: unknown): NormalizedLocalizedContent {
         bestTime = lucky.timeWindow;
       }
       if (luckyParts.length) {
-        sections.push({ key: "lucky", emoji: "🍀", title: "Удача", body: luckyParts.join(" • ") });
+        pushSection({ key: "lucky", emoji: "🍀", title: "Удача", body: luckyParts.join(" • ") });
       }
     }
 
     const affirmation = readString(record.affirmation);
     if (affirmation) {
-      sections.push({ key: "affirmation", emoji: "🪄", title: "Аффирмация", body: affirmation });
+      pushSection({ key: "affirmation", emoji: "🪄", title: "Аффирмация", body: affirmation });
     }
 
     bestTime = bestTime ?? readString(record.best_time) ?? null;
     luckyColor = luckyColor ?? readString(record.lucky_color) ?? null;
 
     const legacySections = readLegacySections(record.sections);
-    sections.push(...legacySections);
+    legacySections.forEach(pushSection);
   }
 
   return { sections, bestTime, luckyColor };
