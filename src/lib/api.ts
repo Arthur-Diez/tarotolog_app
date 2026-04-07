@@ -252,6 +252,68 @@ export interface HoroscopeFreeTodayResponse {
   content?: HoroscopeFreeTodayContent | null;
 }
 
+export type HoroscopeIssueStatus = "queued" | "pending" | "processing" | "ready" | "error";
+
+export interface HoroscopeIssueResponse {
+  id: string;
+  user_id?: string | null;
+  product_code: string;
+  kind?: string | null;
+  status: HoroscopeIssueStatus;
+  lang?: string | null;
+  zodiac_sign?: string | null;
+  gender?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  summary_text?: string | null;
+  content_md?: string | null;
+  content_json?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface HoroscopeIssuesListResponse {
+  items?: HoroscopeIssueResponse[];
+  issues?: HoroscopeIssueResponse[];
+}
+
+export interface HoroscopeOneoffPurchaseResponse {
+  success?: boolean;
+  status?: string | null;
+  issue?: HoroscopeIssueResponse | null;
+  issue_id?: string | null;
+  issue_status?: HoroscopeIssueStatus | null;
+  energy_spent?: number | null;
+  energy_balance?: number | null;
+  message?: string | null;
+}
+
+export interface HoroscopeSubscriptionPurchaseResponse {
+  success?: boolean;
+  status?: string | null;
+  plan_code?: string | null;
+  subscription_id?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  next_run_at?: string | null;
+  energy_spent?: number | null;
+  energy_balance?: number | null;
+  message?: string | null;
+}
+
+export interface HoroscopeSubscriptionStatusResponse {
+  has_subscription?: boolean;
+  active?: boolean;
+  status?: string | null;
+  plan_code?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  next_run_at?: string | null;
+  last_run_at?: string | null;
+  last_issue_id?: string | null;
+  last_delivery_slot?: string | null;
+}
+
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
 
 export interface ReadingOutputCard {
@@ -978,6 +1040,64 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
     headers: withAuthHeaders()
   });
   return handleResponse<HoroscopeFreeTodayResponse>(res);
+}
+
+export async function purchaseHoroscopeOneoff(payload: {
+  product_code:
+    | "horoscope_oneoff_tomorrow"
+    | "horoscope_oneoff_week"
+    | "horoscope_oneoff_month"
+    | "horoscope_oneoff_3months"
+    | "horoscope_oneoff_6months"
+    | "horoscope_oneoff_year";
+  lang?: string;
+  source?: string;
+}): Promise<HoroscopeOneoffPurchaseResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/oneoff/purchase`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<HoroscopeOneoffPurchaseResponse>(res);
+}
+
+export async function purchaseHoroscopeSubscription(payload: {
+  plan_code: "horoscope_sub_daily_lite" | "horoscope_sub_daily_plus";
+  lang?: string;
+  source?: string;
+}): Promise<HoroscopeSubscriptionPurchaseResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/subscription/purchase`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<HoroscopeSubscriptionPurchaseResponse>(res);
+}
+
+export async function getHoroscopeIssues(limit = 30): Promise<HoroscopeIssueResponse[] | HoroscopeIssuesListResponse> {
+  const search = new URLSearchParams();
+  search.set("limit", String(limit));
+  const res = await fetch(`${API_BASE}/horoscope/issues?${search.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeIssueResponse[] | HoroscopeIssuesListResponse>(res);
+}
+
+export async function getHoroscopeIssue(issueId: string): Promise<HoroscopeIssueResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/issues/${encodeURIComponent(issueId)}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeIssueResponse>(res);
+}
+
+export async function getHoroscopeSubscriptionStatus(): Promise<HoroscopeSubscriptionStatusResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/subscription/status`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeSubscriptionStatusResponse>(res);
 }
 
 export async function createRobokassaPayment(payload: {
