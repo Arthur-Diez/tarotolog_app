@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { ApiError, completeEnergyRewardAd, getEnergyAdsState, startEnergyRewardAd } from "@/lib/api";
@@ -30,6 +31,12 @@ interface BonusNotice {
 }
 
 const BONUS_DELTA_BADGE_DURATION_MS = 2400;
+
+function normalizeRewardEnergy(kind: RewardKind | "task_regular" | null | undefined, fallback = 1): number {
+  if (kind === "daily_x2") return 2;
+  if (kind === "reward_regular" || kind === "task_regular") return 1;
+  return Math.max(1, fallback);
+}
 
 function formatCountdown(totalSeconds: number): string {
   const safe = Math.max(0, totalSeconds);
@@ -157,7 +164,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
       const adsState = await getEnergyAdsState();
       const nextAvailableAt = normalizeIso(adsState.reward_available_at ?? adsState.reward.available_at);
       const nextRewardKind = adsState.reward.next_reward_kind;
-      const nextEnergy = Math.max(1, adsState.reward.next_energy ?? 1);
+      const nextEnergy = normalizeRewardEnergy(nextRewardKind, adsState.reward.next_energy ?? 1);
       const isAvailable = adsState.ads_enabled && adsState.reward.available;
       const isCooldown = adsState.ads_enabled && !adsState.reward.available;
       const status: BonusStatus = hasSubscription
@@ -224,16 +231,17 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
 
     try {
       const startResponse = await startEnergyRewardAd("reward");
-      const expectedEnergy = Math.max(1, startResponse.expected_energy ?? reward.amount ?? 1);
+      const responseRewardKind =
+        startResponse.reward_kind === "daily_x2" || startResponse.reward_kind === "reward_regular"
+          ? startResponse.reward_kind
+          : reward.nextRewardKind;
+      const expectedEnergy = normalizeRewardEnergy(responseRewardKind, startResponse.expected_energy ?? reward.amount ?? 1);
       const adsgramBlockId = startResponse.adsgram_block_id ?? reward.adsgramBlockId;
 
       setReward((current) => ({
         ...current,
         amount: expectedEnergy,
-        nextRewardKind:
-          startResponse.reward_kind === "daily_x2" || startResponse.reward_kind === "reward_regular"
-            ? startResponse.reward_kind
-            : current.nextRewardKind,
+        nextRewardKind: responseRewardKind,
         adsgramBlockId,
         status: "ad_showing",
         error: null
@@ -274,13 +282,16 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         return;
       }
 
-      const awardedAmount = Math.max(1, completeResponse.energy_credited);
+      const awardedAmount = normalizeRewardEnergy(completeResponse.reward_kind, completeResponse.energy_credited);
+      const nextAmount = normalizeRewardEnergy(completeResponse.next_reward_kind, 1);
+      const nextAvailableAt = normalizeIso(completeResponse.reward_available_at);
+      const hasCooldown = nextAvailableAt ? new Date(nextAvailableAt).getTime() > Date.now() + 1000 : false;
       setReward((current) => ({
         ...current,
-        amount: completeResponse.next_reward_kind === "daily_x2" ? Math.max(2, current.amount ?? 2) : 1,
-        nextAvailableAt: normalizeIso(completeResponse.reward_available_at),
+        amount: nextAmount,
+        nextAvailableAt,
         nextRewardKind: completeResponse.next_reward_kind,
-        status: completeResponse.reward_available_at ? "cooldown" : "idle",
+        status: hasCooldown ? "cooldown" : "idle",
         error: null
       }));
 
@@ -350,8 +361,9 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
           <div className="flex items-center gap-2">
             <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
             {promoX2Active ? (
-              <span className="rounded-full border border-amber-300/35 bg-amber-300/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100">
-                x2 сегодня
+              <span className="inline-flex min-w-[74px] flex-col items-center rounded-full border border-amber-300/35 bg-amber-300/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100 leading-none">
+                <span>x2</span>
+                <span className="mt-1">сегодня</span>
               </span>
             ) : null}
           </div>
@@ -369,7 +381,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
-            className={`rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
+            className={`inline-flex min-w-[72px] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
               rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
             }`}
           >
@@ -431,29 +443,32 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
         </div>
       ) : null}
 
-      {bonusNotice ? (
-        <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 pb-safe">
-          <div className="w-full max-w-md rounded-2xl border border-emerald-300/35 bg-[rgba(18,38,31,0.94)] p-4 shadow-[0_22px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-white">{bonusNotice.title}</h3>
-                <p className="mt-1 text-sm text-white/80">{bonusNotice.message}</p>
+      {bonusNotice && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-x-0 bottom-24 z-[120] flex justify-center px-4">
+              <div className="w-full max-w-md rounded-2xl border border-emerald-300/35 bg-[rgba(18,38,31,0.94)] p-4 shadow-[0_22px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-white">{bonusNotice.title}</h3>
+                    <p className="mt-1 text-sm text-white/80">{bonusNotice.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBonusNotice(null)}
+                    className="rounded-full border border-white/20 p-1.5 text-white/75 transition hover:text-white"
+                    aria-label="Закрыть уведомление"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <Button size="sm" className="mt-3 w-full" onClick={() => setBonusNotice(null)}>
+                  Понятно
+                </Button>
               </div>
-              <button
-                type="button"
-                onClick={() => setBonusNotice(null)}
-                className="rounded-full border border-white/20 p-1.5 text-white/75 transition hover:text-white"
-                aria-label="Закрыть уведомление"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <Button size="sm" className="mt-3 w-full" onClick={() => setBonusNotice(null)}>
-              Понятно
-            </Button>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
