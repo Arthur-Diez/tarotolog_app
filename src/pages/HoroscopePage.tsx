@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/api";
 
 type OneoffProductCode =
+  | "horoscope_oneoff_personal_today"
   | "horoscope_oneoff_tomorrow"
   | "horoscope_oneoff_week"
   | "horoscope_oneoff_month"
@@ -85,6 +86,14 @@ interface IssueModalState {
   error: string | null;
 }
 
+type PersonalizeModalMode = "offer" | "profile_required";
+
+interface PersonalizeModalState {
+  open: boolean;
+  mode: PersonalizeModalMode;
+  purchasing: boolean;
+}
+
 const MOCK_FALLBACK = {
   zodiacSign: "Лев",
   genderLabel: "Мужчина",
@@ -93,6 +102,8 @@ const MOCK_FALLBACK = {
 
 const ISSUE_PROCESSING_STATUSES = new Set<HoroscopeIssueStatus>(["queued", "pending", "processing"]);
 const ISSUE_READY_STATUSES = new Set<HoroscopeIssueStatus>(["ready"]);
+const PERSONAL_TODAY_PRODUCT_CODE: OneoffProductCode = "horoscope_oneoff_personal_today";
+const PERSONAL_TODAY_DEFAULT_COST = 10;
 
 const ONEOFF_PRODUCTS: OneoffProduct[] = [
   {
@@ -154,7 +165,6 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 export default function HoroscopePage() {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
-  const oneoffRef = useRef<HTMLElement | null>(null);
 
   const birthProfile = profile?.birth_profile;
   const userLang = profile?.user?.lang ?? "ru";
@@ -180,6 +190,11 @@ export default function HoroscopePage() {
     loading: false,
     issue: null,
     error: null
+  });
+  const [personalizeModal, setPersonalizeModal] = useState<PersonalizeModalState>({
+    open: false,
+    mode: "offer",
+    purchasing: false
   });
 
   const loadFree = useCallback(async () => {
@@ -283,6 +298,18 @@ export default function HoroscopePage() {
     [sortedIssues]
   );
 
+  const localDateKey = freeHoroscope?.meta?.local_date ?? new Date().toISOString().slice(0, 10);
+  const personalTodayIssue = useMemo(
+    () =>
+      sortedIssues.find((issue) =>
+        isIssueForProductAndDate(issue, {
+          productCode: PERSONAL_TODAY_PRODUCT_CODE,
+          localDate: localDateKey
+        })
+      ) ?? null,
+    [localDateKey, sortedIssues]
+  );
+
   useEffect(() => {
     if (!hasPendingIssues) return;
     const timer = window.setInterval(() => {
@@ -329,18 +356,85 @@ export default function HoroscopePage() {
   }, []);
 
   const handlePersonalize = useCallback(() => {
+    setNotice(null);
     if (!isBirthProfileReadyForPaid(birthProfile)) {
-      showNotice({
-        tone: "warning",
-        title: "Нужно заполнить профиль",
-        message: "Для персонального прогноза заполните дату рождения, пол и место рождения.",
-        action: "profile"
+      setPersonalizeModal({
+        open: true,
+        mode: "profile_required",
+        purchasing: false
       });
       return;
     }
 
-    oneoffRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [birthProfile, showNotice]);
+    if (personalTodayIssue && ISSUE_READY_STATUSES.has(normalizeIssueStatus(personalTodayIssue.status))) {
+      void openIssue(personalTodayIssue.id);
+      return;
+    }
+
+    if (personalTodayIssue && ISSUE_PROCESSING_STATUSES.has(normalizeIssueStatus(personalTodayIssue.status))) {
+      showNotice({
+        tone: "warning",
+        title: "Готовим персональный прогноз",
+        message: "Прогноз уже создаётся. Обновите экран через несколько секунд.",
+        action: "refresh"
+      });
+      return;
+    }
+
+    setPersonalizeModal({
+      open: true,
+      mode: "offer",
+      purchasing: false
+    });
+  }, [birthProfile, openIssue, personalTodayIssue, showNotice]);
+
+  const handlePersonalizePurchase = useCallback(async () => {
+    if (personalizeModal.purchasing) return;
+    if (!isBirthProfileReadyForPaid(birthProfile)) {
+      setPersonalizeModal({ open: true, mode: "profile_required", purchasing: false });
+      return;
+    }
+
+    setPersonalizeModal((prev) => ({ ...prev, purchasing: true }));
+    try {
+      const response = await purchaseHoroscopeOneoff({
+        product_code: PERSONAL_TODAY_PRODUCT_CODE,
+        lang: userLang ?? "ru",
+        source: "miniapp_horoscope_personalize"
+      });
+      const purchasedIssue = response.issue ?? null;
+      if (purchasedIssue) {
+        setIssues((prev) => upsertIssue(prev, purchasedIssue));
+      }
+      await Promise.all([refresh(), loadIssues({ silent: true })]);
+
+      const issue = purchasedIssue;
+      const issueStatus = normalizeIssueStatus(issue?.status);
+
+      if (issue && ISSUE_READY_STATUSES.has(issueStatus)) {
+        setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+        showNotice({
+          tone: "success",
+          title: "Персональный прогноз готов",
+          message: "Открываем ваш выпуск на сегодня.",
+          action: null
+        });
+        await openIssue(issue.id);
+        return;
+      }
+
+      setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+      showNotice({
+        tone: "success",
+        title: "Запрос принят",
+        message: "Готовим персональный гороскоп на сегодня. Проверяйте статус через несколько секунд.",
+        action: "refresh"
+      });
+    } catch (error) {
+      setPersonalizeModal((prev) => ({ ...prev, purchasing: false }));
+      handlePurchaseError(error, showNotice);
+    }
+  }, [birthProfile, loadIssues, openIssue, personalizeModal.purchasing, refresh, showNotice, userLang]);
 
   const handleOneoffPurchase = useCallback(
     async (productCode: OneoffProductCode) => {
@@ -477,6 +571,16 @@ export default function HoroscopePage() {
   );
 
   const noticeAction = notice?.action ?? null;
+  const personalTodayIssueStatus = personalTodayIssue ? normalizeIssueStatus(personalTodayIssue.status) : null;
+  const personalTodayReady = Boolean(personalTodayIssueStatus && ISSUE_READY_STATUSES.has(personalTodayIssueStatus));
+  const personalTodayProcessing = Boolean(
+    personalTodayIssueStatus && ISSUE_PROCESSING_STATUSES.has(personalTodayIssueStatus)
+  );
+  const personalizeButtonLabel = personalTodayReady
+    ? "Открыть персональный прогноз"
+    : personalTodayProcessing
+      ? "Готовим прогноз..."
+      : "Персонализировать 🔥";
 
   return (
     <div className="space-y-6 pb-28">
@@ -609,8 +713,13 @@ export default function HoroscopePage() {
         )}
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <Button className="w-full sm:w-auto sm:min-w-[220px]" variant="primary" onClick={handlePersonalize}>
-            Персонализировать 🔥
+          <Button
+            className="w-full sm:w-auto sm:min-w-[220px]"
+            variant="primary"
+            onClick={handlePersonalize}
+            disabled={personalizeModal.purchasing}
+          >
+            {personalizeButtonLabel}
           </Button>
           <Button
             className="w-full sm:w-auto"
@@ -632,7 +741,7 @@ export default function HoroscopePage() {
         </div>
       </Card>
 
-      <section ref={oneoffRef} className="space-y-3">
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">Разовые прогнозы</h3>
           <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">за энергию ⚡</p>
@@ -863,6 +972,116 @@ export default function HoroscopePage() {
           setIssueModal({ open: false, loading: false, issue: null, error: null });
         }}
       />
+      <PersonalizeOfferModal
+        state={personalizeModal}
+        energyCost={PERSONAL_TODAY_DEFAULT_COST}
+        onClose={() => setPersonalizeModal((prev) => ({ ...prev, open: false, purchasing: false }))}
+        onOpenProfile={() => {
+          setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+          navigate("/profile");
+        }}
+        onOpenEnergy={() => {
+          setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+          navigate("/energy");
+        }}
+        onConfirmPurchase={() => {
+          void handlePersonalizePurchase();
+        }}
+      />
+    </div>
+  );
+}
+
+function isIssueForProductAndDate(
+  issue: HoroscopeIssueResponse,
+  options: { productCode: string; localDate: string }
+): boolean {
+  if (issue.product_code !== options.productCode) return false;
+  const issueStart = (issue.start_date || "").slice(0, 10);
+  const issueEnd = (issue.end_date || "").slice(0, 10);
+  return issueStart === options.localDate && issueEnd === options.localDate;
+}
+
+function PersonalizeOfferModal({
+  state,
+  energyCost,
+  onClose,
+  onConfirmPurchase,
+  onOpenProfile,
+  onOpenEnergy
+}: {
+  state: PersonalizeModalState;
+  energyCost: number;
+  onClose: () => void;
+  onConfirmPurchase: () => void;
+  onOpenProfile: () => void;
+  onOpenEnergy: () => void;
+}) {
+  if (!state.open) return null;
+
+  const isProfileMode = state.mode === "profile_required";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-6 pt-10 backdrop-blur-md">
+      <div className="w-full max-w-[520px] rounded-[28px] border border-white/15 bg-[var(--bg-card)]/95 p-6 shadow-[0_35px_75px_rgba(0,0,0,0.6)]">
+        {isProfileMode ? (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Персонализация</p>
+              <h3 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Нужны данные рождения</h3>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                Чтобы составить персональный гороскоп, заполните дату рождения, пол и место рождения в профиле.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="w-full" variant="primary" onClick={onOpenProfile}>
+                Заполнить профиль
+              </Button>
+              <Button className="w-full" variant="outline" onClick={onClose}>
+                Не сейчас
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Premium Upsell</p>
+              <h3 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Персональный гороскоп на сегодня</h3>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                Более глубокий прогноз на день с учётом ваших данных рождения.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <li>• Главный вектор дня и личный фокус</li>
+                <li>• Любовь, карьера, деньги и состояние</li>
+                <li>• Персональный совет и лучшие окна для решений</li>
+              </ul>
+              <p className="mt-3 text-lg font-semibold text-[var(--accent-gold)]">Цена: {energyCost} ⚡</p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="w-full" variant="primary" onClick={onConfirmPurchase} disabled={state.purchasing}>
+                {state.purchasing ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Готовим персональный прогноз...
+                  </span>
+                ) : (
+                  `Получить за ${energyCost} ⚡`
+                )}
+              </Button>
+              <Button className="w-full" variant="outline" onClick={onClose} disabled={state.purchasing}>
+                Не сейчас
+              </Button>
+            </div>
+            <Button className="w-full" variant="ghost" onClick={onOpenEnergy} disabled={state.purchasing}>
+              Пополнить энергию
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -893,12 +1112,27 @@ function handlePurchaseError(error: unknown, showNotice: (notice: FeedbackNotice
       return;
     }
 
-    if (error.status === 409) {
+    const missingProfile =
+      normalizedMessage.includes("birth_profile_required") ||
+      normalizedMessage.includes("birth_date_required") ||
+      normalizedMessage.includes("birth_gender_required") ||
+      normalizedMessage.includes("birth_place_required");
+    if (error.status === 409 && missingProfile) {
       showNotice({
         tone: "warning",
         title: "Нужно заполнить профиль",
         message: "Для персонального прогноза заполните данные рождения в профиле.",
         action: "profile"
+      });
+      return;
+    }
+
+    if (error.status === 409 && normalizedMessage.includes("horoscope_issue_already_exists")) {
+      showNotice({
+        tone: "warning",
+        title: "Прогноз уже создан",
+        message: "Выпуск на этот период уже существует. Откройте его в блоке «Последние выпуски».",
+        action: "refresh"
       });
       return;
     }
@@ -975,6 +1209,7 @@ function getGenderLabel(value?: string | null): string | null {
 
 function humanizeIssueTitle(productCode: string): string {
   const map: Record<string, string> = {
+    horoscope_oneoff_personal_today: "Персональный прогноз · Сегодня",
     horoscope_oneoff_tomorrow: "Разовый прогноз · Завтра",
     horoscope_oneoff_week: "Разовый прогноз · Неделя",
     horoscope_oneoff_month: "Разовый прогноз · Месяц",

@@ -229,6 +229,7 @@ export interface HoroscopeLocalizedJson {
 }
 
 export interface HoroscopeFreeTodayMeta {
+  local_date?: string | null;
   zodiac_sign?: string | null;
   gender_label?: string | null;
   period_label?: string | null;
@@ -1044,6 +1045,7 @@ export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayRespons
 
 export async function purchaseHoroscopeOneoff(payload: {
   product_code:
+    | "horoscope_oneoff_personal_today"
     | "horoscope_oneoff_tomorrow"
     | "horoscope_oneoff_week"
     | "horoscope_oneoff_month"
