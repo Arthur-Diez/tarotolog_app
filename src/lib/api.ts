@@ -1035,8 +1035,16 @@ export async function claimDailyBonus(payload: {
   return handleResponse<DailyBonusClaimResponse>(res);
 }
 
-export async function getFreeHoroscopeToday(): Promise<HoroscopeFreeTodayResponse> {
-  const res = await fetch(`${API_BASE}/horoscope/free/today`, {
+export async function getFreeHoroscopeToday(params?: { lang?: string | null }): Promise<HoroscopeFreeTodayResponse> {
+  const search = new URLSearchParams();
+  const lang = params?.lang?.trim();
+  if (lang) {
+    search.set("lang", lang);
+  }
+  const endpoint = search.toString()
+    ? `${API_BASE}/horoscope/free/today?${search.toString()}`
+    : `${API_BASE}/horoscope/free/today`;
+  const res = await fetch(endpoint, {
     method: "GET",
     headers: withAuthHeaders()
   });
@@ -1092,6 +1100,23 @@ export async function getHoroscopeIssue(issueId: string): Promise<HoroscopeIssue
     headers: withAuthHeaders()
   });
   return handleResponse<HoroscopeIssueResponse>(res);
+}
+
+export async function processHoroscopeIssue(issueId: string): Promise<{
+  success: boolean;
+  issue?: HoroscopeIssueResponse;
+  error?: string;
+}> {
+  const res = await fetch(`${API_BASE}/horoscope/issues/${encodeURIComponent(issueId)}/process`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<{
+    success: boolean;
+    issue?: HoroscopeIssueResponse;
+    error?: string;
+  }>(res);
 }
 
 export async function getHoroscopeSubscriptionStatus(): Promise<HoroscopeSubscriptionStatusResponse> {

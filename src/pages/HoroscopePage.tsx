@@ -20,6 +20,7 @@ import {
   getHoroscopeIssue,
   getHoroscopeIssues,
   getHoroscopeSubscriptionStatus,
+  processHoroscopeIssue,
   purchaseHoroscopeOneoff,
   purchaseHoroscopeSubscription,
   type HoroscopeFreeTodayContentSection,
@@ -217,12 +218,13 @@ export default function HoroscopePage() {
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const oneoffCarouselRef = useRef<HTMLDivElement | null>(null);
   const [activeOneoffIndex, setActiveOneoffIndex] = useState(0);
+  const issueProcessKickRef = useRef<string | null>(null);
 
   const loadFree = useCallback(async () => {
     setFreeLoading(true);
     setFreeError(null);
     try {
-      const response = await getFreeHoroscopeToday();
+      const response = await getFreeHoroscopeToday({ lang: userLang ?? "ru" });
       setFreeHoroscope(response);
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
@@ -236,7 +238,7 @@ export default function HoroscopePage() {
     } finally {
       setFreeLoading(false);
     }
-  }, []);
+  }, [userLang]);
 
   const loadIssues = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -379,6 +381,7 @@ export default function HoroscopePage() {
   const closeGenerationOverlay = useCallback(() => {
     setGenerationOverlay({ open: false, issueId: null, title: "" });
     setGenerationStepIndex(0);
+    issueProcessKickRef.current = null;
   }, []);
 
   const openGenerationOverlay = useCallback((issue: HoroscopeIssueResponse, fallbackTitle: string) => {
@@ -432,6 +435,13 @@ export default function HoroscopePage() {
 
     let cancelled = false;
     let inFlight = false;
+
+    if (issueProcessKickRef.current !== generationOverlay.issueId) {
+      issueProcessKickRef.current = generationOverlay.issueId;
+      void processHoroscopeIssue(generationOverlay.issueId).catch(() => {
+        // Polling will continue; skip surfacing transient trigger failures to user.
+      });
+    }
 
     const pollIssue = async () => {
       if (cancelled || inFlight) return;
