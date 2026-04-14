@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -94,6 +94,12 @@ interface PersonalizeModalState {
   purchasing: boolean;
 }
 
+interface GenerationOverlayState {
+  open: boolean;
+  issueId: string | null;
+  title: string;
+}
+
 const MOCK_FALLBACK = {
   zodiacSign: "Лев",
   genderLabel: "Мужчина",
@@ -104,6 +110,13 @@ const ISSUE_PROCESSING_STATUSES = new Set<HoroscopeIssueStatus>(["queued", "pend
 const ISSUE_READY_STATUSES = new Set<HoroscopeIssueStatus>(["ready"]);
 const PERSONAL_TODAY_PRODUCT_CODE: OneoffProductCode = "horoscope_oneoff_personal_today";
 const PERSONAL_TODAY_DEFAULT_COST = 10;
+const GENERATION_STEPS = [
+  "🔮 Анализируем ваши данные рождения...",
+  "✨ Определяем ключевую энергию дня...",
+  "🧠 Сопоставляем главные сферы вашей жизни...",
+  "⚡ Ищем лучшие возможности именно для вас...",
+  "🌙 Формируем персональный прогноз..."
+];
 
 const ONEOFF_PRODUCTS: OneoffProduct[] = [
   {
@@ -196,6 +209,14 @@ export default function HoroscopePage() {
     mode: "offer",
     purchasing: false
   });
+  const [generationOverlay, setGenerationOverlay] = useState<GenerationOverlayState>({
+    open: false,
+    issueId: null,
+    title: ""
+  });
+  const [generationStepIndex, setGenerationStepIndex] = useState(0);
+  const oneoffCarouselRef = useRef<HTMLDivElement | null>(null);
+  const [activeOneoffIndex, setActiveOneoffIndex] = useState(0);
 
   const loadFree = useCallback(async () => {
     setFreeLoading(true);
@@ -355,6 +376,109 @@ export default function HoroscopePage() {
     }
   }, []);
 
+  const closeGenerationOverlay = useCallback(() => {
+    setGenerationOverlay({ open: false, issueId: null, title: "" });
+    setGenerationStepIndex(0);
+  }, []);
+
+  const openGenerationOverlay = useCallback((issue: HoroscopeIssueResponse, fallbackTitle: string) => {
+    setGenerationOverlay({
+      open: true,
+      issueId: issue.id,
+      title: humanizeIssueTitle(issue.product_code || fallbackTitle)
+    });
+    setGenerationStepIndex(0);
+  }, []);
+
+  const handleOneoffCarouselScroll = useCallback(() => {
+    const container = oneoffCarouselRef.current;
+    if (!container) return;
+    const firstCard = container.querySelector<HTMLElement>("[data-oneoff-card='true']");
+    if (!firstCard) return;
+    const style = window.getComputedStyle(container);
+    const gap = Number.parseFloat(style.columnGap || style.gap || "0") || 0;
+    const span = firstCard.offsetWidth + gap;
+    if (span <= 0) return;
+    const nextIndex = Math.round(container.scrollLeft / span);
+    setActiveOneoffIndex(Math.max(0, Math.min(ONEOFF_PRODUCTS.length - 1, nextIndex)));
+  }, []);
+
+  const scrollToOneoffIndex = useCallback((index: number) => {
+    const container = oneoffCarouselRef.current;
+    if (!container) return;
+    const firstCard = container.querySelector<HTMLElement>("[data-oneoff-card='true']");
+    if (!firstCard) return;
+    const style = window.getComputedStyle(container);
+    const gap = Number.parseFloat(style.columnGap || style.gap || "0") || 0;
+    const span = firstCard.offsetWidth + gap;
+    container.scrollTo({
+      left: Math.max(0, index * span),
+      behavior: "smooth"
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!generationOverlay.open) return;
+    const rotation = window.setInterval(() => {
+      setGenerationStepIndex((prev) => (prev + 1) % GENERATION_STEPS.length);
+    }, 1500);
+    return () => {
+      window.clearInterval(rotation);
+    };
+  }, [generationOverlay.open]);
+
+  useEffect(() => {
+    if (!generationOverlay.open || !generationOverlay.issueId) return;
+
+    let cancelled = false;
+    let inFlight = false;
+
+    const pollIssue = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const issue = await getHoroscopeIssue(generationOverlay.issueId as string);
+        if (cancelled) return;
+        setIssues((prev) => upsertIssue(prev, issue));
+        const status = normalizeIssueStatus(issue.status);
+        if (ISSUE_READY_STATUSES.has(status)) {
+          closeGenerationOverlay();
+          showNotice({
+            tone: "success",
+            title: "Прогноз готов",
+            message: "Открываем ваш персональный выпуск.",
+            action: null
+          });
+          await openIssue(issue.id);
+          return;
+        }
+        if (status === "error") {
+          closeGenerationOverlay();
+          showNotice({
+            tone: "error",
+            title: "Не удалось собрать прогноз",
+            message: "Сервис временно недоступен. Попробуйте ещё раз через минуту.",
+            action: "refresh"
+          });
+        }
+      } catch {
+        if (cancelled) return;
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const timer = window.setInterval(() => {
+      void pollIssue();
+    }, 2200);
+    void pollIssue();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [closeGenerationOverlay, generationOverlay.issueId, generationOverlay.open, openIssue, showNotice]);
+
   const handlePersonalize = useCallback(() => {
     setNotice(null);
     if (!isBirthProfileReadyForPaid(birthProfile)) {
@@ -372,12 +496,7 @@ export default function HoroscopePage() {
     }
 
     if (personalTodayIssue && ISSUE_PROCESSING_STATUSES.has(normalizeIssueStatus(personalTodayIssue.status))) {
-      showNotice({
-        tone: "warning",
-        title: "Готовим персональный прогноз",
-        message: "Прогноз уже создаётся. Обновите экран через несколько секунд.",
-        action: "refresh"
-      });
+      openGenerationOverlay(personalTodayIssue, "Персональный прогноз · Сегодня");
       return;
     }
 
@@ -386,7 +505,7 @@ export default function HoroscopePage() {
       mode: "offer",
       purchasing: false
     });
-  }, [birthProfile, openIssue, personalTodayIssue, showNotice]);
+  }, [birthProfile, openGenerationOverlay, openIssue, personalTodayIssue]);
 
   const handlePersonalizePurchase = useCallback(async () => {
     if (personalizeModal.purchasing) return;
@@ -396,6 +515,12 @@ export default function HoroscopePage() {
     }
 
     setPersonalizeModal((prev) => ({ ...prev, purchasing: true }));
+    setGenerationOverlay({
+      open: true,
+      issueId: null,
+      title: "Персональный прогноз · Сегодня"
+    });
+    setGenerationStepIndex(0);
     try {
       const response = await purchaseHoroscopeOneoff({
         product_code: PERSONAL_TODAY_PRODUCT_CODE,
@@ -413,6 +538,7 @@ export default function HoroscopePage() {
 
       if (issue && ISSUE_READY_STATUSES.has(issueStatus)) {
         setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+        closeGenerationOverlay();
         showNotice({
           tone: "success",
           title: "Персональный прогноз готов",
@@ -424,17 +550,27 @@ export default function HoroscopePage() {
       }
 
       setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
-      showNotice({
-        tone: "success",
-        title: "Запрос принят",
-        message: "Готовим персональный гороскоп на сегодня. Проверяйте статус через несколько секунд.",
-        action: "refresh"
-      });
+      if (issue) {
+        openGenerationOverlay(issue, "Персональный прогноз · Сегодня");
+      } else {
+        closeGenerationOverlay();
+      }
     } catch (error) {
       setPersonalizeModal((prev) => ({ ...prev, purchasing: false }));
+      closeGenerationOverlay();
       handlePurchaseError(error, showNotice);
     }
-  }, [birthProfile, loadIssues, openIssue, personalizeModal.purchasing, refresh, showNotice, userLang]);
+  }, [
+    birthProfile,
+    closeGenerationOverlay,
+    loadIssues,
+    openGenerationOverlay,
+    openIssue,
+    personalizeModal.purchasing,
+    refresh,
+    showNotice,
+    userLang
+  ]);
 
   const handleOneoffPurchase = useCallback(
     async (productCode: OneoffProductCode) => {
@@ -451,6 +587,12 @@ export default function HoroscopePage() {
 
       setBuyingOneoffCode(productCode);
       setNotice(null);
+      setGenerationOverlay({
+        open: true,
+        issueId: null,
+        title: humanizeIssueTitle(productCode)
+      });
+      setGenerationStepIndex(0);
       try {
         const response = await purchaseHoroscopeOneoff({
           product_code: productCode,
@@ -465,23 +607,44 @@ export default function HoroscopePage() {
 
         await Promise.all([refresh(), loadIssues({ silent: true })]);
 
-        showNotice({
-          tone: "success",
-          title: "Прогноз оформлен",
-          message:
-            responseIssue && ISSUE_READY_STATUSES.has(normalizeIssueStatus(responseIssue.status))
-              ? "Прогноз уже готов — можно открыть прямо сейчас."
-              : "Запрос принят, персональный прогноз готовится."
-          ,
-          action: "refresh"
-        });
+        if (responseIssue && ISSUE_READY_STATUSES.has(normalizeIssueStatus(responseIssue.status))) {
+          closeGenerationOverlay();
+          showNotice({
+            tone: "success",
+            title: "Прогноз готов",
+            message: "Открываем выпуск.",
+            action: null
+          });
+          await openIssue(responseIssue.id);
+        } else if (responseIssue) {
+          openGenerationOverlay(responseIssue, productCode);
+        } else {
+          closeGenerationOverlay();
+          showNotice({
+            tone: "success",
+            title: "Запрос принят",
+            message: "Прогноз поставлен в очередь на генерацию.",
+            action: "refresh"
+          });
+        }
       } catch (error) {
+        closeGenerationOverlay();
         handlePurchaseError(error, showNotice);
       } finally {
         setBuyingOneoffCode(null);
       }
     },
-    [birthProfile, buyingOneoffCode, loadIssues, refresh, showNotice, userLang]
+    [
+      birthProfile,
+      buyingOneoffCode,
+      closeGenerationOverlay,
+      loadIssues,
+      openGenerationOverlay,
+      openIssue,
+      refresh,
+      showNotice,
+      userLang
+    ]
   );
 
   const handleOneoffAction = useCallback(
@@ -492,18 +655,13 @@ export default function HoroscopePage() {
         return;
       }
       if (issue && ISSUE_PROCESSING_STATUSES.has(normalizeIssueStatus(issue.status))) {
-        showNotice({
-          tone: "warning",
-          title: "Прогноз в генерации",
-          message: "Мы готовим персональный выпуск. Обновите страницу через несколько секунд.",
-          action: "refresh"
-        });
+        openGenerationOverlay(issue, product.code);
         return;
       }
 
       await handleOneoffPurchase(product.code);
     },
-    [handleOneoffPurchase, issueByProductCode, openIssue, showNotice]
+    [handleOneoffPurchase, issueByProductCode, openGenerationOverlay, openIssue]
   );
 
   const handleSubscriptionAction = useCallback(
@@ -580,7 +738,7 @@ export default function HoroscopePage() {
     ? "Открыть персональный прогноз"
     : personalTodayProcessing
       ? "Готовим прогноз..."
-      : "Персонализировать 🔥";
+      : "Получить персональный прогноз 🔥";
 
   return (
     <div className="space-y-6 pb-28">
@@ -650,7 +808,7 @@ export default function HoroscopePage() {
               }}
             >
               {noticeAction === "energy"
-                ? "Пополнить энергию"
+                ? "Перейти к энергии"
                 : noticeAction === "profile"
                   ? "Перейти в профиль"
                   : "Обновить данные"}
@@ -739,6 +897,9 @@ export default function HoroscopePage() {
             )}
           </Button>
         </div>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+          Этот ритуал общий. Персональный прогноз учитывает ваши данные рождения и даёт более точные рекомендации.
+        </p>
       </Card>
 
       <section className="space-y-3">
@@ -749,78 +910,106 @@ export default function HoroscopePage() {
         {issuesError ? (
           <div className="rounded-2xl border border-red-300/35 bg-red-500/10 px-4 py-3 text-sm text-red-100">{issuesError}</div>
         ) : null}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {ONEOFF_PRODUCTS.map((product) => {
-            const issue = issueByProductCode.get(product.code);
-            const issueStatus = issue ? normalizeIssueStatus(issue.status) : null;
-            const ready = issueStatus ? ISSUE_READY_STATUSES.has(issueStatus) : false;
-            const processing = issueStatus ? ISSUE_PROCESSING_STATUSES.has(issueStatus) : false;
-            const failed = issueStatus === "error";
-            const isBusy = buyingOneoffCode === product.code;
+        <div className="space-y-3">
+          <div
+            ref={oneoffCarouselRef}
+            onScroll={handleOneoffCarouselScroll}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {ONEOFF_PRODUCTS.map((product) => {
+              const issue = issueByProductCode.get(product.code);
+              const issueStatus = issue ? normalizeIssueStatus(issue.status) : null;
+              const ready = issueStatus ? ISSUE_READY_STATUSES.has(issueStatus) : false;
+              const processing = issueStatus ? ISSUE_PROCESSING_STATUSES.has(issueStatus) : false;
+              const failed = issueStatus === "error";
+              const isBusy = buyingOneoffCode === product.code;
 
-            const statusLabel = ready
-              ? "Готово"
-              : processing
-                ? "Генерируется"
-                : failed
-                  ? "Ошибка генерации"
-                  : "Доступно";
+              const statusLabel = ready
+                ? "Выпуск готов"
+                : processing
+                  ? "Готовим прогноз"
+                  : failed
+                    ? "Нужно повторить"
+                    : "Доступно сейчас";
 
-            return (
-              <Card key={product.code} className="border border-white/10 bg-[var(--bg-card)]/88 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold text-[var(--text-primary)]">{product.title}</p>
-                    <p className="text-xs text-[var(--text-secondary)]">{product.subtitle}</p>
-                  </div>
-                  <p className="whitespace-nowrap text-base font-semibold text-[var(--accent-gold)]">{product.energyCost} ⚡</p>
-                </div>
-
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
-                  {ready ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
-                  ) : processing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent-pink)]" />
-                  ) : failed ? (
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-200" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5 text-[var(--accent-pink)]" />
-                  )}
-                  <span>{statusLabel}</span>
-                </div>
-
-                {issue?.created_at ? (
-                  <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
-                    Последний выпуск: {formatDateTime(issue.created_at)}
-                  </p>
-                ) : null}
-
-                <Button
-                  className="mt-4 w-full"
-                  variant={ready ? "primary" : "default"}
-                  onClick={() => {
-                    void handleOneoffAction(product);
-                  }}
-                  disabled={Boolean(buyingOneoffCode) || issuesLoading}
+              return (
+                <Card
+                  key={product.code}
+                  data-oneoff-card="true"
+                  className="min-w-[84%] snap-start border border-white/10 bg-[var(--bg-card)]/90 p-5 shadow-[0_20px_45px_rgba(0,0,0,0.35)] sm:min-w-[400px]"
                 >
-                  {isBusy ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Подготовка...
-                    </span>
-                  ) : ready ? (
-                    "Открыть"
-                  ) : processing ? (
-                    "Проверить статус"
-                  ) : failed ? (
-                    "Повторить"
-                  ) : (
-                    `Купить за ${product.energyCost} ⚡`
-                  )}
-                </Button>
-              </Card>
-            );
-          })}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">{product.title}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{product.subtitle}</p>
+                    </div>
+                    <p className="whitespace-nowrap text-lg font-semibold text-[var(--accent-gold)]">{product.energyCost} ⚡</p>
+                  </div>
+
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+                    {ready ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+                    ) : processing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent-pink)]" />
+                    ) : failed ? (
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-200" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5 text-[var(--accent-pink)]" />
+                    )}
+                    <span>{statusLabel}</span>
+                  </div>
+
+                  {issue?.created_at ? (
+                    <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
+                      Последний выпуск: {formatDateTime(issue.created_at)}
+                    </p>
+                  ) : null}
+
+                  <Button
+                    className="mt-4 w-full"
+                    variant={ready ? "primary" : "default"}
+                    onClick={() => {
+                      void handleOneoffAction(product);
+                    }}
+                    disabled={Boolean(buyingOneoffCode) || issuesLoading}
+                  >
+                    {isBusy ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Подготовка...
+                      </span>
+                    ) : ready ? (
+                      "Открыть"
+                    ) : processing ? (
+                      "Проверить статус"
+                    ) : failed ? (
+                      "Повторить"
+                    ) : product.code === "horoscope_oneoff_tomorrow" ? (
+                      `Открыть прогноз за ${product.energyCost} ⚡`
+                    ) : product.code === "horoscope_oneoff_week" ? (
+                      `Получить прогноз на неделю за ${product.energyCost} ⚡`
+                    ) : (
+                      `Получить прогноз за ${product.energyCost} ⚡`
+                    )}
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-1.5">
+            {ONEOFF_PRODUCTS.map((product, index) => (
+              <button
+                key={`${product.code}-dot`}
+                type="button"
+                aria-label={`Перейти к карточке ${index + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  index === activeOneoffIndex ? "w-8 bg-[var(--accent-pink)]/85" : "w-2 bg-white/25"
+                }`}
+                onClick={() => scrollToOneoffIndex(index)}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -925,7 +1114,7 @@ export default function HoroscopePage() {
             </>
           ) : sortedIssues.length === 0 ? (
             <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-[var(--text-secondary)]">
-              Здесь появятся ваши персональные выпуски после покупки.
+              Здесь будут храниться ваши персональные прогнозы, чтобы к ним можно было вернуться в любой момент.
             </div>
           ) : (
             sortedIssues.slice(0, 6).map((issue) => {
@@ -988,6 +1177,10 @@ export default function HoroscopePage() {
           void handlePersonalizePurchase();
         }}
       />
+      <HoroscopeGenerationOverlay
+        state={generationOverlay}
+        stepText={GENERATION_STEPS[generationStepIndex] ?? GENERATION_STEPS[0]}
+      />
     </div>
   );
 }
@@ -1030,7 +1223,7 @@ function PersonalizeOfferModal({
               <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Персонализация</p>
               <h3 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Нужны данные рождения</h3>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Чтобы составить персональный гороскоп, заполните дату рождения, пол и место рождения в профиле.
+                Для персонального прогноза нужны дата рождения, пол и место рождения.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -1086,6 +1279,43 @@ function PersonalizeOfferModal({
   );
 }
 
+function HoroscopeGenerationOverlay({
+  state,
+  stepText
+}: {
+  state: GenerationOverlayState;
+  stepText: string;
+}) {
+  if (!state.open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#080913]/75 px-6 backdrop-blur-md">
+      <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/15 bg-[var(--bg-card)]/95 p-7 text-center shadow-[0_42px_90px_rgba(0,0,0,0.62)]">
+        <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[var(--accent-pink)]/18 blur-3xl" />
+        <div className="absolute -bottom-14 -right-8 h-44 w-44 rounded-full bg-[var(--accent-gold)]/12 blur-3xl" />
+        <div className="relative space-y-4">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/25 bg-white/5">
+            <span className="absolute h-16 w-16 animate-ping rounded-full border border-[var(--accent-pink)]/50" />
+            <span className="absolute h-20 w-20 animate-pulse rounded-full border border-white/15" />
+            <MoonStar className="relative z-10 h-8 w-8 text-[var(--accent-pink)]" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Персональный ритуал</p>
+            <h4 className="text-lg font-semibold text-[var(--text-primary)]">
+              {state.title || "Готовим ваш прогноз"}
+            </h4>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{stepText}</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent-pink)]" />
+            Анализ продолжается...
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function normalizeErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) return error.message || fallback;
   if (error instanceof Error) return error.message || fallback;
@@ -1106,7 +1336,7 @@ function handlePurchaseError(error: unknown, showNotice: (notice: FeedbackNotice
       showNotice({
         tone: "warning",
         title: "Недостаточно энергии",
-        message: "Пополните баланс в разделе «Энергия», затем повторите покупку.",
+        message: "Чтобы открыть этот прогноз, нужно пополнить баланс энергии.",
         action: "energy"
       });
       return;
@@ -1120,8 +1350,8 @@ function handlePurchaseError(error: unknown, showNotice: (notice: FeedbackNotice
     if (error.status === 409 && missingProfile) {
       showNotice({
         tone: "warning",
-        title: "Нужно заполнить профиль",
-        message: "Для персонального прогноза заполните данные рождения в профиле.",
+        title: "Нужны данные рождения",
+        message: "Для персонального прогноза нужны дата рождения, пол и место рождения.",
         action: "profile"
       });
       return;
@@ -1352,11 +1582,11 @@ function readLegacySections(value: unknown): StructuredSection[] {
 
 function readFocusAdvice(value: unknown): string | null {
   if (!isRecord(value)) return null;
-  const focus = readString(value.focus);
+  const focus = readString(value.focus) ?? readString(value.analysis);
   const advice = readString(value.advice);
   if (!focus && !advice) return null;
-  if (focus && advice) return `${focus} Совет: ${advice}`;
-  return focus ?? `Совет: ${advice}`;
+  if (focus && advice) return `${focus} ${advice}`;
+  return focus ?? advice;
 }
 
 function readLucky(value: unknown): { color?: string | null; number?: string | null; timeWindow?: string | null } | null {
@@ -1454,6 +1684,7 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
   const issue = state.issue;
   const issueSections = normalizeIssueSections(issue?.content_json);
   const showMarkdown = !issueSections.length && Boolean(issue?.content_md);
+  const issueStatus = normalizeIssueStatus(issue?.status);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-6 pt-12 backdrop-blur-md">
@@ -1483,13 +1714,18 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
           <div className="rounded-2xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100">{state.error}</div>
         ) : issue ? (
           <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-1">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--text-secondary)]">
-              <p>Статус: {normalizeIssueStatus(issue.status)}</p>
-              <p>Период: {formatIssuePeriod(issue.start_date, issue.end_date)}</p>
+            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#2c2846]/70 to-[#171a2a]/70 p-4">
+              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Период прогноза</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                {formatIssuePeriod(issue.start_date, issue.end_date)}
+              </p>
+              <div className="mt-3 inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+                Статус: {issueStatus}
+              </div>
             </div>
 
             {issue.summary_text ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-[var(--text-secondary)]">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-[var(--text-secondary)]">
                 {issue.summary_text}
               </div>
             ) : null}
@@ -1497,7 +1733,7 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
             {issueSections.length ? (
               <div className="space-y-3">
                 {issueSections.map((section) => (
-                  <div key={section.key} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div key={section.key} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <HoroscopeSection emoji={section.emoji} title={section.title} body={section.body} />
                   </div>
                 ))}
@@ -1534,8 +1770,17 @@ function normalizeIssueSections(contentJson: HoroscopeIssueResponse["content_jso
   add("career", "Карьера", "💼", readFocusAdvice(contentJson.career));
   add("money", "Деньги", "💰", readFocusAdvice(contentJson.money));
   add("health", "Здоровье", "🧘", readFocusAdvice(contentJson.health));
+  add("opportunity", "Возможность", "🚀", readString(contentJson.opportunity));
+  add("risk", "Риск", "⚠️", readString(contentJson.risk));
+  add("timing_best", "Лучшее время", "⏰", readTimingPart(contentJson.timing, "best_period"));
+  add("timing_caution", "Осторожность", "🕰️", readTimingPart(contentJson.timing, "caution_period"));
   add("advice", "Совет", "🪄", readString(contentJson.advice));
   add("summary", "Итог", "✨", readString(contentJson.summary));
 
   return sections;
+}
+
+function readTimingPart(value: unknown, key: "best_period" | "caution_period"): string | null {
+  if (!isRecord(value)) return null;
+  return readString(value[key]);
 }
