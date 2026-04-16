@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Gift, Sparkles, X, Zap } from "lucide-react";
 
 import { ApiError, completeEnergyRewardAd, getEnergyAdsState, startEnergyRewardAd } from "@/lib/api";
 import { getAdsgramDebugState, type AdsgramError } from "@/lib/ads/adsgram";
@@ -335,7 +335,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
     }
   }, [adsgram, debugAds, hasSubscription, loadStatus, onBonusClaimed, processing, refreshAdsDebug, reward.adsgramBlockId, reward.amount, reward.status]);
 
-  const title = "🎁 Ежедневная энергия";
+  const title = "Ежедневная энергия";
   const promoX2Active = !hasSubscription && reward.nextRewardKind === "daily_x2" && reward.status !== "cooldown";
   const displayAmount = reward.amount ?? null;
 
@@ -355,53 +355,73 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   }, [countdownLabel, displayAmount, hasSubscription, reward.status]);
 
   return (
-    <div className="rounded-[24px] border border-[var(--surface-border)] bg-[var(--bg-card)]/80 p-4 shadow-[var(--surface-shadow)] backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold text-[var(--text-primary)]">{title}</p>
+    <div className="relative overflow-hidden rounded-[30px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(45,36,54,0.98),rgba(24,18,30,0.98))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.34),0_0_32px_rgba(183,138,87,0.08)] backdrop-blur-xl">
+      <div className="pointer-events-none absolute -right-6 top-0 h-28 w-28 rounded-full bg-[rgba(215,185,139,0.12)] blur-3xl" />
+      <div className="pointer-events-none absolute left-[-10px] bottom-0 h-24 w-24 rounded-full bg-[rgba(231,201,232,0.12)] blur-3xl" />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-[18px] border border-[rgba(215,185,139,0.2)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]">
+              <Gift className="h-5 w-5" strokeWidth={1.6} />
+            </span>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[rgba(231,204,158,0.78)]">Монетизация дня</p>
+              <p className="text-[1.55rem] font-semibold text-[var(--text-primary)]">{title}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
             {promoX2Active ? (
-              <span className="inline-flex min-w-[74px] flex-col items-center rounded-full border border-amber-300/35 bg-amber-300/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100 leading-none">
+              <span className="inline-flex min-w-[86px] flex-col items-center rounded-full border border-amber-300/35 bg-amber-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100 leading-none">
                 <span>x2</span>
                 <span className="mt-1">сегодня</span>
               </span>
             ) : null}
+            <span
+              className={`inline-flex min-w-[88px] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-3 py-1.5 text-sm font-semibold text-[var(--accent-rose)] transition-all duration-500 ${
+                rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
+              }`}
+            >
+              {displayAmount === null ? (
+                <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
+              ) : (
+                <>
+                  +{displayAmount}
+                  <Zap className="h-4 w-4" strokeWidth={1.9} />
+                </>
+              )}
+            </span>
+            {bonusDelta ? (
+              <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 animate-pulse">
+                +{bonusDelta} ⚡ начислено
+              </span>
+            ) : null}
           </div>
-          <p className="text-xs text-[var(--text-tertiary)]">
+
+          <p className="max-w-[270px] text-sm leading-6 text-[var(--text-secondary)]">
             {hasSubscription
-              ? "Подписка активна — реклама отключена"
+              ? "Подписка активна, поэтому рекламный бонус отключён."
               : promoX2Active
-                ? "Получите +2 ⚡ вместо +1 ⚡"
+                ? "Сегодня сильный оффер: одно рекламное открытие приносит пользователю +2 энергии вместо стандартного +1."
                 : reward.status === "cooldown"
-                  ? `Следующая награда через ${countdownLabel || "скоро"}`
+                  ? `Следующая награда откроется через ${countdownLabel || "короткое время"}.`
                   : displayAmount !== null
-                    ? `Смотри рекламу — получи +${displayAmount} ⚡`
-                    : "Смотри рекламу — получи награду ⚡"}
+                    ? `Покажите пользователю заметный ежедневный повод вернуться: одно видео даёт +${displayAmount} энергии и усиливает вовлечение.`
+                    : "Покажите пользователю заметный ежедневный повод вернуться за энергией."}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span
-            className={`inline-flex min-w-[72px] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 py-1 text-sm font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
-              rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
-            }`}
-          >
-            {displayAmount === null ? (
-              <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
-            ) : (
-              <>+{displayAmount} ⚡</>
-            )}
-          </span>
-          {bonusDelta ? (
-            <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100 animate-pulse">
-              +{bonusDelta} ⚡ начислено
-            </span>
-          ) : null}
+
+        <div className="hidden rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-4 py-3 text-right sm:block">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Ритуал</p>
+          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">1 просмотр</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">энергия + retention</p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
+      <div className="relative mt-5 flex flex-col gap-3">
         <button
-          className="rounded-full border border-[var(--surface-border)] bg-[var(--accent-pink)] px-5 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))] shadow-[var(--surface-shadow-soft)] disabled:cursor-not-allowed disabled:bg-[var(--surface-chip-bg)] disabled:text-[var(--text-tertiary)]"
+          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E6C99F_0%,#D2A86E_100%)] px-5 py-3 text-base font-semibold text-[var(--text-on-gold)] shadow-[0_8px_24px_rgba(183,138,87,0.26)] transition-transform duration-200 disabled:cursor-not-allowed disabled:border-[rgba(255,255,255,0.06)] disabled:bg-[rgba(255,255,255,0.06)] disabled:text-[var(--text-tertiary)]"
           onClick={handleClaim}
           disabled={
             processing ||
@@ -413,21 +433,30 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
             reward.status === "cooldown"
           }
         >
+          <Sparkles className="h-4 w-4" strokeWidth={1.8} />
           {actionLabel}
         </button>
-        {reward.status === "error" && reward.error ? (
-          <div className="flex items-center gap-2 text-xs text-[var(--accent-gold)]">
-            <span>{reward.error}</span>
-            <button
-              type="button"
-              className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] px-2 py-1 text-[10px] text-[var(--text-secondary)]"
-              onClick={() => void loadStatus()}
-              disabled={processing}
-            >
-              Обновить
-            </button>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[12px] text-[var(--text-secondary)]">
+            <Zap className="h-3.5 w-3.5 text-[var(--accent-gold)]" strokeWidth={1.8} />
+            Поддержать проект и вернуть пользователя завтра
           </div>
-        ) : null}
+
+          {reward.status === "error" && reward.error ? (
+            <div className="flex items-center gap-2 text-xs text-[var(--accent-gold)]">
+              <span>{reward.error}</span>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] px-2 py-1 text-[10px] text-[var(--text-secondary)]"
+                onClick={() => void loadStatus()}
+                disabled={processing}
+              >
+                Обновить
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {debugAds ? (

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MoonStar,
   NotebookPen,
+  Orbit,
   Sparkles,
   Star,
   Sun
@@ -142,21 +143,39 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       onClick: () => navigate("/horoscope")
     },
     {
-      id: "numerology",
-      title: "Нумерология",
-      description: "Ваш ритм и число дня",
-      icon: <Calculator className="h-5 w-5" strokeWidth={1.55} />,
-      accentClassName:
-        "text-[var(--accent-lavender)] bg-[linear-gradient(180deg,rgba(184,163,210,0.2),rgba(184,163,210,0.08))] border-[rgba(184,163,210,0.2)]",
-      available: false
-    },
-    {
       id: "compatibility",
       title: "Совместимость",
       description: "Анализ связи и динамики",
       icon: <HeartHandshake className="h-5 w-5" strokeWidth={1.55} />,
       accentClassName:
         "text-[var(--accent-gold)] bg-[linear-gradient(180deg,rgba(215,185,139,0.18),rgba(255,255,255,0.06))] border-[rgba(255,255,255,0.12)]",
+      available: false
+    },
+    {
+      id: "matrix",
+      title: "Матрица судьбы",
+      description: "Личный код и вектор пути",
+      icon: <Orbit className="h-5 w-5" strokeWidth={1.55} />,
+      accentClassName:
+        "text-[var(--accent-lavender)] bg-[linear-gradient(180deg,rgba(184,163,210,0.2),rgba(184,163,210,0.08))] border-[rgba(184,163,210,0.2)]",
+      available: false
+    },
+    {
+      id: "numerology",
+      title: "Нумерология",
+      description: "Ваш ритм и число дня",
+      icon: <Calculator className="h-5 w-5" strokeWidth={1.55} />,
+      accentClassName:
+        "text-[var(--accent-rose)] bg-[linear-gradient(180deg,rgba(231,201,232,0.2),rgba(231,201,232,0.08))] border-[rgba(231,201,232,0.2)]",
+      available: false
+    },
+    {
+      id: "dreams",
+      title: "Толкование снов",
+      description: "Символы и смысл ночных образов",
+      icon: <MoonStar className="h-5 w-5" strokeWidth={1.55} />,
+      accentClassName:
+        "text-[var(--accent-gold)] bg-[linear-gradient(180deg,rgba(215,185,139,0.2),rgba(215,185,139,0.07))] border-[rgba(215,185,139,0.18)]",
       available: false
     }
   ];
@@ -302,6 +321,19 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         ))}
       </section>
 
+      {!subscriptionLoading && !hasSubscription ? (
+        <section className="space-y-3">
+          <div className="px-1">
+            <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-tertiary)]">Ежедневная энергия</p>
+            <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Усилить экран и поддержать проект</h3>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+              Видимый ежедневный ритуал: пользователь получает энергию, а проект получает рекламную монетизацию.
+            </p>
+          </div>
+          <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
+        </section>
+      ) : null}
+
       <section className="space-y-3">
         <div className="px-1">
           <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Выберите сценарий</p>
@@ -371,15 +403,6 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           </Button>
         </div>
       </section>
-
-      {!subscriptionLoading && !hasSubscription ? (
-        <section className="space-y-3">
-          <div className="px-1">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-tertiary)]">Энергия проекта</p>
-          </div>
-          <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
-        </section>
-      ) : null}
 
       <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.9),rgba(17,13,22,0.94))] p-5 shadow-[var(--surface-shadow)]">
         <div className="flex items-start gap-3">
