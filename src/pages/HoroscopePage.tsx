@@ -1793,46 +1793,60 @@ function normalizeIssueSections(
   summaryText: string | null,
   markdownText: string | null
 ): IssueStructuredSection[] {
+  const resolvedPayload = resolveIssueContentPayload(contentJson);
+  const resolvedSummary =
+    summaryText ??
+    (isRecord(contentJson) ? normalizeIssueText(readString(contentJson.summary_text)) : null) ??
+    null;
   const sections: IssueStructuredSection[] = [];
   const add = (section: IssueStructuredSection | null) => {
     if (!section || !section.body) return;
     sections.push(section);
   };
 
-  if (contentJson && isRecord(contentJson)) {
+  if (resolvedPayload) {
     add({
       key: "summary",
       title: "Сюжет периода",
       emoji: "✨",
-      body: normalizeIssueText(readString(contentJson.summary) ?? summaryText) ?? ""
+      body: normalizeIssueText(readString(resolvedPayload.summary) ?? resolvedSummary) ?? ""
     });
     add({
       key: "main_energy",
       title: "Главная энергия",
       emoji: "🌌",
-      body: normalizeIssueText(readString(contentJson.main_energy)) ?? ""
+      body:
+        normalizeIssueText(
+          readString(resolvedPayload.main_energy) ??
+            readString(resolvedPayload.mainEnergy) ??
+            readString(resolvedPayload.focus)
+        ) ?? ""
     });
 
-    add(buildIssueSectionFromBlock("love", "Любовь", "❤️", contentJson.love));
-    add(buildIssueSectionFromBlock("career", "Карьера", "💼", contentJson.career));
-    add(buildIssueSectionFromBlock("money", "Деньги", "💰", contentJson.money));
-    add(buildIssueSectionFromBlock("health", "Здоровье", "🧘", contentJson.health));
+    add(buildIssueSectionFromBlock("love", "Любовь", "❤️", resolvedPayload.love));
+    add(buildIssueSectionFromBlock("career", "Карьера", "💼", resolvedPayload.career));
+    add(buildIssueSectionFromBlock("money", "Деньги", "💰", resolvedPayload.money));
+    add(buildIssueSectionFromBlock("health", "Здоровье", "🧘", resolvedPayload.health));
 
     add({
       key: "opportunity",
       title: "Возможность",
       emoji: "🚀",
-      body: normalizeIssueText(readString(contentJson.opportunity)) ?? ""
+      body:
+        normalizeIssueText(readString(resolvedPayload.opportunity) ?? readString(resolvedPayload.chance)) ?? ""
     });
     add({
       key: "risk",
       title: "Риск",
       emoji: "⚠️",
-      body: normalizeIssueText(readString(contentJson.risk)) ?? ""
+      body:
+        normalizeIssueText(
+          readString(resolvedPayload.risk) ?? readString(resolvedPayload.warning) ?? readString(resolvedPayload.risks)
+        ) ?? ""
     });
 
-    const timingBest = normalizeIssueText(readTimingPart(contentJson.timing, "best_period"));
-    const timingCaution = normalizeIssueText(readTimingPart(contentJson.timing, "caution_period"));
+    const timingBest = normalizeIssueText(readTimingPart(resolvedPayload.timing, "best_period"));
+    const timingCaution = normalizeIssueText(readTimingPart(resolvedPayload.timing, "caution_period"));
     if (timingBest || timingCaution) {
       add({
         key: "timing",
@@ -1847,12 +1861,22 @@ function normalizeIssueSections(
       key: "final_advice",
       title: "Финальный совет",
       emoji: "🧭",
-      body: normalizeIssueText(readString(contentJson.advice)) ?? ""
+      body:
+        normalizeIssueText(readString(resolvedPayload.advice) ?? readString(resolvedPayload.final_advice)) ?? ""
     });
   }
 
-  if (sections.length) return sections;
-  return parseIssueMarkdownSections(markdownText, summaryText);
+  if (sections.length > 1) return sections;
+  const markdownSections = parseIssueMarkdownSections(markdownText, resolvedSummary);
+  if (markdownSections.length) return markdownSections;
+  return sections;
+}
+
+function resolveIssueContentPayload(contentJson: HoroscopeIssueResponse["content_json"]): Record<string, unknown> | null {
+  if (!isRecord(contentJson)) return null;
+  if (isRecord(contentJson.content_json)) return contentJson.content_json;
+  if (isRecord(contentJson.data) && isRecord(contentJson.data.content_json)) return contentJson.data.content_json;
+  return contentJson;
 }
 
 function readTimingPart(value: unknown, key: "best_period" | "caution_period"): string | null {
