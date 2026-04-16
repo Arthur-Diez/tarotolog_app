@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { CalendarDays, Home, NotebookPen, User, Zap } from "lucide-react";
+import { Home, LayoutDashboard, NotebookPen, User, Zap } from "lucide-react";
 
-export type TabRouteId = "home" | "calendar" | "energy" | "diary" | "profile";
+export type TabRouteId = "home" | "spreads" | "energy" | "diary" | "profile";
 
 export interface TabRoute {
   id: TabRouteId;
@@ -13,7 +13,7 @@ export interface TabRoute {
 
 export const routes: TabRoute[] = [
   { id: "home", label: "Главная", icon: Home, path: "/" },
-  { id: "calendar", label: "Мой календарь", icon: CalendarDays, path: "/calendar" },
+  { id: "spreads", label: "Расклады", icon: LayoutDashboard, path: "/spreads" },
   { id: "energy", label: "Энергия", icon: Zap, path: "/energy", isPrimary: true },
   { id: "diary", label: "Дневник", icon: NotebookPen, path: "/diary" },
   { id: "profile", label: "Профиль", icon: User, path: "/profile" }

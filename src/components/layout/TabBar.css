@@ -1,21 +1,23 @@
 :root {
-  --tabbar-height: 88px;
+  --tabbar-height: 82px;
 }
 
 .tabbar-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 
 .tabbar-wrap {
-  max-width: 460px;
+  max-width: 430px;
 }
 
 .tabbar-glass {
   min-height: var(--tabbar-height);
-  border: 1px solid var(--surface-border);
-  background: var(--bg-card);
-  box-shadow: var(--surface-shadow-soft), var(--surface-inset);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(36, 29, 44, 0.78);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
 }
 
 .tabbar-link {
@@ -33,19 +35,20 @@
 }
 
 .tabbar-item {
-  min-height: calc(var(--tabbar-height) - 20px);
+  min-height: calc(var(--tabbar-height) - 18px);
   justify-content: center;
+  gap: 0.32rem;
   transition:
     color 240ms ease,
     transform 240ms ease;
 }
 
 .tabbar-item-indicator {
-  border: 1px solid var(--surface-border);
-  background: var(--surface-chip-bg);
+  border: 1px solid rgba(215, 185, 139, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   box-shadow:
-    var(--surface-inset),
-    0 0 12px rgba(229, 190, 250, 0.14);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 18px rgba(215, 185, 139, 0.08);
 }
 
 .tabbar-icon {
@@ -53,13 +56,13 @@
 }
 
 .tabbar-icon.is-active {
-  color: var(--text-primary);
-  filter: drop-shadow(0 0 4px rgba(232, 194, 255, 0.24));
+  color: var(--accent-gold);
+  filter: drop-shadow(0 0 6px rgba(215, 185, 139, 0.26));
 }
 
 .tabbar-label {
   color: var(--text-tertiary);
-  font-size: 0.6rem;
+  letter-spacing: 0.04em;
 }
 
 .tabbar-label.is-active {
@@ -108,7 +111,7 @@
 
 @media (max-width: 420px) {
   .tabbar-glass {
-    min-height: 84px;
+    min-height: 78px;
   }
 }
 

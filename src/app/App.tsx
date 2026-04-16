@@ -118,8 +118,8 @@ export default function App() {
 
   return (
     <div
-      className={`mx-auto flex min-h-screen max-w-[420px] flex-col overflow-hidden text-[var(--text-primary)] ${
-        isSpreadPlayRoute ? "px-0 pt-0" : "px-4 pt-8"
+      className={`mx-auto flex min-h-screen max-w-[430px] flex-col overflow-hidden text-[var(--text-primary)] ${
+        isSpreadPlayRoute ? "px-0 pt-0" : "px-4 pt-6"
       }`}
     >
       <main className="flex-1">
