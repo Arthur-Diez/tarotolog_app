@@ -67,6 +67,14 @@ interface StructuredSection {
   body: string;
 }
 
+interface IssueStructuredSection {
+  key: string;
+  emoji: string;
+  title: string;
+  body: string;
+  advice?: string | null;
+}
+
 interface NormalizedLocalizedContent {
   sections: StructuredSection[];
   bestTime: string | null;
@@ -176,12 +184,23 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   }
 ];
 
+function resolvePreferredLanguage(raw: unknown): "ru" | "en" {
+  if (typeof raw !== "string") return "ru";
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return "ru";
+  if (normalized.startsWith("en") || normalized.includes("english")) return "en";
+  return "ru";
+}
+
 export default function HoroscopePage() {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
 
   const birthProfile = profile?.birth_profile;
-  const userLang = profile?.user?.lang ?? "ru";
+  const userLang = useMemo(
+    () => resolvePreferredLanguage(birthProfile?.interface_language ?? profile?.user?.lang),
+    [birthProfile?.interface_language, profile?.user?.lang]
+  );
 
   const [freeHoroscope, setFreeHoroscope] = useState<HoroscopeFreeTodayResponse | null>(null);
   const [freeLoading, setFreeLoading] = useState(true);
@@ -1689,11 +1708,28 @@ function HoroscopeSection({ emoji, title, body }: { emoji?: string | null; title
   );
 }
 
+function IssueSectionCard({ section }: { section: IssueStructuredSection }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-sm font-semibold text-[var(--text-primary)]">
+        {section.emoji ? `${section.emoji} ` : null}
+        {section.title}
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-line">{section.body}</p>
+      {section.advice ? (
+        <div className="mt-3 rounded-xl border border-[var(--accent-gold)]/35 bg-[var(--accent-gold)]/10 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">Совет</p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--text-primary)]">{section.advice}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose: () => void }) {
   if (!state.open) return null;
   const issue = state.issue;
-  const issueSections = normalizeIssueSections(issue?.content_json);
-  const showMarkdown = !issueSections.length && Boolean(issue?.content_md);
+  const issueSections = normalizeIssueSections(issue?.content_json, issue?.summary_text ?? null, issue?.content_md ?? null);
   const issueStatus = normalizeIssueStatus(issue?.status);
 
   return (
@@ -1734,25 +1770,11 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
               </div>
             </div>
 
-            {issue.summary_text ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-[var(--text-secondary)]">
-                {issue.summary_text}
-              </div>
-            ) : null}
-
             {issueSections.length ? (
               <div className="space-y-3">
                 {issueSections.map((section) => (
-                  <div key={section.key} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <HoroscopeSection emoji={section.emoji} title={section.title} body={section.body} />
-                  </div>
+                  <IssueSectionCard key={section.key} section={section} />
                 ))}
-              </div>
-            ) : null}
-
-            {showMarkdown && issue.content_md ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <HoroscopeMarkdown text={issue.content_md} />
               </div>
             ) : null}
           </div>
@@ -1766,31 +1788,184 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
   );
 }
 
-function normalizeIssueSections(contentJson: HoroscopeIssueResponse["content_json"]): StructuredSection[] {
-  if (!contentJson || !isRecord(contentJson)) return [];
-  const sections: StructuredSection[] = [];
-  const add = (key: string, title: string, emoji: string, body: string | null) => {
-    if (!body) return;
-    sections.push({ key, title, emoji, body });
+function normalizeIssueSections(
+  contentJson: HoroscopeIssueResponse["content_json"],
+  summaryText: string | null,
+  markdownText: string | null
+): IssueStructuredSection[] {
+  const sections: IssueStructuredSection[] = [];
+  const add = (section: IssueStructuredSection | null) => {
+    if (!section || !section.body) return;
+    sections.push(section);
   };
 
-  add("main_energy", "Главная энергия", "🌌", readString(contentJson.main_energy));
-  add("focus", "Фокус", "🎯", readString(contentJson.focus));
-  add("love", "Любовь", "❤️", readFocusAdvice(contentJson.love));
-  add("career", "Карьера", "💼", readFocusAdvice(contentJson.career));
-  add("money", "Деньги", "💰", readFocusAdvice(contentJson.money));
-  add("health", "Здоровье", "🧘", readFocusAdvice(contentJson.health));
-  add("opportunity", "Возможность", "🚀", readString(contentJson.opportunity));
-  add("risk", "Риск", "⚠️", readString(contentJson.risk));
-  add("timing_best", "Лучшее время", "⏰", readTimingPart(contentJson.timing, "best_period"));
-  add("timing_caution", "Осторожность", "🕰️", readTimingPart(contentJson.timing, "caution_period"));
-  add("advice", "Совет", "🪄", readString(contentJson.advice));
-  add("summary", "Итог", "✨", readString(contentJson.summary));
+  if (contentJson && isRecord(contentJson)) {
+    add({
+      key: "summary",
+      title: "Сюжет периода",
+      emoji: "✨",
+      body: normalizeIssueText(readString(contentJson.summary) ?? summaryText) ?? ""
+    });
+    add({
+      key: "main_energy",
+      title: "Главная энергия",
+      emoji: "🌌",
+      body: normalizeIssueText(readString(contentJson.main_energy)) ?? ""
+    });
 
-  return sections;
+    add(buildIssueSectionFromBlock("love", "Любовь", "❤️", contentJson.love));
+    add(buildIssueSectionFromBlock("career", "Карьера", "💼", contentJson.career));
+    add(buildIssueSectionFromBlock("money", "Деньги", "💰", contentJson.money));
+    add(buildIssueSectionFromBlock("health", "Здоровье", "🧘", contentJson.health));
+
+    add({
+      key: "opportunity",
+      title: "Возможность",
+      emoji: "🚀",
+      body: normalizeIssueText(readString(contentJson.opportunity)) ?? ""
+    });
+    add({
+      key: "risk",
+      title: "Риск",
+      emoji: "⚠️",
+      body: normalizeIssueText(readString(contentJson.risk)) ?? ""
+    });
+
+    const timingBest = normalizeIssueText(readTimingPart(contentJson.timing, "best_period"));
+    const timingCaution = normalizeIssueText(readTimingPart(contentJson.timing, "caution_period"));
+    if (timingBest || timingCaution) {
+      add({
+        key: "timing",
+        title: "Тайминг",
+        emoji: "⏰",
+        body: timingBest ? `Лучшее время: ${timingBest}` : "Работайте в спокойном ритме.",
+        advice: timingCaution ? `Осторожность: ${timingCaution}` : null
+      });
+    }
+
+    add({
+      key: "final_advice",
+      title: "Финальный совет",
+      emoji: "🧭",
+      body: normalizeIssueText(readString(contentJson.advice)) ?? ""
+    });
+  }
+
+  if (sections.length) return sections;
+  return parseIssueMarkdownSections(markdownText, summaryText);
 }
 
 function readTimingPart(value: unknown, key: "best_period" | "caution_period"): string | null {
   if (!isRecord(value)) return null;
   return readString(value[key]);
+}
+
+function buildIssueSectionFromBlock(
+  key: string,
+  title: string,
+  emoji: string,
+  raw: unknown
+): IssueStructuredSection | null {
+  if (typeof raw === "string") {
+    const body = normalizeIssueText(raw);
+    if (!body) return null;
+    return { key, title, emoji, body };
+  }
+  if (!isRecord(raw)) return null;
+  const analysis = normalizeIssueText(readString(raw.analysis) ?? readString(raw.focus) ?? readString(raw.text));
+  const advice = normalizeIssueText(readString(raw.advice));
+  if (!analysis && !advice) return null;
+  return {
+    key,
+    title,
+    emoji,
+    body: analysis ?? advice ?? "",
+    advice: advice && advice !== analysis ? advice : null
+  };
+}
+
+function parseIssueMarkdownSections(markdownText: string | null, summaryText: string | null): IssueStructuredSection[] {
+  const sections: IssueStructuredSection[] = [];
+  const normalizedSummary = normalizeIssueText(summaryText);
+  if (normalizedSummary) {
+    sections.push({
+      key: "summary_fallback",
+      title: "Сюжет периода",
+      emoji: "✨",
+      body: normalizedSummary
+    });
+  }
+  if (!markdownText) return sections;
+
+  const rows = markdownText
+    .split("\n")
+    .map((row) => row.trim())
+    .filter(Boolean);
+  if (!rows.length) return sections;
+
+  const parsed: Array<{ title: string; lines: string[] }> = [];
+  let current: { title: string; lines: string[] } | null = null;
+
+  for (const row of rows) {
+    const heading = row.match(/^#{1,6}\s*(.+)$/);
+    if (heading) {
+      current = { title: stripMarkdownSyntax(heading[1]), lines: [] };
+      parsed.push(current);
+      continue;
+    }
+    if (!current) {
+      current = { title: "Прогноз", lines: [] };
+      parsed.push(current);
+    }
+    const normalized = stripMarkdownSyntax(row).replace(/^[-*]\s*/, "");
+    if (normalized) current.lines.push(normalized);
+  }
+
+  parsed.forEach((chunk, index) => {
+    const body = normalizeIssueText(chunk.lines.join("\n"));
+    if (!body) return;
+    const title = chunk.title || `Раздел ${index + 1}`;
+    sections.push({
+      key: `md-${index}`,
+      title,
+      emoji: resolveIssueSectionEmoji(title),
+      body
+    });
+  });
+
+  return sections;
+}
+
+function resolveIssueSectionEmoji(title: string): string {
+  const normalized = title.toLowerCase();
+  if (normalized.includes("люб")) return "❤️";
+  if (normalized.includes("карьер") || normalized.includes("работ")) return "💼";
+  if (normalized.includes("ден")) return "💰";
+  if (normalized.includes("здоров")) return "🧘";
+  if (normalized.includes("энерг")) return "🌌";
+  if (normalized.includes("возмож")) return "🚀";
+  if (normalized.includes("риск")) return "⚠️";
+  if (normalized.includes("тайм") || normalized.includes("время")) return "⏰";
+  if (normalized.includes("совет")) return "🧭";
+  if (normalized.includes("итог") || normalized.includes("summary")) return "✨";
+  return "✨";
+}
+
+function stripMarkdownSyntax(value: string): string {
+  return value
+    .replace(/`{1,3}/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .trim();
+}
+
+function normalizeIssueText(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = stripMarkdownSyntax(value)
+    .replace(/\b(фокус|focus)\s*:\s*/gi, "")
+    .replace(/\b(совет|advice)\s*:\s*/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return normalized || null;
 }
