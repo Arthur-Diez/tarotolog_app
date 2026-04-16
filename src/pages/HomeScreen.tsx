@@ -322,16 +322,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       </section>
 
       {!subscriptionLoading && !hasSubscription ? (
-        <section className="space-y-3">
-          <div className="px-1">
-            <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-tertiary)]">Ежедневная энергия</p>
-            <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Усилить экран и поддержать проект</h3>
-            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
-              Видимый ежедневный ритуал: пользователь получает энергию, а проект получает рекламную монетизацию.
-            </p>
-          </div>
-          <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
-        </section>
+        <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
       ) : null}
 
       <section className="space-y-3">
