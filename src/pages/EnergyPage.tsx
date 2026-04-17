@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, Loader2, RefreshCw, Share2, Users, X, Zap } from "lucide-react";
+import { ArrowRight, Copy, Loader2, RefreshCw, Share2, Sparkles, Users, X, Zap } from "lucide-react";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -308,6 +308,29 @@ function formatWalletHistoryTimestamp(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
+}
+
+function getOfferTotalEnergy(offer: PaymentOfferResponse): number {
+  return offer.final_energy_amount || offer.energy_amount + offer.bonus_energy;
+}
+
+function getOfferBonusPercent(offer: PaymentOfferResponse): number {
+  if (offer.energy_amount <= 0 || offer.bonus_energy <= 0) return 0;
+  return Math.floor((offer.bonus_energy / offer.energy_amount) * 100);
+}
+
+function pickFeaturedOffer(offers: PaymentOfferResponse[]): PaymentOfferResponse | null {
+  if (offers.length === 0) return null;
+
+  return [...offers].sort((left, right) => {
+    const discountDelta = Number(right.discount_percent || "0") - Number(left.discount_percent || "0");
+    if (discountDelta !== 0) return discountDelta;
+
+    const bonusDelta = getOfferBonusPercent(right) - getOfferBonusPercent(left);
+    if (bonusDelta !== 0) return bonusDelta;
+
+    return getOfferTotalEnergy(right) - getOfferTotalEnergy(left);
+  })[0];
 }
 
 function toPaymentStatusViewFromPurchase(purchase: PurchaseStatusResponse): PaymentStatusView {
@@ -1154,363 +1177,530 @@ export default function EnergyPage() {
     return `Получить +${adsState.task.next_energy} ⚡`;
   }, [adsAction, adsState?.ads_enabled, adsState?.task.available, adsState?.task.next_energy, taskCooldownLeft]);
 
+  const featuredOffer = useMemo(() => pickFeaturedOffer(paymentOffers), [paymentOffers]);
+  const secondaryOffers = useMemo(
+    () => paymentOffers.filter((offer) => offer.offer_id !== featuredOffer?.offer_id),
+    [featuredOffer?.offer_id, paymentOffers]
+  );
+  const accountModeLabel = energyBalance <= 10 ? "Нужна подпитка" : energyBalance <= 35 ? "Рабочий запас" : "Сильный ресурс";
+  const energyStory =
+    energyBalance <= 10
+      ? "Баланс на нижней границе. Лучше быстро вернуть энергию через рекламу или компактный пакет, чтобы не упираться в блокировки."
+      : energyBalance <= 35
+        ? "Запаса хватит на несколько сценариев, но для комфортного ритма лучше держать запас выше среднего."
+        : "Баланс выглядит уверенно. Можно спокойно идти в расклады, персональные прогнозы и расширенные сценарии."
+      ;
+  const energyDateLabel = adsState?.local_date
+    ? formatWalletHistoryTimestamp(`${adsState.local_date}T12:00:00`).split(",")[0]
+    : null;
+  const hasFreeEnergyTask = Boolean(adsState?.ads_enabled);
+  const taskRewardAmount = adsState?.task.next_energy ?? 0;
+  const adBannerReady = Boolean(adsState?.ads_enabled && adsState?.task.available && taskBlockId);
+  const paymentSectionTitle =
+    selectedPaymentMethod === "telegram_stars" ? "Пополнение через Telegram Stars" : "Премиальные пакеты энергии";
+  const paymentSectionBody =
+    selectedPaymentMethod === "telegram_stars"
+      ? "Быстрый платёж прямо внутри Telegram. Подходит тем, кто хочет закрывать покупку без выхода из мини-приложения."
+      : "Выберите пакет под свой темп: быстрый добор энергии, лучший value-оффер или глубокий запас под серию раскладов.";
+
   return (
     <>
       <div className="space-y-6">
-        <section className="space-y-3">
-          <div>
-            <p className="text-lg font-semibold text-[var(--text-primary)]">Бесплатная энергия</p>
-          </div>
+        <section className="relative overflow-hidden rounded-[32px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(42,34,49,0.96),rgba(18,14,23,0.96))] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.42),0_0_36px_rgba(183,138,87,0.1)]">
+          <div className="pointer-events-none absolute -right-10 top-4 h-32 w-32 rounded-full bg-[rgba(215,185,139,0.12)] blur-3xl" />
+          <div className="pointer-events-none absolute left-[-10px] top-20 h-28 w-28 rounded-full bg-[rgba(110,77,120,0.2)] blur-3xl" />
 
-          {adsLoading ? (
-            <div className="h-24 animate-pulse rounded-xl bg-white/10" />
-          ) : adsState?.ads_enabled && adsState?.task.available && taskBlockId ? (
-            <div className="space-y-2">
-              <div className="w-full overflow-hidden rounded-2xl border border-white/15 bg-[var(--surface-chip-bg)]/55 shadow-[0_12px_24px_rgba(0,0,0,0.35)]">
-                <AdsgramTaskBanner
-                  className="block w-full"
-                  blockId={taskBlockId}
-                  disabled={Boolean(adsAction)}
-                  onReward={(detail) => {
-                    void handleTaskRewardClaim(detail);
-                  }}
-                  onError={(message) => {
-                    setAdsErrorText(message);
-                    void loadAdsState();
-                  }}
-                  onBannerNotFound={() => {
-                    setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже");
-                    void loadAdsState();
-                  }}
-                  onTooLongSession={() => {
-                    setAdsErrorText("Сессия задания устарела, обновите страницу");
-                    void loadAdsState();
-                  }}
-                />
-              </div>
-              {adsAction ? (
-                <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {taskButtonLabel}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)]/70 px-4 py-3">
-              <p className="text-sm text-[var(--text-secondary)]">{taskButtonLabel}</p>
-            </div>
-          )}
-
-          {adsErrorText ? (
-            <p className="text-xs text-[var(--accent-gold)]">{adsErrorText}</p>
-          ) : null}
-
-          <div className="rounded-2xl border border-white/12 bg-[var(--surface-chip-bg)]/70 p-4 shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
-            {referralLoading ? (
+          <div className="relative space-y-5">
+            <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
-                <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
-                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
-                <div className="h-9 w-full animate-pulse rounded-full bg-white/10" />
+                <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Энергия пространства</p>
+                <h1 className="font-['Cormorant_Garamond'] text-[2.05rem] font-semibold leading-none text-[var(--text-primary)]">
+                  Управление вашим ресурсом
+                </h1>
+                <p className="max-w-[320px] text-[0.96rem] leading-6 text-[var(--text-secondary)]">{energyStory}</p>
               </div>
-            ) : (
-              <>
+              <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">
+                {accountModeLabel}
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="rounded-[26px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-5 shadow-[var(--surface-shadow-soft)] backdrop-blur-xl">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-semibold text-[var(--text-primary)]">Реферальная программа</p>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      {referralProgram?.preview_text ||
-                        "Пригласите друзей и получайте бонусы: +2 ⚡ за активацию и +10 ⚡ за первую покупку."}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Баланс сейчас</p>
+                    {loading && !profile ? (
+                      <div className="mt-3 h-8 w-24 animate-pulse rounded-md bg-white/10" />
+                    ) : (
+                      <div className="mt-3 flex items-center gap-2">
+                        <p
+                          className={`text-[2rem] font-semibold text-[var(--accent-rose)] transition-all duration-500 ${
+                            isBalanceAnimating ? "scale-105 text-[var(--accent-gold)]" : ""
+                          }`}
+                        >
+                          {formattedEnergyBalance} ⚡
+                        </p>
+                        {balanceDelta ? (
+                          <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">
+                            +{balanceDelta} ⚡
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.05)]">
+                    <Zap className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.5} />
                   </div>
                 </div>
-                <p className="mt-2 text-xs text-emerald-100/85">
-                  Заработано по рефералке: +{referralProgram?.total_earned_energy_from_referrals ?? 0} ⚡
-                </p>
 
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
-                    <p className="text-[var(--text-tertiary)]">Приглашено</p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_invited ?? 0}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
-                    <p className="text-[var(--text-tertiary)]">Активно</p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_activated ?? 0}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 py-2">
-                    <p className="text-[var(--text-tertiary)]">Покупки</p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{referralProgram?.total_purchased ?? 0}</p>
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {user?.telegram.username ? (
+                    <span className="rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
+                      @{user.telegram.username}
+                    </span>
+                  ) : null}
+                  {energyDateLabel ? (
+                    <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
+                      Локальная дата: {energyDateLabel}
+                    </span>
+                  ) : null}
                 </div>
+              </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-2 sm:min-w-[210px]">
+                <Button
+                  variant="outline"
+                  className="h-11 justify-between rounded-full border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] px-4 text-[var(--text-primary)]"
+                  onClick={handleOpenHistory}
+                >
+                  История энергии
+                  <RefreshCw className="h-4 w-4" strokeWidth={1.7} />
+                </Button>
+                {pendingPurchase?.entity_id ? (
                   <Button
-                    size="sm"
-                    className="w-full gap-2"
-                    disabled={!referralProgram}
-                    onClick={handleReferralInvite}
-                  >
-                    <Users className="h-4 w-4" />
-                    Пригласить друзей
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full gap-2 border-white/20"
-                    disabled={!referralProgram?.referral_link}
+                    variant="primary"
+                    className="h-11 justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-4 text-[var(--text-on-gold)] shadow-[0_6px_18px_rgba(183,138,87,0.22)]"
+                    disabled={!canCheckStatus}
                     onClick={() => {
-                      if (!referralProgram?.referral_link) return;
-                      if (navigator.clipboard?.writeText) {
-                        void navigator.clipboard.writeText(referralProgram.referral_link);
-                      } else {
-                        openExternalLink(referralProgram.referral_link);
-                        return;
-                      }
-                      triggerHapticNotification("success");
-                      setPurchaseNotice({
-                        tone: "success",
-                        title: "Ссылка скопирована",
-                        message: "Отправьте реферальную ссылку другу и получите бонус, когда он активируется."
-                      });
+                      if (!pendingPurchase) return;
+                      autoPollAttemptsRef.current = 0;
+                      void checkPurchaseStatus(pendingPurchase);
                     }}
                   >
-                    <Copy className="h-4 w-4" />
-                    Скопировать ссылку
+                    {checkingStatus ? "Проверяем платёж" : "Проверить платёж"}
+                    {checkingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" strokeWidth={1.7} />}
                   </Button>
-                </div>
-
-                {referralError ? <p className="mt-2 text-xs text-[var(--accent-gold)]">{referralError}</p> : null}
-              </>
-            )}
+                ) : (
+                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm leading-5 text-[var(--text-secondary)]">
+                    Платёжный сценарий уже привязан к backend: офферы, статусы и автопроверка работают в одном потоке.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </section>
 
-        <div className="flex items-center gap-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/15 bg-white/5">
-            <Zap className="h-7 w-7 text-[var(--accent-gold)]" strokeWidth={1.4} />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Энергия аккаунта</p>
-            {loading && !profile ? (
-              <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-white/10" />
-            ) : (
-              <div className="mt-2 flex items-center gap-2">
-                <p
-                  className={`text-3xl font-semibold text-[var(--accent-pink)] transition-all duration-500 ${
-                    isBalanceAnimating ? "scale-105 text-[var(--accent-gold)]" : ""
-                  }`}
-                >
-                  {formattedEnergyBalance} ⚡
+        <section className="relative overflow-hidden rounded-[30px] border border-[rgba(215,185,139,0.16)] bg-[linear-gradient(180deg,rgba(36,28,43,0.96),rgba(18,14,23,0.98))] p-5 shadow-[0_20px_44px_rgba(0,0,0,0.34)]">
+          <div className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[rgba(215,185,139,0.12)] blur-3xl" />
+          <div className="relative space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Ежедневная энергия</p>
+                <h2 className="font-['Cormorant_Garamond'] text-[1.9rem] font-medium leading-none text-[var(--text-primary)]">
+                  Верните ресурс без покупки
+                </h2>
+                <p className="max-w-[330px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">
+                  Один рекламный ритуал в день возвращает энергию пользователю и одновременно поддерживает монетизацию проекта.
                 </p>
-                {balanceDelta ? (
-                  <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2 py-1 text-xs font-semibold text-emerald-100">
-                    +{balanceDelta} ⚡
-                  </span>
+              </div>
+              <div className="hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-right sm:block">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Награда</p>
+                <p className="mt-1 text-lg font-semibold text-[var(--accent-gold)]">+{taskRewardAmount} ⚡</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-[rgba(215,185,139,0.2)] bg-[rgba(215,185,139,0.1)] px-3 py-1.5 text-[12px] font-medium text-[var(--accent-gold)]">
+                {hasFreeEnergyTask ? "Рекламный ритуал активен" : "Реклама сейчас недоступна"}
+              </span>
+              <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
+                {taskButtonLabel}
+              </span>
+            </div>
+
+            {adsLoading ? (
+              <div className="h-24 animate-pulse rounded-[22px] bg-white/10" />
+            ) : adBannerReady ? (
+              <div className="space-y-2">
+                <div className="w-full overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] shadow-[0_12px_24px_rgba(0,0,0,0.32)]">
+                  <AdsgramTaskBanner
+                    className="block w-full"
+                    blockId={taskBlockId ?? ""}
+                    disabled={Boolean(adsAction)}
+                    onReward={(detail) => {
+                      void handleTaskRewardClaim(detail);
+                    }}
+                    onError={(message) => {
+                      setAdsErrorText(message);
+                      void loadAdsState();
+                    }}
+                    onBannerNotFound={() => {
+                      setAdsErrorText("Сейчас нет доступных заданий, попробуйте позже");
+                      void loadAdsState();
+                    }}
+                    onTooLongSession={() => {
+                      setAdsErrorText("Сессия задания устарела, обновите страницу");
+                      void loadAdsState();
+                    }}
+                  />
+                </div>
+                {adsAction ? (
+                  <div className="inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {taskButtonLabel}
+                  </div>
                 ) : null}
               </div>
+            ) : (
+              <div className="rounded-[22px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-4">
+                <p className="text-sm leading-6 text-[var(--text-secondary)]">{taskButtonLabel}</p>
+              </div>
             )}
-            <div className="mt-1 flex flex-wrap items-center gap-3">
-              {user?.telegram.username ? <p className="text-xs text-[var(--text-secondary)]">@{user.telegram.username}</p> : null}
-              <button
-                type="button"
-                onClick={handleOpenHistory}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
-              >
-                <RefreshCw className="h-3 w-3" />
-                История энергии
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <Card className="border border-white/10 bg-[var(--bg-card)]/85 p-6">
-          <div className="mb-4 space-y-2">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Пополнение энергии</h2>
-            <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
-              {PAYMENT_METHOD_OPTIONS.map((option) => (
-                <button
-                  key={option.code}
-                  type="button"
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    selectedPaymentMethod === option.code
-                      ? "bg-white/15 text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)]"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  }`}
-                  onClick={() => {
-                    setSelectedPaymentMethod(option.code);
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-sm text-[var(--text-secondary)]">
-              {selectedPaymentMethod === "telegram_stars"
-                ? "Вы можете приобрести энергию официальной валютой Telegram - Telegram Stars."
-                : "Вы можете приобрести энергию в удобной для вас валюте, а если оплата картой не проходит - используйте Telegram Stars."}
-            </p>
-            {selectedPaymentMethod === "robokassa" ? (
-              <div className="inline-flex rounded-full border border-white/15 bg-[var(--surface-chip-bg)] p-1">
-                {CURRENCY_OPTIONS.map((option) => (
+            {adsErrorText ? <p className="text-xs text-[var(--accent-gold)]">{adsErrorText}</p> : null}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="px-1">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Пополнение энергии</p>
+            <h2 className="mt-1 text-[1.15rem] font-semibold text-[var(--text-primary)]">{paymentSectionTitle}</h2>
+            <p className="mt-2 max-w-[340px] text-sm leading-6 text-[var(--text-secondary)]">{paymentSectionBody}</p>
+          </div>
+
+          <Card className="overflow-hidden border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.92),rgba(17,13,22,0.96))] p-5 shadow-[var(--surface-shadow)]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {PAYMENT_METHOD_OPTIONS.map((option) => (
                   <button
                     key={option.code}
                     type="button"
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                      selectedCurrency === option.code
-                        ? "bg-white/15 text-[var(--text-primary)] shadow-[var(--surface-shadow-soft)]"
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                      selectedPaymentMethod === option.code
+                        ? "border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]"
+                        : "border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                     onClick={() => {
-                      currencyWasChangedManuallyRef.current = true;
-                      setSelectedCurrency(option.code);
+                      setSelectedPaymentMethod(option.code);
                     }}
                   >
                     {option.label}
                   </button>
                 ))}
               </div>
-            ) : null}
-          </div>
 
-          <div className="space-y-3">
-            {offersLoading ? <div className="h-24 animate-pulse rounded-xl bg-white/10" /> : null}
-            {offersError ? <p className="text-sm text-red-100">{offersError}</p> : null}
-            {!offersLoading && !offersError && paymentOffers.length === 0 ? (
-              <p className="text-sm text-[var(--text-secondary)]">
-                {selectedPaymentMethod === "telegram_stars"
-                  ? "Сейчас нет доступных Stars-офферов."
-                  : "Сейчас нет доступных предложений для оплаты картой."}
-              </p>
-            ) : null}
-
-            <div className="grid gap-3">
-              {paymentOffers.map((offer) => {
-                const creatingThisOffer = creatingProductCode === offer.offer_id;
-                const totalEnergy = offer.final_energy_amount || offer.energy_amount + offer.bonus_energy;
-                const hasDiscount = hasOfferDiscount(offer);
-                const oldPrice = formatOfferOldPrice(offer, selectedCurrency);
-                const priceLabel = formatOfferPrice(offer, selectedCurrency);
-                const remaining = formatOfferRemaining(offer.valid_until);
-                const discountPercent = Number(offer.discount_percent || "0");
-                const bonusPercent =
-                  offer.energy_amount > 0 && offer.bonus_energy > 0
-                    ? Math.floor((offer.bonus_energy / offer.energy_amount) * 100)
-                    : 0;
-                const bonusLabel =
-                  bonusPercent > 0
-                    ? `+${bonusPercent}% энергии`
-                    : offer.bonus_energy > 0
-                      ? `+${offer.bonus_energy} бонус`
-                      : null;
-                const hasEnergyUpgrade = totalEnergy > offer.energy_amount;
-                const discountBadge =
-                  discountPercent > 0
-                    ? `-${Math.round(discountPercent)}%`
-                    : hasDiscount
-                      ? "Акция"
-                      : null;
-
-                return (
-                  <div
-                    key={offer.offer_id}
-                    className="rounded-2xl border border-white/10 bg-[var(--surface-chip-bg)] px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.35)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm text-[var(--text-secondary)]">{offer.title}</p>
-                          {discountBadge ? (
-                            <span className="rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
-                              {discountBadge}
-                            </span>
-                          ) : null}
-                          {offer.trigger_type !== "manual" ? (
-                            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-[var(--text-tertiary)]">
-                              {formatTriggerLabel(offer.trigger_type)}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-end gap-2">
-                          {hasEnergyUpgrade ? (
-                            <p className="text-sm text-[var(--text-tertiary)] line-through">{offer.energy_amount} ⚡</p>
-                          ) : null}
-                          <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
-                        </div>
-                        {bonusLabel ? <p className="text-xs text-emerald-100/90">{bonusLabel}</p> : null}
-                        {remaining ? (
-                          <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">Акция активна: {remaining}</p>
-                        ) : null}
-                      </div>
-                      <div className="text-right">
-                        <p className="whitespace-nowrap text-base font-semibold text-[var(--accent-gold)]">{priceLabel}</p>
-                        {oldPrice ? (
-                          <p className="whitespace-nowrap text-xs text-[var(--text-tertiary)] line-through">{oldPrice}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Button
-                      className="mt-3 w-full"
-                      variant="default"
-                      disabled={Boolean(creatingProductCode) || checkingStatus}
+              {selectedPaymentMethod === "robokassa" ? (
+                <div className="flex flex-wrap gap-2">
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <button
+                      key={option.code}
+                      type="button"
+                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                        selectedCurrency === option.code
+                          ? "border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.1)] text-[var(--text-primary)]"
+                          : "border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      }`}
                       onClick={() => {
-                        if (selectedPaymentMethod === "telegram_stars") {
-                          void handleBuyStarsOffer(offer);
-                          return;
-                        }
-                        void handleBuyRobokassaOffer(offer);
+                        currencyWasChangedManuallyRef.current = true;
+                        setSelectedCurrency(option.code);
                       }}
                     >
-                      {creatingThisOffer ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Подготовка платежа...
-                        </span>
-                      ) : selectedPaymentMethod === "telegram_stars" ? (
-                        "Купить за Stars"
-                      ) : (
-                        "Купить"
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
 
-          <div className="mt-5 border-t border-white/10 pt-4 text-xs text-[var(--text-secondary)]">
-            <p className="leading-relaxed">
-              Нажимая «Купить», вы соглашаетесь с{" "}
-              <button
-                type="button"
-                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
-                onClick={() => {
-                  openExternalLink(OFFER_URL);
-                }}
-              >
-                Пользовательским соглашением
-              </button>{" "}
-              и{" "}
-              <button
-                type="button"
-                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
-                onClick={() => {
-                  openExternalLink(PRIVACY_URL);
-                }}
-              >
-                Политикой обработки данных
-              </button>
-              .
-            </p>
-            <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
-              Контакты:{" "}
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="font-medium text-[var(--accent-pink)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
-              >
-                {CONTACT_EMAIL}
-              </a>
-            </p>
-          </div>
-        </Card>
+              {offersLoading ? <div className="h-28 animate-pulse rounded-[24px] bg-white/10" /> : null}
+              {offersError ? (
+                <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{offersError}</div>
+              ) : null}
+              {!offersLoading && !offersError && paymentOffers.length === 0 ? (
+                <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-4 text-sm leading-6 text-[var(--text-secondary)]">
+                  {selectedPaymentMethod === "telegram_stars"
+                    ? "Сейчас нет доступных Stars-офферов."
+                    : "Сейчас нет доступных предложений для оплаты картой."}
+                </div>
+              ) : null}
+
+              {featuredOffer ? (
+                <div className="rounded-[28px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(27,21,33,0.98))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.34),0_0_24px_rgba(183,138,87,0.08)]">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
+                          Рекомендуем
+                        </span>
+                        {featuredOffer.trigger_type !== "manual" ? (
+                          <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                            {formatTriggerLabel(featuredOffer.trigger_type)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div>
+                        <p className="text-sm text-[var(--text-secondary)]">{featuredOffer.title}</p>
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          {getOfferTotalEnergy(featuredOffer) > featuredOffer.energy_amount ? (
+                            <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
+                          ) : null}
+                          <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
+                            {getOfferTotalEnergy(featuredOffer)} ⚡
+                          </p>
+                        </div>
+                        <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
+                          {featuredOffer.label || "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="min-w-[112px] text-left sm:text-right">
+                      <p className="text-2xl font-semibold text-[var(--accent-gold)]">{formatOfferPrice(featuredOffer, selectedCurrency)}</p>
+                      {formatOfferOldPrice(featuredOffer, selectedCurrency) ? (
+                        <p className="mt-1 text-xs text-[var(--text-tertiary)] line-through">
+                          {formatOfferOldPrice(featuredOffer, selectedCurrency)}
+                        </p>
+                      ) : null}
+                      {formatOfferRemaining(featuredOffer.valid_until) ? (
+                        <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
+                          Акция активна: {formatOfferRemaining(featuredOffer.valid_until)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    className="mt-5 h-12 w-full justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_8px_22px_rgba(183,138,87,0.24)]"
+                    disabled={Boolean(creatingProductCode) || checkingStatus}
+                    onClick={() => {
+                      if (selectedPaymentMethod === "telegram_stars") {
+                        void handleBuyStarsOffer(featuredOffer);
+                        return;
+                      }
+                      void handleBuyRobokassaOffer(featuredOffer);
+                    }}
+                  >
+                    {creatingProductCode === featuredOffer.offer_id ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Подготовка платежа...
+                      </span>
+                    ) : selectedPaymentMethod === "telegram_stars" ? (
+                      <span className="inline-flex items-center gap-2">
+                        Открыть оплату в Stars
+                        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        Забрать пакет энергии
+                        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+
+              {secondaryOffers.length > 0 ? (
+                <div className="grid gap-3">
+                  {secondaryOffers.map((offer) => {
+                    const creatingThisOffer = creatingProductCode === offer.offer_id;
+                    const totalEnergy = getOfferTotalEnergy(offer);
+                    const oldPrice = formatOfferOldPrice(offer, selectedCurrency);
+                    const remaining = formatOfferRemaining(offer.valid_until);
+                    const discountBadge = Number(offer.discount_percent || "0") > 0
+                      ? `-${Math.round(Number(offer.discount_percent || "0"))}%`
+                      : hasOfferDiscount(offer)
+                        ? "Акция"
+                        : null;
+                    const bonusLabel = getOfferBonusPercent(offer) > 0
+                      ? `+${getOfferBonusPercent(offer)}% энергии`
+                      : offer.bonus_energy > 0
+                        ? `+${offer.bonus_energy} бонус`
+                        : null;
+
+                    return (
+                      <div
+                        key={offer.offer_id}
+                        className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4 shadow-[var(--surface-shadow-soft)]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-medium text-[var(--text-primary)]">{offer.title}</p>
+                              {discountBadge ? (
+                                <span className="rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
+                                  {discountBadge}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-end gap-2">
+                              {totalEnergy > offer.energy_amount ? (
+                                <p className="text-sm text-[var(--text-tertiary)] line-through">{offer.energy_amount} ⚡</p>
+                              ) : null}
+                              <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
+                            </div>
+                            {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
+                            {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
+                          </div>
+                          <div className="text-right">
+                            <p className="whitespace-nowrap text-base font-semibold text-[var(--accent-gold)]">
+                              {formatOfferPrice(offer, selectedCurrency)}
+                            </p>
+                            {oldPrice ? (
+                              <p className="mt-1 whitespace-nowrap text-xs text-[var(--text-tertiary)] line-through">{oldPrice}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <Button
+                          className="mt-3 h-11 w-full rounded-full"
+                          variant="outline"
+                          disabled={Boolean(creatingProductCode) || checkingStatus}
+                          onClick={() => {
+                            if (selectedPaymentMethod === "telegram_stars") {
+                              void handleBuyStarsOffer(offer);
+                              return;
+                            }
+                            void handleBuyRobokassaOffer(offer);
+                          }}
+                        >
+                          {creatingThisOffer ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Подготовка платежа...
+                            </span>
+                          ) : (
+                            "Выбрать пакет"
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="rounded-[22px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-xs leading-6 text-[var(--text-secondary)]">
+                <p>
+                  Нажимая «Купить», вы соглашаетесь с{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-[var(--accent-rose)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+                    onClick={() => {
+                      openExternalLink(OFFER_URL);
+                    }}
+                  >
+                    Пользовательским соглашением
+                  </button>{" "}
+                  и{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-[var(--accent-rose)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+                    onClick={() => {
+                      openExternalLink(PRIVACY_URL);
+                    }}
+                  >
+                    Политикой обработки данных
+                  </button>
+                  .
+                </p>
+                <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
+                  Контакты:{" "}
+                  <a
+                    href={`mailto:${CONTACT_EMAIL}`}
+                    className="font-medium text-[var(--accent-rose)] underline-offset-2 transition hover:text-[var(--text-primary)] hover:underline"
+                  >
+                    {CONTACT_EMAIL}
+                  </a>
+                </p>
+              </div>
+            </div>
+          </Card>
+        </section>
+
+        <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.9),rgba(17,13,22,0.94))] p-5 shadow-[var(--surface-shadow)]">
+          {referralLoading ? (
+            <div className="space-y-2">
+              <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
+              <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+              <div className="h-9 w-full animate-pulse rounded-full bg-white/10" />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] text-[var(--accent-gold)]">
+                  <Users className="h-5 w-5" strokeWidth={1.55} />
+                </span>
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-tertiary)]">Реферальная программа</p>
+                  <h3 className="text-[1.05rem] font-semibold text-[var(--text-primary)]">Приводите друзей и копите энергию</h3>
+                  <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                    {referralProgram?.preview_text ||
+                      "Пригласите друзей и получайте бонусы: +2 ⚡ за активацию и +10 ⚡ за первую покупку."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Приглашено</p>
+                  <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">{referralProgram?.total_invited ?? 0}</p>
+                </div>
+                <div className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Активно</p>
+                  <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">{referralProgram?.total_activated ?? 0}</p>
+                </div>
+                <div className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Заработано</p>
+                  <p className="mt-2 text-base font-semibold text-[var(--accent-gold)]">
+                    +{referralProgram?.total_earned_energy_from_referrals ?? 0} ⚡
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Button size="sm" className="h-11 gap-2 rounded-full" disabled={!referralProgram} onClick={handleReferralInvite}>
+                  <Share2 className="h-4 w-4" />
+                  Пригласить друзей
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-11 gap-2 rounded-full border-white/20"
+                  disabled={!referralProgram?.referral_link}
+                  onClick={() => {
+                    if (!referralProgram?.referral_link) return;
+                    if (navigator.clipboard?.writeText) {
+                      void navigator.clipboard.writeText(referralProgram.referral_link);
+                    } else {
+                      openExternalLink(referralProgram.referral_link);
+                      return;
+                    }
+                    triggerHapticNotification("success");
+                    setPurchaseNotice({
+                      tone: "success",
+                      title: "Ссылка скопирована",
+                      message: "Отправьте реферальную ссылку другу и получите бонус, когда он активируется."
+                    });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                  Скопировать ссылку
+                </Button>
+              </div>
+
+              {referralError ? <p className="mt-3 text-xs text-[var(--accent-gold)]">{referralError}</p> : null}
+            </>
+          )}
+        </section>
 
         {(statusText || errorText || activePurchase || pendingPurchase?.entity_id) && (
           <Card
@@ -1519,51 +1709,64 @@ export default function EnergyPage() {
                 ? "border-emerald-400/40 bg-emerald-400/10"
                 : uiState === "failed"
                   ? "border-red-400/40 bg-red-400/10"
-                  : "border-white/10 bg-[var(--bg-card)]/85"
+                  : "border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.9),rgba(17,13,22,0.94))]"
             }`}
           >
-            {statusText ? <p className="text-sm text-[var(--text-primary)]">{statusText}</p> : null}
-            {errorText ? <p className="text-sm text-red-100">{errorText}</p> : null}
-
-            {activePurchase ? (
-              <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                Покупка{activePurchase.invoice_id ? ` #${activePurchase.invoice_id}` : ""} •{" "}
-                {activePurchase.title || activePurchase.code} • {activePurchase.currency} • статус:{" "}
-                {activePurchase.status}
-              </p>
-            ) : null}
-
-            {pendingPurchase?.entity_id ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-3 gap-2 border-white/20"
-                disabled={!canCheckStatus}
-                onClick={() => {
-                  if (!pendingPurchase) return;
-                  autoPollAttemptsRef.current = 0;
-                  void checkPurchaseStatus(pendingPurchase);
-                }}
+            <div className="flex items-start gap-3">
+              <span
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border ${
+                  uiState === "succeeded"
+                    ? "border-emerald-300/35 bg-emerald-400/10 text-emerald-100"
+                    : uiState === "failed"
+                      ? "border-red-300/35 bg-red-400/10 text-red-100"
+                      : "border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] text-[var(--accent-gold)]"
+                }`}
               >
-                {checkingStatus ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Проверяем...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Проверить статус
-                  </>
-                )}
-              </Button>
-            ) : null}
+                {uiState === "failed" ? <X className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              </span>
+              <div className="space-y-2">
+                {statusText ? <p className="text-sm text-[var(--text-primary)]">{statusText}</p> : null}
+                {errorText ? <p className="text-sm text-red-100">{errorText}</p> : null}
+                {activePurchase ? (
+                  <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                    Покупка{activePurchase.invoice_id ? ` #${activePurchase.invoice_id}` : ""} •{" "}
+                    {activePurchase.title || activePurchase.code} • {activePurchase.currency} • статус:{" "}
+                    {activePurchase.status}
+                  </p>
+                ) : null}
+              </div>
+            </div>
 
             {pendingPurchase?.entity_id ? (
-              <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
-                когда приложение активно.
-              </p>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-4 gap-2 rounded-full border-white/20"
+                  disabled={!canCheckStatus}
+                  onClick={() => {
+                    if (!pendingPurchase) return;
+                    autoPollAttemptsRef.current = 0;
+                    void checkPurchaseStatus(pendingPurchase);
+                  }}
+                >
+                  {checkingStatus ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Проверяем...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Проверить статус
+                    </>
+                  )}
+                </Button>
+                <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                  Автопроверка статуса выполняется раз в {Math.round(AUTO_STATUS_POLL_INTERVAL_MS / 1000)} секунд, только
+                  когда приложение активно.
+                </p>
+              </>
             ) : null}
           </Card>
         )}
