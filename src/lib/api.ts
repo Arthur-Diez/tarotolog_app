@@ -359,6 +359,7 @@ export interface CreateReadingPayload {
   question: string;
   cards: CreateReadingCardInput[];
   locale: string;
+  energy_cost?: number;
 }
 
 export interface CreateReadingResponse {
@@ -401,6 +402,9 @@ export interface DailyCardTodayResponse {
   reversed: boolean;
   reading_id?: string | null;
   status: BackendReadingStatus;
+  is_shared?: boolean;
+  interpretation_locked?: boolean;
+  unlock_energy_cost?: number;
   summary_text?: string | null;
   output_payload?: ReadingOutputPayload | null;
   error?: string | null;

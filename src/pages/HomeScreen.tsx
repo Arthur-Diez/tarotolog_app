@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useDailyCard } from "@/hooks/useDailyCard";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { DEFAULT_WIDGET_KEYS, type WidgetKey } from "@/lib/api";
+import { ApiError, DEFAULT_WIDGET_KEYS, createReading, getReading, type WidgetKey, viewReading } from "@/lib/api";
 import type { TelegramUser } from "@/lib/telegram";
 import { normalizeWidgets } from "@/stores/profileState";
 
@@ -106,11 +106,15 @@ function formatDailyCardDate(value?: string | null) {
   }).format(parsed);
 }
 
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
   const { dailyCard, loading: dailyCardLoading, error: dailyCardError, refresh: refreshDailyCard } = useDailyCard();
   const { hasSubscription, loading: subscriptionLoading } = useSubscriptionStatus();
+  const [dailyCardUnlocking, setDailyCardUnlocking] = useState(false);
+  const [dailyCardActionError, setDailyCardActionError] = useState<string | null>(null);
 
   const profileData = profile?.user;
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
@@ -131,45 +135,104 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     ? "Ваш персональный режим включён. Забирайте расширенный гороскоп и глубокие сценарии без лишних ограничений."
     : "Углублённый прогноз на ближайшие дни с акцентом на решения, отношения и энергетику недели.";
   const premiumCta = hasSubscription ? "Открыть прогноз" : "Открыть персональный прогноз";
-  const dailyCardPending = dailyCard ? ["pending", "queued", "processing"].includes(dailyCard.status) : dailyCardLoading;
-  const dailyCardReady = Boolean(dailyCard?.reading_id) && dailyCard?.status === "ready";
+  const dailyCardCardReady = Boolean(dailyCard?.card_code) && dailyCard?.status === "ready";
+  const dailyCardInterpretationLocked = Boolean(dailyCard?.interpretation_locked ?? dailyCard?.is_shared);
+  const dailyCardPending = dailyCardLoading || dailyCardUnlocking;
   const dailyCardDateLabel = formatDailyCardDate(dailyCard?.local_date);
-  const dailyCardHeadline = dailyCardReady
-    ? dailyCard?.output_payload?.headline ?? "Послание дня уже раскрыто"
-    : dailyCardPending
-      ? "Фиксируем карту и собираем интерпретацию"
-      : "Личный ритуал дня временно недоступен";
+  const dailyCardUnlockCost = dailyCard?.unlock_energy_cost ?? 2;
+  const dailyCardHeadline = dailyCardCardReady
+    ? dailyCard?.output_payload?.headline ?? "Общая карта дня уже открыта"
+    : dailyCardLoading
+      ? "Открываем карту дня"
+      : "Карта дня временно недоступна";
   const dailyCardAssetName = dailyCard?.card_name ?? null;
-  const dailyCardPrimaryCta = dailyCardReady
-    ? "Открыть толкование"
-    : dailyCardPending
-      ? "Проверить статус"
-      : "Запросить карту дня";
-  const dailyCardSecondaryCta = dailyCardReady
-    ? "Сохранить в дневник"
-    : dailyCardPending
-      ? "Карта закреплена на сегодня"
-      : "Повторить запрос";
-  const dailyCardTitle = dailyCardReady
+  const dailyCardPrimaryCta = dailyCardInterpretationLocked
+    ? `Личная трактовка за ${dailyCardUnlockCost} ⚡`
+    : "Открыть толкование";
+  const dailyCardSecondaryCta = dailyCardInterpretationLocked ? "Карта дня сегодня общая для всех" : "Сохранить в дневник";
+  const dailyCardTitle = dailyCardCardReady
     ? dailyCard?.card_name ?? "Карта дня"
-    : dailyCardPending
-      ? "Готовим карту дня"
+    : dailyCardLoading
+      ? "Открываем карту дня"
       : dailyCardError || dailyCard?.error
         ? "Карта дня временно недоступна"
         : "Карта дня";
-  const dailyCardBody = dailyCardReady
+  const dailyCardBody = dailyCardCardReady
     ? dailyCard?.output_payload?.summary ?? dailyCard?.summary_text ?? "Интерпретация дня уже готова."
-    : dailyCardPending
-      ? "Фиксируем вашу карту на текущую локальную дату и собираем интерпретацию через backend, чтобы она была стабильной весь день."
+    : dailyCardLoading
+      ? "Забираем общую карту дня для текущей локальной даты."
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
 
-  const handleOpenDailyCard = () => {
-    if (dailyCardReady && dailyCard?.reading_id) {
+  const handleOpenDailyCard = useCallback(async () => {
+    if (!dailyCard?.card_code || !dailyCard?.local_date) {
+      void refreshDailyCard();
+      return;
+    }
+
+    if (!dailyCardInterpretationLocked && dailyCard?.reading_id) {
       navigate(`/reading/${dailyCard.reading_id}`);
       return;
     }
-    void refreshDailyCard();
-  };
+
+    setDailyCardUnlocking(true);
+    setDailyCardActionError(null);
+
+    try {
+      const interfaceLocale =
+        dailyCard.locale ||
+        window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ||
+        navigator.language ||
+        "ru";
+      const reading = await createReading({
+        type: "tarot",
+        spread_id: "one_card",
+        spread_title: "Одна карта",
+        deck_id: dailyCard.deck_id,
+        deck_title: dailyCard.deck_title ?? "Классическая — Уэйта-Смита",
+        question:
+          `Персональная трактовка моей карты дня на ${dailyCard.local_date}. ` +
+          `Карта: ${dailyCard.card_name ?? "Карта дня"}. ` +
+          "Как эта карта проявляется именно для меня сегодня, на что обратить внимание и как лучше прожить день?",
+        locale: interfaceLocale,
+        energy_cost: dailyCardUnlockCost,
+        cards: [
+          {
+            position_index: 1,
+            card_code: dailyCard.card_code,
+            reversed: Boolean(dailyCard.reversed),
+            position_label: "Карта дня",
+            card_name: dailyCard.card_name ?? "Карта дня"
+          }
+        ]
+      });
+
+      let attempts = 0;
+      while (attempts < 40) {
+        attempts += 1;
+        const current = await getReading(reading.id);
+        if (current.status === "ready" && current.output_payload) {
+          const viewed = await viewReading(reading.id);
+          navigate(`/reading/${reading.id}`, { state: { reading: viewed } });
+          return;
+        }
+        if (current.status === "error") {
+          throw new Error(current.error || "Не удалось подготовить трактовку карты дня.");
+        }
+        await wait(2000);
+      }
+
+      throw new Error("Трактовка готовится дольше обычного. Попробуйте открыть её ещё раз через несколько секунд.");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        setDailyCardActionError(`Для личной трактовки нужно ${dailyCardUnlockCost} ⚡. Откройте раздел энергии и пополните баланс.`);
+        navigate("/energy");
+        return;
+      }
+      setDailyCardActionError(error instanceof Error ? error.message : "Не удалось открыть трактовку карты дня.");
+    } finally {
+      setDailyCardUnlocking(false);
+    }
+  }, [dailyCard, dailyCardInterpretationLocked, dailyCardUnlockCost, navigate, refreshDailyCard]);
 
   const metrics = [
     { label: "Энергия", value: formattedEnergy },
@@ -306,7 +369,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
             className="h-12 gap-2 rounded-full border border-[rgba(255,255,255,0.1)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[0.95rem] text-[var(--text-on-gold)] shadow-[0_8px_24px_rgba(183,138,87,0.26)]"
             onClick={handleOpenDailyCard}
           >
-            {dailyCardReady ? "Открыть толкование" : "Открыть карту дня"}
+            {dailyCardInterpretationLocked ? `Личная трактовка за ${dailyCardUnlockCost} ⚡` : "Открыть толкование"}
             {dailyCardPending ? (
               <Loader className="h-4 w-4 animate-spin" strokeWidth={1.8} />
             ) : (
@@ -373,7 +436,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
                 )}
               </div>
               <p className="text-center text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                {dailyCardReady ? "готово" : dailyCardPending ? "в процессе" : "ритуал дня"}
+                {dailyCardCardReady ? (dailyCardInterpretationLocked ? "общая карта" : "готово") : dailyCardPending ? "в процессе" : "ритуал дня"}
               </p>
             </div>
           </div>
@@ -392,7 +455,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
               <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
             )}
           </Button>
-          {dailyCardReady ? (
+          {dailyCardCardReady && !dailyCardInterpretationLocked ? (
             <button
               type="button"
               className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
@@ -404,21 +467,17 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           ) : dailyCardPending ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]">
               <Loader className="h-3.5 w-3.5 animate-spin text-[var(--accent-gold)]" strokeWidth={1.8} />
-              {dailyCardSecondaryCta}
+              Готовим личную трактовку
             </span>
           ) : (
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
-              onClick={() => {
-                void refreshDailyCard();
-              }}
-            >
+            <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)]">
               {dailyCardSecondaryCta}
-              <RefreshCw className="h-4 w-4" strokeWidth={1.7} />
-            </button>
+            </span>
           )}
         </div>
+        {dailyCardActionError ? (
+          <p className="relative mt-3 text-sm leading-6 text-[var(--accent-gold)]">{dailyCardActionError}</p>
+        ) : null}
       </section>
 
       <section className="grid grid-cols-3 gap-3">

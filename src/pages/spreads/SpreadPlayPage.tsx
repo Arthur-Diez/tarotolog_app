@@ -818,6 +818,7 @@ export default function SpreadPlayPage() {
             deck_title: deckTitle,
             question: snapshot.question.trim(),
             locale: interfaceLocale,
+            energy_cost: spreadEnergyCost,
             cards: cardsPayload
           });
           ensuredReadingId = response.id;
