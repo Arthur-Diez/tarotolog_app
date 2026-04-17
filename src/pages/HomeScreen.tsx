@@ -22,16 +22,11 @@ import { Button } from "@/components/ui/button";
 import { useDailyCard } from "@/hooks/useDailyCard";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { ApiError, DEFAULT_WIDGET_KEYS, createReading, getReading, type WidgetKey, viewReading } from "@/lib/api";
+import { ApiError, createReading, getReading, viewReading } from "@/lib/api";
 import type { TelegramUser } from "@/lib/telegram";
-import { normalizeWidgets } from "@/stores/profileState";
 
 interface HomeScreenProps {
   telegramUser?: TelegramUser | null;
-}
-
-interface WidgetSummary {
-  short: string;
 }
 
 interface ServiceItem {
@@ -75,23 +70,51 @@ function getDisplayName(telegramUser: TelegramUser | null | undefined, name?: st
   return name ?? telegramUser?.first_name ?? telegramUser?.username ?? "Гость";
 }
 
-function getZodiacLabel(zodiacSign?: string | null) {
-  if (!zodiacSign) return "Не указан";
-  return zodiacSign
-    .replace(/_/g, " ")
-    .split(" ")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-}
+function getZodiacLabel(zodiacSign?: string | null, birthDate?: string | null) {
+  if (zodiacSign) {
+    return zodiacSign
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+  }
 
-function getPriorityMeta(): Record<WidgetKey, WidgetSummary> {
-  return {
-    card_of_day: { short: "Карта дня" },
-    daily_spread: { short: "Ежедневный расклад" },
-    individual_horoscope: { short: "Личный гороскоп" },
-    astro_forecast: { short: "Астропрогноз" },
-    numerology_forecast: { short: "Нумерология" }
+  if (!birthDate) return "Не указан";
+  const normalized = birthDate.trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "Не указан";
+
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(month) || !Number.isFinite(day)) return "Не указан";
+
+  const zodiacRanges = [
+    { label: "Козерог", start: [12, 22], end: [1, 19] },
+    { label: "Водолей", start: [1, 20], end: [2, 18] },
+    { label: "Рыбы", start: [2, 19], end: [3, 20] },
+    { label: "Овен", start: [3, 21], end: [4, 19] },
+    { label: "Телец", start: [4, 20], end: [5, 20] },
+    { label: "Близнецы", start: [5, 21], end: [6, 20] },
+    { label: "Рак", start: [6, 21], end: [7, 22] },
+    { label: "Лев", start: [7, 23], end: [8, 22] },
+    { label: "Дева", start: [8, 23], end: [9, 22] },
+    { label: "Весы", start: [9, 23], end: [10, 22] },
+    { label: "Скорпион", start: [10, 23], end: [11, 21] },
+    { label: "Стрелец", start: [11, 22], end: [12, 21] }
+  ] as const;
+
+  const isWithinRange = (startMonth: number, startDay: number, endMonth: number, endDay: number) => {
+    const current = month * 100 + day;
+    const start = startMonth * 100 + startDay;
+    const end = endMonth * 100 + endDay;
+    if (start <= end) {
+      return current >= start && current <= end;
+    }
+    return current >= start || current <= end;
   };
+
+  const found = zodiacRanges.find((range) => isWithinRange(range.start[0], range.start[1], range.end[0], range.end[1]));
+  return found?.label ?? "Не указан";
 }
 
 function formatDailyCardDate(value?: string | null) {
@@ -119,15 +142,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const profileData = profile?.user;
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
   const energyBalance = profileData?.energy_balance ?? 0;
-  const zodiacLabel = getZodiacLabel(profile?.birth_profile?.zodiac_sign);
+  const zodiacLabel = getZodiacLabel(profile?.birth_profile?.zodiac_sign, profile?.birth_profile?.birth_date);
   const focusTheme = useMemo(() => getFocusTheme(energyBalance), [energyBalance]);
   const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energyBalance)));
-  const widgetKeys =
-    profile?.preferences?.widgets && profile.preferences.widgets.length
-      ? normalizeWidgets(profile.preferences.widgets)
-      : DEFAULT_WIDGET_KEYS;
-  const priorityMeta = getPriorityMeta();
-  const priorityChips = widgetKeys.slice(0, 3).map((key) => priorityMeta[key]?.short).filter(Boolean);
 
   const premiumLabel = hasSubscription ? "Premium" : "Base";
   const premiumTitle = hasSubscription ? "Премиум уже активен" : "Личный разбор недели";
@@ -141,7 +158,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const dailyCardDateLabel = formatDailyCardDate(dailyCard?.local_date);
   const dailyCardUnlockCost = dailyCard?.unlock_energy_cost ?? 2;
   const dailyCardHeadline = dailyCardCardReady
-    ? dailyCard?.output_payload?.headline ?? "Общая карта дня уже открыта"
+    ? null
     : dailyCardLoading
       ? "Открываем карту дня"
       : "Карта дня временно недоступна";
@@ -149,7 +166,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const dailyCardPrimaryCta = dailyCardInterpretationLocked
     ? `Личная трактовка за ${dailyCardUnlockCost} ⚡`
     : "Открыть толкование";
-  const dailyCardSecondaryCta = dailyCardInterpretationLocked ? "Карта дня сегодня общая для всех" : "Сохранить в дневник";
+  const dailyCardSecondaryCta = dailyCardInterpretationLocked ? null : "Сохранить в дневник";
   const dailyCardTitle = dailyCardCardReady
     ? dailyCard?.card_name ?? "Карта дня"
     : dailyCardLoading
@@ -158,10 +175,11 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         ? "Карта дня временно недоступна"
         : "Карта дня";
   const dailyCardBody = dailyCardCardReady
-    ? dailyCard?.output_payload?.summary ?? dailyCard?.summary_text ?? "Интерпретация дня уже готова."
+    ? `Карта дня уже выбрана для вашего ритма и текущего дня. Личную трактовку и совет именно для вас можно открыть за ${dailyCardUnlockCost} ⚡.`
     : dailyCardLoading
-      ? "Забираем общую карту дня для текущей локальной даты."
+      ? "Подбираем карту дня под ваш текущий день."
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
+  const dailyCardOrientationLabel = dailyCard?.reversed ? "Перевернутое положение" : "Прямое положение";
 
   const handleOpenDailyCard = useCallback(async () => {
     if (!dailyCard?.card_code || !dailyCard?.local_date) {
@@ -352,38 +370,6 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           </div>
         </div>
 
-        <div className="relative mt-5 flex flex-wrap gap-2">
-          {priorityChips.map((chip) => (
-            <span
-              key={chip}
-              className="inline-flex items-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--text-secondary)]"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-
-        <div className="relative mt-6 flex flex-wrap gap-3">
-          <Button
-            variant="primary"
-            className="h-12 gap-2 rounded-full border border-[rgba(255,255,255,0.1)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[0.95rem] text-[var(--text-on-gold)] shadow-[0_8px_24px_rgba(183,138,87,0.26)]"
-            onClick={handleOpenDailyCard}
-          >
-            {dailyCardInterpretationLocked ? `Личная трактовка за ${dailyCardUnlockCost} ⚡` : "Открыть толкование"}
-            {dailyCardPending ? (
-              <Loader className="h-4 w-4 animate-spin" strokeWidth={1.8} />
-            ) : (
-              <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            className="h-12 rounded-full border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] px-5 text-[var(--text-primary)]"
-            onClick={() => navigate("/horoscope")}
-          >
-            Гороскоп дня
-          </Button>
-        </div>
       </section>
 
       <section className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.94),rgba(19,14,24,0.94))] p-5 shadow-[var(--surface-shadow)]">
@@ -395,18 +381,15 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
               <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.16)] bg-[rgba(215,185,139,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--accent-gold)]">
                 {dailyCardDateLabel}
               </span>
-              {dailyCard?.reversed ? (
-                <span className="inline-flex items-center rounded-full border border-[rgba(231,201,232,0.18)] bg-[rgba(231,201,232,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--accent-rose)]">
-                  Перевёрнута
-                </span>
-              ) : null}
             </div>
 
             <div className="space-y-2">
               <h2 className="font-['Cormorant_Garamond'] text-[1.9rem] font-medium leading-none text-[var(--text-primary)]">
                 {dailyCardTitle}
               </h2>
-              <p className="max-w-[320px] text-base leading-6 text-[var(--text-primary)]">{dailyCardHeadline}</p>
+              {dailyCardHeadline ? (
+                <p className="max-w-[320px] text-base leading-6 text-[var(--text-primary)]">{dailyCardHeadline}</p>
+              ) : null}
             </div>
 
             <p className="max-w-[340px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">{dailyCardBody}</p>
@@ -436,7 +419,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
                 )}
               </div>
               <p className="text-center text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                {dailyCardCardReady ? (dailyCardInterpretationLocked ? "общая карта" : "готово") : dailyCardPending ? "в процессе" : "ритуал дня"}
+                {dailyCardCardReady ? dailyCardOrientationLabel : dailyCardPending ? "в процессе" : "ритуал дня"}
               </p>
             </div>
           </div>
@@ -455,7 +438,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
               <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
             )}
           </Button>
-          {dailyCardCardReady && !dailyCardInterpretationLocked ? (
+          {dailyCardCardReady && !dailyCardInterpretationLocked && dailyCardSecondaryCta ? (
             <button
               type="button"
               className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
@@ -469,11 +452,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
               <Loader className="h-3.5 w-3.5 animate-spin text-[var(--accent-gold)]" strokeWidth={1.8} />
               Готовим личную трактовку
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)]">
-              {dailyCardSecondaryCta}
-            </span>
-          )}
+          ) : null}
         </div>
         {dailyCardActionError ? (
           <p className="relative mt-3 text-sm leading-6 text-[var(--accent-gold)]">{dailyCardActionError}</p>
