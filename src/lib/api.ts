@@ -360,6 +360,9 @@ export interface CreateReadingPayload {
   cards: CreateReadingCardInput[];
   locale: string;
   energy_cost?: number;
+  kind?: string;
+  source?: string;
+  daily_card_date?: string;
 }
 
 export interface CreateReadingResponse {

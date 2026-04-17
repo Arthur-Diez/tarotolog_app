@@ -70,6 +70,14 @@ function getDisplayName(telegramUser: TelegramUser | null | undefined, name?: st
   return name ?? telegramUser?.first_name ?? telegramUser?.username ?? "Гость";
 }
 
+function resolvePreferredLanguage(raw: unknown): "ru" | "en" {
+  if (typeof raw !== "string") return "ru";
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return "ru";
+  if (normalized.startsWith("en") || normalized.includes("english")) return "en";
+  return "ru";
+}
+
 function getZodiacLabel(zodiacSign?: string | null, birthDate?: string | null) {
   if (zodiacSign) {
     return zodiacSign
@@ -143,6 +151,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
   const energyBalance = profileData?.energy_balance ?? 0;
   const zodiacLabel = getZodiacLabel(profile?.birth_profile?.zodiac_sign, profile?.birth_profile?.birth_date);
+  const interfaceLocale = resolvePreferredLanguage(profile?.birth_profile?.interface_language ?? profile?.user?.lang);
   const focusTheme = useMemo(() => getFocusTheme(energyBalance), [energyBalance]);
   const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energyBalance)));
 
@@ -165,7 +174,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const dailyCardAssetName = dailyCard?.card_name ?? null;
   const dailyCardPrimaryCta = dailyCardInterpretationLocked
     ? `Личная трактовка за ${dailyCardUnlockCost} ⚡`
-    : "Открыть толкование";
+    : "Посмотреть толкование";
   const dailyCardSecondaryCta = dailyCardInterpretationLocked ? null : "Сохранить в дневник";
   const dailyCardTitle = dailyCardCardReady
     ? dailyCard?.card_name ?? "Карта дня"
@@ -175,7 +184,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         ? "Карта дня временно недоступна"
         : "Карта дня";
   const dailyCardBody = dailyCardCardReady
-    ? `Карта дня уже выбрана для вашего ритма и текущего дня. Личную трактовку и совет именно для вас можно открыть за ${dailyCardUnlockCost} ⚡.`
+    ? dailyCardInterpretationLocked
+      ? `Карта дня уже выбрана для вашего ритма и текущего дня. Личную трактовку и совет именно для вас можно открыть за ${dailyCardUnlockCost} ⚡.`
+      : "Личная трактовка уже открыта для вашего текущего дня. Можно вернуться к толкованию в любое время до конца суток."
     : dailyCardLoading
       ? "Подбираем карту дня под ваш текущий день."
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
@@ -196,11 +207,6 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     setDailyCardActionError(null);
 
     try {
-      const interfaceLocale =
-        dailyCard.locale ||
-        window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ||
-        navigator.language ||
-        "ru";
       const reading = await createReading({
         type: "tarot",
         spread_id: "one_card",
@@ -213,6 +219,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           "Как эта карта проявляется именно для меня сегодня, на что обратить внимание и как лучше прожить день?",
         locale: interfaceLocale,
         energy_cost: dailyCardUnlockCost,
+        kind: "daily_card_unlock",
+        source: "home_daily_card",
+        daily_card_date: dailyCard.local_date,
         cards: [
           {
             position_index: 1,
@@ -230,6 +239,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         const current = await getReading(reading.id);
         if (current.status === "ready" && current.output_payload) {
           const viewed = await viewReading(reading.id);
+          await refreshDailyCard({ silent: true });
           navigate(`/reading/${reading.id}`, { state: { reading: viewed } });
           return;
         }
@@ -250,7 +260,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     } finally {
       setDailyCardUnlocking(false);
     }
-  }, [dailyCard, dailyCardInterpretationLocked, dailyCardUnlockCost, navigate, refreshDailyCard]);
+  }, [dailyCard, dailyCardInterpretationLocked, dailyCardUnlockCost, interfaceLocale, navigate, refreshDailyCard]);
 
   const metrics = [
     { label: "Энергия", value: formattedEnergy },

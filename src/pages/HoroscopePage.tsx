@@ -192,6 +192,27 @@ function resolvePreferredLanguage(raw: unknown): "ru" | "en" {
   return "ru";
 }
 
+function getZodiacDisplayLabel(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return null;
+  const map: Record<string, string> = {
+    aries: "Овен",
+    taurus: "Телец",
+    gemini: "Близнецы",
+    cancer: "Рак",
+    leo: "Лев",
+    virgo: "Дева",
+    libra: "Весы",
+    scorpio: "Скорпион",
+    sagittarius: "Стрелец",
+    capricorn: "Козерог",
+    aquarius: "Водолей",
+    pisces: "Рыбы"
+  };
+  return map[normalized] ?? raw;
+}
+
 export default function HoroscopePage() {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
@@ -371,7 +392,7 @@ export default function HoroscopePage() {
   );
   const showMarkdown = Boolean(freeTextMd) && !freeSections.length;
 
-  const zodiacLabel = freeHoroscope?.meta?.zodiac_sign ?? birthProfile?.zodiac_sign ?? MOCK_FALLBACK.zodiacSign;
+  const zodiacLabel = getZodiacDisplayLabel(freeHoroscope?.meta?.zodiac_sign) ?? birthProfile?.zodiac_sign ?? MOCK_FALLBACK.zodiacSign;
   const genderLabel = freeHoroscope?.meta?.gender_label ?? getGenderLabel(birthProfile?.gender) ?? MOCK_FALLBACK.genderLabel;
   const periodLabel = freeHoroscope?.meta?.period_label ?? MOCK_FALLBACK.todayLabel;
 
