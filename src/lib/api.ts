@@ -386,6 +386,26 @@ export interface ViewReadingResponse {
   balance: number;
 }
 
+export interface DailyCardTodayResponse {
+  id: string;
+  local_date: string;
+  tz_name?: string | null;
+  tz_offset_min: number;
+  locale: string;
+  deck_id: string;
+  deck_title?: string | null;
+  spread_id: string;
+  spread_title?: string | null;
+  card_code: string;
+  card_name?: string | null;
+  reversed: boolean;
+  reading_id?: string | null;
+  status: BackendReadingStatus;
+  summary_text?: string | null;
+  output_payload?: ReadingOutputPayload | null;
+  error?: string | null;
+}
+
 export interface EnergyBalanceResponse {
   energy_balance: number;
 }
@@ -926,6 +946,14 @@ export async function viewReading(readingId: string): Promise<ViewReadingRespons
     headers: withAuthHeaders()
   });
   return handleResponse<ViewReadingResponse>(res);
+}
+
+export async function getDailyCardToday(): Promise<DailyCardTodayResponse> {
+  const res = await fetch(`${API_BASE}/daily/card/today`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<DailyCardTodayResponse>(res);
 }
 
 export async function getEnergy(): Promise<EnergyBalanceResponse> {

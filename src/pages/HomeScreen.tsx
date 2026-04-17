@@ -6,16 +6,20 @@ import {
   Crown,
   HeartHandshake,
   LayoutDashboard,
+  Loader,
   MoonStar,
   NotebookPen,
   Orbit,
+  RefreshCw,
   Sparkles,
   Star,
   Sun
 } from "lucide-react";
 
 import { DailyBonusCard } from "@/components/sections/DailyBonusCard";
+import CardFaceImage from "@/components/tarot/CardFaceImage";
 import { Button } from "@/components/ui/button";
+import { useDailyCard } from "@/hooks/useDailyCard";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { DEFAULT_WIDGET_KEYS, type WidgetKey } from "@/lib/api";
@@ -90,9 +94,22 @@ function getPriorityMeta(): Record<WidgetKey, WidgetSummary> {
   };
 }
 
+function formatDailyCardDate(value?: string | null) {
+  if (!value) return "Сегодня";
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Сегодня";
+  }
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long"
+  }).format(parsed);
+}
+
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
+  const { dailyCard, loading: dailyCardLoading, error: dailyCardError, refresh: refreshDailyCard } = useDailyCard();
   const { hasSubscription, loading: subscriptionLoading } = useSubscriptionStatus();
 
   const profileData = profile?.user;
@@ -114,6 +131,45 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     ? "Ваш персональный режим включён. Забирайте расширенный гороскоп и глубокие сценарии без лишних ограничений."
     : "Углублённый прогноз на ближайшие дни с акцентом на решения, отношения и энергетику недели.";
   const premiumCta = hasSubscription ? "Открыть прогноз" : "Открыть персональный прогноз";
+  const dailyCardPending = dailyCard ? ["pending", "queued", "processing"].includes(dailyCard.status) : dailyCardLoading;
+  const dailyCardReady = Boolean(dailyCard?.reading_id) && dailyCard?.status === "ready";
+  const dailyCardDateLabel = formatDailyCardDate(dailyCard?.local_date);
+  const dailyCardHeadline = dailyCardReady
+    ? dailyCard?.output_payload?.headline ?? "Послание дня уже раскрыто"
+    : dailyCardPending
+      ? "Фиксируем карту и собираем интерпретацию"
+      : "Личный ритуал дня временно недоступен";
+  const dailyCardAssetName = dailyCard?.card_name ?? null;
+  const dailyCardPrimaryCta = dailyCardReady
+    ? "Открыть толкование"
+    : dailyCardPending
+      ? "Проверить статус"
+      : "Запросить карту дня";
+  const dailyCardSecondaryCta = dailyCardReady
+    ? "Сохранить в дневник"
+    : dailyCardPending
+      ? "Карта закреплена на сегодня"
+      : "Повторить запрос";
+  const dailyCardTitle = dailyCardReady
+    ? dailyCard?.card_name ?? "Карта дня"
+    : dailyCardPending
+      ? "Готовим карту дня"
+      : dailyCardError || dailyCard?.error
+        ? "Карта дня временно недоступна"
+        : "Карта дня";
+  const dailyCardBody = dailyCardReady
+    ? dailyCard?.output_payload?.summary ?? dailyCard?.summary_text ?? "Интерпретация дня уже готова."
+    : dailyCardPending
+      ? "Фиксируем вашу карту на текущую локальную дату и собираем интерпретацию через backend, чтобы она была стабильной весь день."
+      : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
+
+  const handleOpenDailyCard = () => {
+    if (dailyCardReady && dailyCard?.reading_id) {
+      navigate(`/reading/${dailyCard.reading_id}`);
+      return;
+    }
+    void refreshDailyCard();
+  };
 
   const metrics = [
     { label: "Энергия", value: formattedEnergy },
@@ -248,10 +304,14 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           <Button
             variant="primary"
             className="h-12 gap-2 rounded-full border border-[rgba(255,255,255,0.1)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[0.95rem] text-[var(--text-on-gold)] shadow-[0_8px_24px_rgba(183,138,87,0.26)]"
-            onClick={() => navigate("/spreads/play/one_card")}
+            onClick={handleOpenDailyCard}
           >
-            Открыть карту дня
-            <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+            {dailyCardReady ? "Открыть толкование" : "Открыть карту дня"}
+            {dailyCardPending ? (
+              <Loader className="h-4 w-4 animate-spin" strokeWidth={1.8} />
+            ) : (
+              <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+            )}
           </Button>
           <Button
             variant="outline"
@@ -265,27 +325,56 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
 
       <section className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.94),rgba(19,14,24,0.94))] p-5 shadow-[var(--surface-shadow)]">
         <div className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[rgba(110,77,120,0.18)] blur-3xl" />
-        <div className="relative flex items-start justify-between gap-4">
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Ежедневный ритуал</p>
-              <h2 className="font-['Cormorant_Garamond'] text-[1.9rem] font-medium leading-none text-[var(--text-primary)]">
-                {focusTheme.ritualTitle}
-              </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Карта дня</p>
+              <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.16)] bg-[rgba(215,185,139,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--accent-gold)]">
+                {dailyCardDateLabel}
+              </span>
+              {dailyCard?.reversed ? (
+                <span className="inline-flex items-center rounded-full border border-[rgba(231,201,232,0.18)] bg-[rgba(231,201,232,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--accent-rose)]">
+                  Перевёрнута
+                </span>
+              ) : null}
             </div>
-            <p className="max-w-[260px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">{focusTheme.ritualBody}</p>
+
+            <div className="space-y-2">
+              <h2 className="font-['Cormorant_Garamond'] text-[1.9rem] font-medium leading-none text-[var(--text-primary)]">
+                {dailyCardTitle}
+              </h2>
+              <p className="max-w-[320px] text-base leading-6 text-[var(--text-primary)]">{dailyCardHeadline}</p>
+            </div>
+
+            <p className="max-w-[340px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">{dailyCardBody}</p>
           </div>
 
-          <div className="hidden min-h-[136px] min-w-[92px] rounded-[24px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-3 shadow-[0_14px_28px_rgba(0,0,0,0.24)] sm:block">
-            <div className="flex h-full flex-col justify-between">
+          <div className="flex items-stretch gap-3 sm:min-w-[198px] sm:justify-end">
+            <div className="flex min-h-[156px] flex-1 flex-col justify-between rounded-[24px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-3 shadow-[0_14px_28px_rgba(0,0,0,0.24)] sm:max-w-[112px]">
               <div className="flex items-center justify-between text-[var(--accent-gold)]">
                 <Star className="h-4 w-4" strokeWidth={1.6} />
                 <MoonStar className="h-4 w-4 text-[var(--accent-rose)]" strokeWidth={1.6} />
               </div>
-              <div>
-                <p className="font-['Cormorant_Garamond'] text-xl leading-none text-[var(--text-primary)]">XXII</p>
-                <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">личный инсайт</p>
+              <div className="flex flex-1 items-center justify-center">
+                {dailyCardAssetName ? (
+                  <CardFaceImage
+                    deckId="rws"
+                    cardName={dailyCardAssetName}
+                    alt={dailyCardAssetName}
+                    className={`h-[104px] w-[72px] rounded-[18px] object-cover shadow-[0_16px_30px_rgba(0,0,0,0.35)] ${
+                      dailyCard?.reversed ? "rotate-180" : ""
+                    }`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-[104px] w-[72px] items-center justify-center rounded-[18px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] text-[28px] text-[var(--accent-rose)]">
+                    {dailyCardPending ? <Loader className="h-7 w-7 animate-spin" strokeWidth={1.8} /> : "✦"}
+                  </div>
+                )}
               </div>
+              <p className="text-center text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                {dailyCardReady ? "готово" : dailyCardPending ? "в процессе" : "ритуал дня"}
+              </p>
             </div>
           </div>
         </div>
@@ -294,18 +383,41 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           <Button
             variant="primary"
             className="h-11 gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_6px_18px_rgba(183,138,87,0.22)]"
-            onClick={() => navigate("/spreads/play/one_card")}
+            onClick={handleOpenDailyCard}
           >
-            Открыть толкование
+            {dailyCardPrimaryCta}
+            {dailyCardPending ? (
+              <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.8} />
+            ) : (
+              <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+            )}
           </Button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
-            onClick={() => navigate("/diary")}
-          >
-            Сохранить в дневник
-            <ArrowRight className="h-4 w-4" strokeWidth={1.7} />
-          </button>
+          {dailyCardReady ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
+              onClick={() => navigate("/diary")}
+            >
+              {dailyCardSecondaryCta}
+              <ArrowRight className="h-4 w-4" strokeWidth={1.7} />
+            </button>
+          ) : dailyCardPending ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]">
+              <Loader className="h-3.5 w-3.5 animate-spin text-[var(--accent-gold)]" strokeWidth={1.8} />
+              {dailyCardSecondaryCta}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent-rose)] transition-opacity hover:opacity-85"
+              onClick={() => {
+                void refreshDailyCard();
+              }}
+            >
+              {dailyCardSecondaryCta}
+              <RefreshCw className="h-4 w-4" strokeWidth={1.7} />
+            </button>
+          )}
         </div>
       </section>
 
