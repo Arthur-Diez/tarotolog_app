@@ -17,10 +17,15 @@ interface DecksScreenProps {
 }
 
 interface DeckContent {
-  positioning: string;
-  description: string[];
-  purpose: string[];
-  features: string[];
+  subtitle: string;
+  badge?: string;
+  tags: string[];
+  shortDescription: string;
+  microPrompt: string;
+  fullDescription: string;
+  bestFor: string[];
+  outcome: string;
+  cta: string;
   animationCaption: string;
 }
 
@@ -114,20 +119,119 @@ const METAPHORICAL_FLOW_CARD_URLS = METAPHORICAL_FLOW_FACE_CARDS.map((name) => f
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
-    positioning: "Фундаментальная система символов и архетипов",
-    description: [
-      "Фундаментальная система Таро, ставшая основой большинства современных колод.",
-      "Колода раскрывает архетипы человеческой психики через глубокую символику и чёткую структуру.",
-      "Каждая карта отражает внутренний процесс, выбор или этап пути."
-    ],
-    purpose: [
-      "✔ Психологический анализ",
-      "✔ Отношения и внутренние процессы",
-      "✔ Стратегические расклады",
-      "✔ Саморазвитие"
-    ],
-    features: ["• 78 карт", "• 22 Старших Аркана", "• 56 Младших Арканов", "• Многослойная символика"],
+    subtitle: "Архетипы, структура, ясность",
+    badge: "Популярная база",
+    tags: ["База", "Универсально", "Глубоко"],
+    shortDescription: "Главная система Таро для точных, многослойных и понятных раскладов.",
+    microPrompt: "Когда нужен серьёзный и точный ответ почти на любую тему.",
+    fullDescription:
+      "Классическая колода, на которой строится большая часть современной таро-практики. Она помогает увидеть суть ситуации, скрытые влияния, внутренние мотивы и направление развития событий. Если нужен сильный, универсальный и глубокий ответ, это лучший старт.",
+    bestFor: ["отношений и чувств", "внутренних состояний", "решений и выбора", "жизненных поворотов", "самопознания"],
+    outcome: "Чёткая структура ситуации, глубина и ощущение точного попадания в запрос.",
+    cta: "Исследовать классические расклады",
     animationCaption: "Архетипы раскрываются перед вами."
+  },
+  lenormand: {
+    subtitle: "Факты, события, конкретика",
+    badge: "Самый конкретный ответ",
+    tags: ["Конкретно", "События", "Практично"],
+    shortDescription: "Для вопросов, где важны реальные события, действия людей и ближайшее развитие ситуации.",
+    microPrompt: "Когда хочется меньше абстракции и больше жизненной конкретики.",
+    fullDescription:
+      "Ленорман говорит проще, конкретнее и ближе к повседневной реальности. Эта система хорошо показывает, что происходит вокруг, какие люди и обстоятельства влияют на вас, и как ситуация может развернуться в ближайшее время.",
+    bestFor: [
+      "повседневных вопросов",
+      "отношений и общения",
+      "работы и денег",
+      "событий ближайшего периода",
+      "понимания намерений другого человека"
+    ],
+    outcome: "Прямой, практичный и понятный ответ с акцентом на реальные события.",
+    cta: "Посмотреть событийные расклады",
+    animationCaption: "События складываются в ясную линию."
+  },
+  manara: {
+    subtitle: "Притяжение, эмоции, желания",
+    badge: "Лучше всего для отношений",
+    tags: ["Отношения", "Чувства", "Химия"],
+    shortDescription: "Колода для любви, сексуальности, скрытых чувств и живой динамики между людьми.",
+    microPrompt: "Когда вопрос про любовь, дистанцию, ревность или притяжение.",
+    fullDescription:
+      "Манара особенно сильна там, где речь идёт о чувствах, желаниях, эмоциональной близости и напряжении между людьми. Она показывает не только внешнюю картину отношений, но и скрытое влечение, страхи, ожидания и тонкую психологию контакта.",
+    bestFor: [
+      "романтических отношений",
+      "любовных треугольников",
+      "скрытых чувств",
+      "сексуальной динамики",
+      "эмоциональной привязанности"
+    ],
+    outcome: "Чувственный, честный и психологически точный взгляд на отношения.",
+    cta: "Открыть расклады на отношения",
+    animationCaption: "Чувства и мотивы выходят на поверхность."
+  },
+  angels: {
+    subtitle: "Поддержка, исцеление, мягкость",
+    badge: "Самый мягкий формат",
+    tags: ["Поддержка", "Спокойствие", "Исцеление"],
+    shortDescription: "Для мягких подсказок, внутренней опоры и бережного прохождения сложного периода.",
+    microPrompt: "Когда тяжело, тревожно и нужен не жёсткий прогноз, а поддержка.",
+    fullDescription:
+      "Эта колода не давит и не обостряет. Она помогает услышать поддерживающее послание, почувствовать внутреннюю опору и увидеть, куда направить внимание, чтобы пройти период спокойнее и чище.",
+    bestFor: [
+      "эмоционального восстановления",
+      "тревожных состояний",
+      "поиска поддержки",
+      "духовной настройки",
+      "вопросов о внутреннем ресурсе"
+    ],
+    outcome: "Тёплый, поддерживающий и исцеляющий тон без резкости.",
+    cta: "Получить мягкое послание",
+    animationCaption: "Мягкие подсказки собираются в опору."
+  },
+  golden: {
+    subtitle: "Классика, статус, эстетика",
+    badge: "Премиальный формат",
+    tags: ["Эстетика", "Премиум", "Классика"],
+    shortDescription: "Классическое чтение в более изящной, благородной и визуально насыщенной подаче.",
+    microPrompt: "Когда хочется классики, но в более красивом и премиальном формате.",
+    fullDescription:
+      "Золотое Таро подойдёт тем, кому близка классическая система, но хочется более красивого, статусного и атмосферного переживания расклада. По смыслу оно остаётся глубоким и универсальным, но ощущается как более торжественный опыт.",
+    bestFor: [
+      "универсальных вопросов",
+      "важных жизненных решений",
+      "красивых ритуальных раскладов",
+      "личных инсайтов",
+      "эстетичного premium-опыта"
+    ],
+    outcome: "Глубокий ответ в более выразительном и дорогом визуальном стиле.",
+    cta: "Открыть премиальные расклады",
+    animationCaption: "Классика раскрывается в более торжественной подаче."
+  },
+  ancestry: {
+    subtitle: "Корни, сценарии, родовая память",
+    badge: "Для глубоких причин",
+    tags: ["Род", "Сценарии", "Глубинно"],
+    shortDescription: "Для вопросов о повторяющихся сценариях, семейных узлах и глубинных причинах происходящего.",
+    microPrompt: "Когда проблема повторяется и причина ощущается глубже текущих обстоятельств.",
+    fullDescription:
+      "Эта колода помогает смотреть глубже личной истории: в родовые влияния, повторяющиеся сценарии, семейные связи и внутренние установки, пришедшие из системы рода. Её стоит выбирать, когда хочется дойти до корня.",
+    bestFor: ["родовых сценариев", "семейных тем", "внутренних запретов и страхов", "повторяющихся отношений", "поиска глубинной причины"],
+    outcome: "Глубокий взгляд на скрытые источники ситуации и повторяющиеся паттерны.",
+    cta: "Исследовать родовые расклады",
+    animationCaption: "Глубинные связи рода постепенно проявляются."
+  },
+  metaphoric: {
+    subtitle: "Ассоциации, инсайты, внутренний диалог",
+    badge: "Для саморефлексии",
+    tags: ["Инсайт", "Мягко", "Саморефлексия"],
+    shortDescription: "Не про предсказание, а про честный контакт с собой, чувствами и внутренними образами.",
+    microPrompt: "Когда нужен не прогноз, а личный инсайт и новый взгляд на ситуацию.",
+    fullDescription:
+      "Метафорические карты работают через ассоциации, ощущения и личные смыслы. Это инструмент для самопознания, эмоциональной глубины и поиска решений через образы, а не через жёсткое предсказание.",
+    bestFor: ["самопознания", "эмоциональных состояний", "внутренних блоков", "поиска решений через образы", "дневниковых и терапевтических практик"],
+    outcome: "Личный инсайт, новое ощущение ситуации и более глубокий контакт с собой.",
+    cta: "Открыть ассоциативные расклады",
+    animationCaption: "Образы собираются в личный инсайт."
   }
 };
 
@@ -135,10 +239,14 @@ function getDeckContent(deck: Deck): DeckContent {
   const custom = DECK_CONTENT[deck.id];
   if (custom) return custom;
   return {
-    positioning: deck.subtitle ?? "Символическая система чтения",
-    description: [deck.description],
-    purpose: ["✔ Быстрые ответы на текущие вопросы", "✔ Исследование внутренних состояний", "✔ Работа с интуицией"],
-    features: [`• ${deck.spreads.length} раскладов`, "• Интуитивная работа с образами"],
+    subtitle: deck.subtitle ?? "Символическая система чтения",
+    tags: ["Интуиция", "Расклад", "Символы"],
+    shortDescription: deck.description,
+    microPrompt: "Когда хочется выбрать колоду по ощущению и типу ответа.",
+    fullDescription: deck.description,
+    bestFor: ["личных вопросов", "поиска инсайта", "интуитивного выбора"],
+    outcome: "Новый взгляд на ситуацию и более точный выбор расклада.",
+    cta: "Исследовать расклады этой колоды",
     animationCaption: "Выберите колоду, которая откликается сейчас."
   };
 }
@@ -275,7 +383,7 @@ function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle,
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-2xl font-semibold leading-tight text-[var(--text-primary)]">{deck.title}</h2>
-          <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">{content.positioning}</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">{content.subtitle}</p>
         </div>
         <Button
           type="button"
@@ -294,6 +402,20 @@ function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle,
             <ChevronDown className="h-4 w-4" />
           </span>
         </Button>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="deck-meta-row" aria-label="Позиционирование колоды">
+          {content.badge ? <span className="deck-badge">{content.badge}</span> : null}
+          {content.tags.map((tag) => (
+            <span key={`${deck.id}-tag-${tag}`} className="deck-chip">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <p className="text-sm leading-6 text-[var(--text-primary)]/92">{content.shortDescription}</p>
+        <p className="deck-micro-prompt">{content.microPrompt}</p>
       </div>
 
       <Expander isOpen={expanded} ariaId={`deck-desc-${deck.id}`}>
@@ -319,32 +441,27 @@ function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle,
           </div>
           <p className="text-center text-xs text-[var(--text-tertiary)]">{content.animationCaption}</p>
 
-          <div className="deck-chip-row" aria-label="Характер колоды">
-            {theme.chips.filter(Boolean).map((chip) => (
-              <span key={`${deck.id}-chip-${chip}`} className="deck-chip">
-                {chip}
-              </span>
-            ))}
-          </div>
-
           <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-            {content.description.map((paragraph) => (
-              <p key={`${deck.id}-${paragraph}`}>{paragraph}</p>
-            ))}
+            <p className="text-[var(--text-primary)]/90">{content.shortDescription}</p>
+            <div className="deck-section">
+              <p className="deck-section-title">Когда выбрать</p>
+              <p>{content.microPrompt}</p>
+            </div>
+            <p>{content.fullDescription}</p>
           </div>
 
-          <div className="deck-section space-y-1 text-sm text-[var(--text-secondary)]">
+          <div className="deck-section space-y-2 text-sm text-[var(--text-secondary)]">
             <p className="deck-section-title">Для чего подходит</p>
-            {content.purpose.map((line) => (
-              <p key={`${deck.id}-purpose-${line}`}>{line}</p>
-            ))}
+            <ul className="deck-bullet-list">
+              {content.bestFor.map((item) => (
+                <li key={`${deck.id}-best-for-${item}`}>{item}</li>
+              ))}
+            </ul>
           </div>
 
           <div className="deck-section space-y-1 text-sm text-[var(--text-secondary)]">
-            <p className="deck-section-title">Особенности</p>
-            {content.features.map((line) => (
-              <p key={`${deck.id}-feature-${line}`}>{line}</p>
-            ))}
+            <p className="deck-section-title">Что вы получите</p>
+            <p>{content.outcome}</p>
           </div>
 
           <Button
@@ -355,7 +472,7 @@ function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle,
               onSelect((event.currentTarget.closest(".deck-portal-card") as HTMLElement | null) ?? event.currentTarget);
             }}
           >
-            Исследовать расклады этой колоды
+            {content.cta}
           </Button>
         </div>
       </Expander>
