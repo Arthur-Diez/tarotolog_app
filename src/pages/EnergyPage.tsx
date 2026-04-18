@@ -388,6 +388,10 @@ function getOfferTotalEnergy(offer: PaymentOfferResponse): number {
 }
 
 function getOfferBonusPercent(offer: PaymentOfferResponse): number {
+  const explicitBonusPercent = Number(offer.bonus_percent || "0");
+  if (Number.isFinite(explicitBonusPercent) && explicitBonusPercent > 0) {
+    return Math.round(explicitBonusPercent);
+  }
   if (offer.energy_amount <= 0 || offer.bonus_energy <= 0) return 0;
   return Math.floor((offer.bonus_energy / offer.energy_amount) * 100);
 }
@@ -1628,86 +1632,84 @@ export default function EnergyPage() {
 
               {featuredOffer ? (
                 <div className="rounded-[28px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(27,21,33,0.98))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.34),0_0_24px_rgba(183,138,87,0.08)]">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
-                          {featuredOfferPositioning?.eyebrow || "Рекомендуем"}
-                        </span>
-                        <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                          {paymentMethodPresentation.featuredLabel}
-                        </span>
-                        {featuredOffer.trigger_type !== "manual" ? (
-                          <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                            {formatTriggerLabel(featuredOffer.trigger_type)}
-                          </span>
-                        ) : null}
-                      </div>
-                        <div>
-                          <p className="text-sm text-[var(--text-secondary)]">{featuredOffer.title}</p>
-                          <div className="mt-2 flex flex-wrap items-end gap-2">
-                            {getOfferTotalEnergy(featuredOffer) > featuredOffer.energy_amount ? (
-                              <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
-                          ) : null}
-                          <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
-                            {featuredOfferPositioning?.displayName || `${getOfferTotalEnergy(featuredOffer)} ⚡`}
-                          </p>
+                  {(() => {
+                    const featuredDiscountBadge =
+                      Number(featuredOffer.discount_percent || "0") > 0
+                        ? `-${Math.round(Number(featuredOffer.discount_percent || "0"))}%`
+                        : hasOfferDiscount(featuredOffer)
+                          ? "Акция"
+                          : null;
+                    const featuredBonusBadge = getOfferBonusPercent(featuredOffer) > 0
+                      ? `+${getOfferBonusPercent(featuredOffer)}% энергии`
+                      : featuredOffer.bonus_energy > 0
+                        ? `+${featuredOffer.bonus_energy} ⚡`
+                        : null;
+                    const featuredValueBadge = [featuredDiscountBadge, featuredBonusBadge].filter(Boolean).join(" • ");
+
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="space-y-3">
+                            {featuredValueBadge ? (
+                              <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-400/12 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                                {featuredValueBadge}
+                              </span>
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap items-end gap-2">
+                              {getOfferTotalEnergy(featuredOffer) > featuredOffer.energy_amount ? (
+                                <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
+                              ) : null}
+                              <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
+                                {featuredOfferPositioning?.displayName || `${getOfferTotalEnergy(featuredOffer)} ⚡`}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="min-w-[112px] text-left sm:text-right">
+                            <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
+                              {getOfferTotalEnergy(featuredOffer)} ⚡
+                            </p>
+                            <p className="text-2xl font-semibold text-[var(--accent-gold)]">{formatOfferPrice(featuredOffer, selectedCurrency)}</p>
+                            {formatOfferOldPrice(featuredOffer, selectedCurrency) ? (
+                              <p className="mt-1 text-xs text-[var(--text-tertiary)] line-through">
+                                {formatOfferOldPrice(featuredOffer, selectedCurrency)}
+                              </p>
+                            ) : null}
+                            {formatOfferRemaining(featuredOffer.valid_until) ? (
+                              <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
+                                Акция активна: {formatOfferRemaining(featuredOffer.valid_until)}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
-                          <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
-                            {featuredOfferPositioning?.summary ||
-                              featuredOffer.label ||
-                              "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
-                          </p>
-                        {featuredOfferPositioning?.usageHint ? (
-                          <p className="mt-3 max-w-[340px] text-xs leading-6 text-[var(--text-tertiary)]">
-                            {featuredOfferPositioning.usageHint}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
 
-                    <div className="min-w-[112px] text-left sm:text-right">
-                      <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
-                        {getOfferTotalEnergy(featuredOffer)} ⚡
-                      </p>
-                      <p className="text-2xl font-semibold text-[var(--accent-gold)]">{formatOfferPrice(featuredOffer, selectedCurrency)}</p>
-                      {formatOfferOldPrice(featuredOffer, selectedCurrency) ? (
-                        <p className="mt-1 text-xs text-[var(--text-tertiary)] line-through">
-                          {formatOfferOldPrice(featuredOffer, selectedCurrency)}
-                        </p>
-                      ) : null}
-                      {formatOfferRemaining(featuredOffer.valid_until) ? (
-                        <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
-                          Акция активна: {formatOfferRemaining(featuredOffer.valid_until)}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="primary"
-                    className="mt-5 h-12 w-full justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_8px_22px_rgba(183,138,87,0.24)]"
-                    disabled={Boolean(creatingProductCode) || checkingStatus}
-                    onClick={() => {
-                      void (selectedPaymentMethod === "telegram_stars"
-                        ? handleBuyStarsOffer(featuredOffer)
-                        : handleBuyRobokassaOffer(featuredOffer));
-                    }}
-                  >
-                    {creatingProductCode === featuredOffer.offer_id ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Подготовка платежа...
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-2">
-                        {paymentMethodPresentation.featuredButton}
-                        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              ) : null}
+                        <Button
+                          variant="primary"
+                          className="mt-5 h-12 w-full justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_8px_22px_rgba(183,138,87,0.24)]"
+                          disabled={Boolean(creatingProductCode) || checkingStatus}
+                          onClick={() => {
+                            void (selectedPaymentMethod === "telegram_stars"
+                              ? handleBuyStarsOffer(featuredOffer)
+                              : handleBuyRobokassaOffer(featuredOffer));
+                          }}
+                        >
+                          {creatingProductCode === featuredOffer.offer_id ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Подготовка платежа...
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              {paymentMethodPresentation.featuredButton}
+                              <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                            </span>
+                          )}
+                        </Button>
+                      </>
+	                    );
+	                  })()}
+	                </div>
+	              ) : null}
 
               {secondaryOffers.length > 0 ? (
                 <div className="grid gap-3">

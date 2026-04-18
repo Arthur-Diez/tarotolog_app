@@ -150,7 +150,9 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
 function readStoredDailyCardUnlock(): StoredDailyCardUnlock | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
+    const raw =
+      window.localStorage.getItem(DAILY_CARD_UNLOCK_STORAGE_KEY) ??
+      window.sessionStorage.getItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoredDailyCardUnlock>;
     if (typeof parsed.localDate !== "string" || typeof parsed.readingId !== "string") {
@@ -167,13 +169,18 @@ function readStoredDailyCardUnlock(): StoredDailyCardUnlock | null {
 
 function writeStoredDailyCardUnlock(localDate: string, readingId: string) {
   if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(
-    DAILY_CARD_UNLOCK_STORAGE_KEY,
-    JSON.stringify({
-      localDate,
-      readingId
-    } satisfies StoredDailyCardUnlock)
-  );
+  const payload = JSON.stringify({
+    localDate,
+    readingId
+  } satisfies StoredDailyCardUnlock);
+  window.localStorage.setItem(DAILY_CARD_UNLOCK_STORAGE_KEY, payload);
+  window.sessionStorage.setItem(DAILY_CARD_UNLOCK_STORAGE_KEY, payload);
+}
+
+function clearStoredDailyCardUnlock() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
+  window.sessionStorage.removeItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
 }
 
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
@@ -261,6 +268,16 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       readingId: dailyCard.reading_id
     });
   }, [dailyCard?.local_date, dailyCard?.reading_id]);
+
+  useEffect(() => {
+    if (!dailyCard?.local_date || !storedDailyCardUnlock) {
+      return;
+    }
+    if (storedDailyCardUnlock.localDate !== dailyCard.local_date) {
+      clearStoredDailyCardUnlock();
+      setStoredDailyCardUnlock(null);
+    }
+  }, [dailyCard?.local_date, storedDailyCardUnlock]);
 
   const handleOpenDailyCard = useCallback(async () => {
     if (!dailyCard?.card_code || !dailyCard?.local_date) {

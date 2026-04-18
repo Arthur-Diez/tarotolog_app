@@ -568,6 +568,7 @@ export interface PaymentOfferResponse {
   final_amount: string;
   discount_amount: string | null;
   discount_percent: string | null;
+  bonus_percent: string | null;
   energy_amount: number;
   bonus_energy: number;
   final_energy_amount: number;
