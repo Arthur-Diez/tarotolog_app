@@ -111,10 +111,7 @@ interface OfferPositioning {
 interface PaymentMethodPresentation {
   title: string;
   body: string;
-  badge: string;
-  trustPoints: string[];
   featuredLabel: string;
-  secondaryLabel: string;
   featuredButton: string;
   secondaryButton: string;
 }
@@ -447,8 +444,8 @@ function getOfferPositioning(offer: PaymentOfferResponse): OfferPositioning {
   return {
     displayName: "Премиальный запас",
     eyebrow: "Максимум свободы",
-    summary: "Сильный резерв для пользователей с высокой вовлечённостью, которым важен непрерывный доступ к дорогим сценариям.",
-    usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
+    summary: "",
+    usageHint: "",
     outcome: "Лучший пакет для долгого удержания и высокой жизненной ценности пользователя.",
     cta: "Забрать премиальный запас"
   };
@@ -459,10 +456,7 @@ function getPaymentMethodPresentation(method: PaymentMethod): PaymentMethodPrese
     return {
       title: "Пополнение через Telegram Stars",
       body: "Нативная оплата внутри Telegram: быстрый вход в платный слой без перехода на внешнюю кассу.",
-      badge: "Нативно в Telegram",
-      trustPoints: ["Моментальное открытие счёта", "Без смены среды", "Подходит всем пользователям"],
       featuredLabel: "Лучший пакет в Stars",
-      secondaryLabel: "Другие пакеты в Stars",
       featuredButton: "Открыть оплату в Stars",
       secondaryButton: "Оплатить в Stars"
     };
@@ -471,10 +465,7 @@ function getPaymentMethodPresentation(method: PaymentMethod): PaymentMethodPrese
   return {
     title: "Оплата в рублях для пользователей из России",
     body: "Отдельный сценарий для рублёвой оплаты. Офферы, бонусы и персональные предложения сохраняются такими же, как в Stars.",
-    badge: "Отдельный RUB-канал",
-    trustPoints: ["Оплата в рублях", "Те же акции и бонусы", "Переход на защищённую страницу оплаты"],
     featuredLabel: "Лучший пакет в рублях",
-    secondaryLabel: "Другие рублёвые пакеты",
     featuredButton: "Открыть оплату в рублях",
     secondaryButton: "Оплатить в рублях"
   };
@@ -1623,28 +1614,6 @@ export default function EnergyPage() {
                 </button>
               </div>
 
-              <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2">
-                    <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.22)] bg-[rgba(215,185,139,0.1)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
-                      {paymentMethodPresentation.badge}
-                    </span>
-                    <p className="max-w-[360px] text-sm leading-6 text-[var(--text-secondary)]">{paymentSectionBody}</p>
-                  </div>
-                  <div className="grid min-w-[210px] gap-2 text-left">
-                    {paymentMethodPresentation.trustPoints.map((point) => (
-                      <div
-                        key={point}
-                        className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[11px] font-medium text-[var(--text-secondary)]"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-gold)]" />
-                        {point}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               {offersLoading ? <div className="h-28 animate-pulse rounded-[24px] bg-white/10" /> : null}
               {offersError ? (
                 <div className="rounded-[22px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{offersError}</div>
@@ -1674,24 +1643,26 @@ export default function EnergyPage() {
                           </span>
                         ) : null}
                       </div>
-                      <div>
-                        <p className="text-sm text-[var(--text-secondary)]">{featuredOffer.title}</p>
-                        <div className="mt-2 flex flex-wrap items-end gap-2">
-                          {getOfferTotalEnergy(featuredOffer) > featuredOffer.energy_amount ? (
-                            <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
+                        <div>
+                          <p className="text-sm text-[var(--text-secondary)]">{featuredOffer.title}</p>
+                          <div className="mt-2 flex flex-wrap items-end gap-2">
+                            {getOfferTotalEnergy(featuredOffer) > featuredOffer.energy_amount ? (
+                              <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
                           ) : null}
                           <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
                             {featuredOfferPositioning?.displayName || `${getOfferTotalEnergy(featuredOffer)} ⚡`}
                           </p>
                         </div>
-                        <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
-                          {featuredOfferPositioning?.summary ||
-                            featuredOffer.label ||
-                            "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
-                        </p>
-                        <p className="mt-3 max-w-[340px] text-xs leading-6 text-[var(--text-tertiary)]">
-                          {featuredOfferPositioning?.usageHint}
-                        </p>
+                          <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
+                            {featuredOfferPositioning?.summary ||
+                              featuredOffer.label ||
+                              "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
+                          </p>
+                        {featuredOfferPositioning?.usageHint ? (
+                          <p className="mt-3 max-w-[340px] text-xs leading-6 text-[var(--text-tertiary)]">
+                            {featuredOfferPositioning.usageHint}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -1778,9 +1749,6 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
-                            <p className="mt-2 text-xs leading-5 text-[var(--text-tertiary)]">
-                              {paymentMethodPresentation.secondaryLabel}
-                            </p>
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
