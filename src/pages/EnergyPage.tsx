@@ -66,6 +66,7 @@ type PurchaseUiState = "idle" | "creating" | "awaiting_confirmation" | "succeede
 type CurrencyCode = "RUB" | "USD" | "EUR";
 type AdActionStage = "starting" | "completing";
 type PaymentMethod = "robokassa" | "telegram_stars";
+type ReferralShareLanguage = "ru" | "en";
 
 interface PendingPurchaseStorage {
   entity_id: string;
@@ -118,6 +119,52 @@ const PAYMENT_METHOD_OPTIONS: Array<{ code: PaymentMethod; label: string }> = [
   { code: "telegram_stars", label: "Telegram Stars" }
 ];
 
+const REFERRAL_SHARE_VARIANTS = [1, 2, 3, 4] as const;
+const REFERRAL_SHARE_COPY: Record<
+  ReferralShareLanguage,
+  {
+    languageLabel: string;
+    inviteTitle: string;
+    inviteCaption: string;
+    inviteButton: string;
+    instructionTitle: string;
+    instructionText: string;
+    confirmText: string;
+    cancelText: string;
+    fallbackText: string;
+    previewBadge: string;
+  }
+> = {
+  ru: {
+    languageLabel: "Русский",
+    inviteTitle: "✨ Tarotolog AI",
+    inviteCaption:
+      "Приходи в mini app и забирай бонусную энергию ⚡\n• +2 ⚡ за активацию\n• +10 ⚡ за первую покупку",
+    inviteButton: "Получить бонус",
+    instructionTitle: "Поделиться через Telegram",
+    instructionText:
+      "Выберите язык приглашения. В чатах нажмите на карточку приглашения и подтвердите отправку зелёной галочкой ✅.",
+    confirmText: "Открыть чаты",
+    cancelText: "Отмена",
+    fallbackText: "Присоединяйся к Tarotolog AI и забирай бонусную энергию ⚡",
+    previewBadge: "Приглашение"
+  },
+  en: {
+    languageLabel: "English",
+    inviteTitle: "✨ Tarotolog AI",
+    inviteCaption:
+      "Open the mini app and claim bonus energy ⚡\n• +2 ⚡ after activation\n• +10 ⚡ after the first purchase",
+    inviteButton: "Claim bonus",
+    instructionTitle: "Share via Telegram",
+    instructionText:
+      "Choose the invite language. In chats, tap the invite card and confirm sending it with the green check mark ✅.",
+    confirmText: "Open chats",
+    cancelText: "Cancel",
+    fallbackText: "Join Tarotolog AI and claim bonus energy ⚡",
+    previewBadge: "Invite"
+  }
+};
+
 const FAILED_STATUSES = new Set(["failed", "canceled", "cancelled", "refunded"]);
 const EU_COUNTRY_CODES = new Set([
   "AT",
@@ -151,6 +198,15 @@ const EU_COUNTRY_CODES = new Set([
 
 function isCurrencyCode(value: string | null | undefined): value is CurrencyCode {
   return value === "RUB" || value === "USD" || value === "EUR";
+}
+
+function normalizeReferralShareLanguage(value: string | null | undefined): ReferralShareLanguage {
+  if (!value) return "ru";
+  return value.toLowerCase().startsWith("en") ? "en" : "ru";
+}
+
+function pickReferralShareVariant(): (typeof REFERRAL_SHARE_VARIANTS)[number] {
+  return REFERRAL_SHARE_VARIANTS[Math.floor(Math.random() * REFERRAL_SHARE_VARIANTS.length)] ?? 1;
 }
 
 function isTaskBlockId(value: string | null | undefined): value is string {
@@ -458,7 +514,9 @@ export default function EnergyPage() {
   const [referralLoading, setReferralLoading] = useState(true);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [shareHintOpen, setShareHintOpen] = useState(false);
-  const [pendingInlineQuery, setPendingInlineQuery] = useState<string | null>(null);
+  const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
+  const [referralShareLanguage, setReferralShareLanguage] = useState<ReferralShareLanguage>("ru");
+  const [referralShareVariant, setReferralShareVariant] = useState<(typeof REFERRAL_SHARE_VARIANTS)[number]>(1);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<WalletHistoryItemResponse[]>([]);
@@ -487,6 +545,11 @@ export default function EnergyPage() {
     if (typeof window === "undefined") return null;
     return window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || null;
   }, []);
+
+  const referralShareCopy = useMemo(
+    () => REFERRAL_SHARE_COPY[referralShareLanguage],
+    [referralShareLanguage]
+  );
 
   useEffect(() => {
     if (currencyWasChangedManuallyRef.current) return;
@@ -894,7 +957,13 @@ export default function EnergyPage() {
     }
     const tg = window.Telegram?.WebApp;
     if (tg?.switchInlineQuery && referralProgram.share_inline_query) {
-      setPendingInlineQuery(referralProgram.share_inline_query);
+      setPendingReferralCode(referralProgram.referral_code);
+      setReferralShareLanguage(
+        normalizeReferralShareLanguage(
+          profile?.birth_profile?.interface_language || profile?.user?.lang || telegramLanguage
+        )
+      );
+      setReferralShareVariant(pickReferralShareVariant());
       setShareHintOpen(true);
       return;
     }
@@ -915,23 +984,24 @@ export default function EnergyPage() {
       return;
     }
     openExternalLink(referralProgram.referral_link);
-  }, [referralProgram]);
+  }, [profile?.birth_profile?.interface_language, profile?.user?.lang, referralProgram, telegramLanguage]);
 
   const handleReferralShareConfirm = useCallback(() => {
-    if (!pendingInlineQuery || !referralProgram) {
+    if (!pendingReferralCode || !referralProgram) {
       setShareHintOpen(false);
       setReferralError("Telegram WebApp не поддерживает inline-пересылку");
       return;
     }
 
     openInlineQueryWithFallback({
-      inlineQuery: pendingInlineQuery,
+      inlineQuery: `share_referral:${pendingReferralCode}:${referralShareLanguage}:${referralShareVariant}`,
       fallbackUrl: referralProgram.referral_link,
-      fallbackText: "Присоединяйся к Tarotolog AI и забирай бонус ⚡"
+      fallbackText: referralShareCopy.fallbackText
     });
 
     setShareHintOpen(false);
-  }, [pendingInlineQuery, referralProgram]);
+    setPendingReferralCode(null);
+  }, [pendingReferralCode, referralProgram, referralShareCopy.fallbackText, referralShareLanguage, referralShareVariant]);
 
   const handleOpenHistory = useCallback(() => {
     setHistoryOpen(true);
@@ -1879,32 +1949,62 @@ export default function EnergyPage() {
       {shareHintOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
           <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
-            <div className="overflow-hidden rounded-[18px] border border-white/10">
+            <div className="mb-3 flex gap-2">
+              {(["ru", "en"] as const).map((language) => {
+                const copy = REFERRAL_SHARE_COPY[language];
+                const isActive = referralShareLanguage === language;
+                return (
+                  <button
+                    key={language}
+                    type="button"
+                    onClick={() => setReferralShareLanguage(language)}
+                    className={`flex-1 rounded-full border px-4 py-2 text-sm transition ${
+                      isActive
+                        ? "border-[rgba(215,185,139,0.45)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]"
+                        : "border-white/10 bg-white/5 text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {copy.languageLabel}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.02)]">
               <img
-                src="/assets/tarot/rws/share-instruction.png"
-                alt="Инструкция отправки"
+                src={`/assets/referral/generated/referral-share-${referralShareVariant}-${referralShareLanguage}.png`}
+                alt="Preview of referral invite"
                 className="h-auto w-full"
               />
             </div>
+
+            <div className="mt-3 rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">{referralShareCopy.previewBadge}</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{referralShareCopy.inviteTitle}</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{referralShareCopy.inviteCaption}</p>
+              <div className="mt-3 inline-flex rounded-full border border-[rgba(215,185,139,0.3)] bg-[rgba(215,185,139,0.12)] px-4 py-2 text-sm font-medium text-[var(--accent-gold)]">
+                {referralShareCopy.inviteButton}
+              </div>
+            </div>
+
             <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-primary)]">
               <Share2 className="h-4 w-4 text-[var(--accent-gold)]" />
-              Поделиться через Telegram
+              {referralShareCopy.instructionTitle}
             </div>
-            <p className="mt-3 text-sm text-[var(--text-secondary)]">
-              Перед отправкой нажмите на карточку приглашения, затем поставьте зелёную галочку ✅.
-            </p>
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">{referralShareCopy.instructionText}</p>
             <div className="mt-4 flex gap-3">
               <Button
                 variant="outline"
                 className="flex-1 border-white/20"
                 onClick={() => {
                   setShareHintOpen(false);
+                  setPendingReferralCode(null);
                 }}
               >
-                Отмена
+                {referralShareCopy.cancelText}
               </Button>
               <Button className="flex-1" onClick={handleReferralShareConfirm}>
-                Открыть чаты
+                {referralShareCopy.confirmText}
               </Button>
             </div>
           </div>

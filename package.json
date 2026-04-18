@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:referrals": "python3 scripts/generate_referral_assets.py",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
