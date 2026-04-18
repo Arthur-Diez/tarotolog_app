@@ -499,7 +499,7 @@ export default function EnergyPage() {
   const [isBalanceAnimating, setIsBalanceAnimating] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState<PurchaseNotice | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => readStoredCurrency() || "RUB");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("robokassa");
+  const [selectedPaymentMethod] = useState<PaymentMethod>("telegram_stars");
   const [paymentOffers, setPaymentOffers] = useState<PaymentOfferResponse[]>([]);
   const [offersLoading, setOffersLoading] = useState(false);
   const [offersError, setOffersError] = useState<string | null>(null);
@@ -1348,12 +1348,9 @@ export default function EnergyPage() {
   const hasFreeEnergyTask = Boolean(adsState?.ads_enabled);
   const taskRewardAmount = adsState?.task.next_energy ?? 0;
   const adBannerReady = Boolean(adsState?.ads_enabled && adsState?.task.available && taskBlockId);
-  const paymentSectionTitle =
-    selectedPaymentMethod === "telegram_stars" ? "Пополнение через Telegram Stars" : "Премиальные пакеты энергии";
+  const paymentSectionTitle = "Пополнение через Telegram Stars";
   const paymentSectionBody =
-    selectedPaymentMethod === "telegram_stars"
-      ? "Быстрый платёж прямо внутри Telegram: меньше трения, выше шанс закрыть покупку в момент максимального интереса."
-      : "Пакеты энергии убирают паузы внутри продукта: можно открывать трактовки, персональные прогнозы и расклады без постоянной остановки на пополнение.";
+    "Нативная оплата прямо внутри Telegram: меньше трения, больше доверия и быстрый доступ к энергии без перехода на сторонние страницы.";
 
   return (
     <>
@@ -1556,46 +1553,10 @@ export default function EnergyPage() {
 
           <Card className="overflow-hidden border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.92),rgba(17,13,22,0.96))] p-5 shadow-[var(--surface-shadow)]">
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {PAYMENT_METHOD_OPTIONS.map((option) => (
-                  <button
-                    key={option.code}
-                    type="button"
-                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                      selectedPaymentMethod === option.code
-                        ? "border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]"
-                        : "border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                    onClick={() => {
-                      setSelectedPaymentMethod(option.code);
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-4 py-2 text-xs font-semibold text-[var(--accent-gold)]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Оплата только через Telegram Stars
               </div>
-
-              {selectedPaymentMethod === "robokassa" ? (
-                <div className="flex flex-wrap gap-2">
-                  {CURRENCY_OPTIONS.map((option) => (
-                    <button
-                      key={option.code}
-                      type="button"
-                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                        selectedCurrency === option.code
-                          ? "border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.1)] text-[var(--text-primary)]"
-                          : "border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                      }`}
-                      onClick={() => {
-                        currencyWasChangedManuallyRef.current = true;
-                        setSelectedCurrency(option.code);
-                      }}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
 
               {offersLoading ? <div className="h-28 animate-pulse rounded-[24px] bg-white/10" /> : null}
               {offersError ? (
@@ -1603,9 +1564,7 @@ export default function EnergyPage() {
               ) : null}
               {!offersLoading && !offersError && paymentOffers.length === 0 ? (
                 <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-4 text-sm leading-6 text-[var(--text-secondary)]">
-                  {selectedPaymentMethod === "telegram_stars"
-                    ? "Сейчас нет доступных Stars-офферов."
-                    : "Сейчас нет доступных предложений для оплаты картой."}
+                  Сейчас нет доступных Stars-офферов.
                 </div>
               ) : null}
 
@@ -1664,11 +1623,7 @@ export default function EnergyPage() {
                     className="mt-5 h-12 w-full justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_8px_22px_rgba(183,138,87,0.24)]"
                     disabled={Boolean(creatingProductCode) || checkingStatus}
                     onClick={() => {
-                      if (selectedPaymentMethod === "telegram_stars") {
-                        void handleBuyStarsOffer(featuredOffer);
-                        return;
-                      }
-                      void handleBuyRobokassaOffer(featuredOffer);
+                      void handleBuyStarsOffer(featuredOffer);
                     }}
                   >
                     {creatingProductCode === featuredOffer.offer_id ? (
@@ -1676,14 +1631,9 @@ export default function EnergyPage() {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Подготовка платежа...
                       </span>
-                    ) : selectedPaymentMethod === "telegram_stars" ? (
-                      <span className="inline-flex items-center gap-2">
-                        Открыть оплату в Stars
-                        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-2">
-                        {featuredOfferPositioning?.cta || "Забрать пакет энергии"}
+                        Открыть оплату в Stars
                         <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
                       </span>
                     )}
@@ -1748,11 +1698,7 @@ export default function EnergyPage() {
                           variant="outline"
                           disabled={Boolean(creatingProductCode) || checkingStatus}
                           onClick={() => {
-                            if (selectedPaymentMethod === "telegram_stars") {
-                              void handleBuyStarsOffer(offer);
-                              return;
-                            }
-                            void handleBuyRobokassaOffer(offer);
+                            void handleBuyStarsOffer(offer);
                           }}
                         >
                           {creatingThisOffer ? (
@@ -1761,7 +1707,7 @@ export default function EnergyPage() {
                               Подготовка платежа...
                             </span>
                           ) : (
-                            positioning.cta
+                            "Оплатить в Stars"
                           )}
                         </Button>
                       </div>
