@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -40,6 +40,12 @@ interface ServiceItem {
 }
 
 const DAILY_CARD_PENDING_STATUSES = new Set(["pending", "queued", "processing"]);
+const DAILY_CARD_UNLOCK_STORAGE_KEY = "tarotolog_daily_card_unlock";
+
+interface StoredDailyCardUnlock {
+  localDate: string;
+  readingId: string;
+}
 
 function getFocusTheme(energy: number) {
   if (energy <= 6) {
@@ -141,6 +147,35 @@ function formatDailyCardDate(value?: string | null) {
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
+function readStoredDailyCardUnlock(): StoredDailyCardUnlock | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredDailyCardUnlock>;
+    if (typeof parsed.localDate !== "string" || typeof parsed.readingId !== "string") {
+      return null;
+    }
+    return {
+      localDate: parsed.localDate,
+      readingId: parsed.readingId
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredDailyCardUnlock(localDate: string, readingId: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(
+    DAILY_CARD_UNLOCK_STORAGE_KEY,
+    JSON.stringify({
+      localDate,
+      readingId
+    } satisfies StoredDailyCardUnlock)
+  );
+}
+
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
@@ -148,6 +183,9 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const { hasSubscription, loading: subscriptionLoading } = useSubscriptionStatus();
   const [dailyCardUnlocking, setDailyCardUnlocking] = useState(false);
   const [dailyCardActionError, setDailyCardActionError] = useState<string | null>(null);
+  const [storedDailyCardUnlock, setStoredDailyCardUnlock] = useState<StoredDailyCardUnlock | null>(() =>
+    readStoredDailyCardUnlock()
+  );
 
   const profileData = profile?.user;
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
@@ -165,11 +203,21 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const premiumCta = hasSubscription ? "Открыть прогноз" : "Открыть персональный прогноз";
   const dailyCardCardReady = Boolean(dailyCard?.card_code) && dailyCard?.status === "ready";
   const dailyCardInterpretationLocked = Boolean(dailyCard?.interpretation_locked ?? dailyCard?.is_shared);
-  const dailyCardHasInterpretation = Boolean(dailyCard?.reading_id);
+  const storedDailyCardReadingId =
+    storedDailyCardUnlock && dailyCard?.local_date && storedDailyCardUnlock.localDate === dailyCard.local_date
+      ? storedDailyCardUnlock.readingId
+      : null;
+  const resolvedDailyCardReadingId = dailyCard?.reading_id ?? storedDailyCardReadingId ?? null;
+  const dailyCardHasInterpretation = Boolean(resolvedDailyCardReadingId);
   const dailyCardInterpretationPending = Boolean(
-    dailyCardHasInterpretation && dailyCard?.status && DAILY_CARD_PENDING_STATUSES.has(dailyCard.status)
+    !storedDailyCardReadingId &&
+      dailyCardHasInterpretation &&
+      dailyCard?.status &&
+      DAILY_CARD_PENDING_STATUSES.has(dailyCard.status)
   );
-  const dailyCardCanViewInterpretation = Boolean(dailyCardHasInterpretation && dailyCard?.status === "ready");
+  const dailyCardCanViewInterpretation = Boolean(
+    resolvedDailyCardReadingId && (storedDailyCardReadingId || dailyCard?.status === "ready")
+  );
   const dailyCardPending = dailyCardLoading || dailyCardUnlocking;
   const dailyCardDateLabel = formatDailyCardDate(dailyCard?.local_date);
   const dailyCardUnlockCost = dailyCard?.unlock_energy_cost ?? 2;
@@ -203,14 +251,25 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
   const dailyCardOrientationLabel = dailyCard?.reversed ? "Перевернутое положение" : "Прямое положение";
 
+  useEffect(() => {
+    if (!dailyCard?.local_date || !dailyCard?.reading_id) {
+      return;
+    }
+    writeStoredDailyCardUnlock(dailyCard.local_date, dailyCard.reading_id);
+    setStoredDailyCardUnlock({
+      localDate: dailyCard.local_date,
+      readingId: dailyCard.reading_id
+    });
+  }, [dailyCard?.local_date, dailyCard?.reading_id]);
+
   const handleOpenDailyCard = useCallback(async () => {
     if (!dailyCard?.card_code || !dailyCard?.local_date) {
       void refreshDailyCard();
       return;
     }
 
-    if (dailyCardCanViewInterpretation && dailyCard?.reading_id) {
-      navigate(`/reading/${dailyCard.reading_id}`);
+    if (dailyCardCanViewInterpretation && resolvedDailyCardReadingId) {
+      navigate(`/reading/${resolvedDailyCardReadingId}`);
       return;
     }
 
@@ -250,6 +309,11 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         const current = await getReading(reading.id);
         if (current.status === "ready" && current.output_payload) {
           const viewed = await viewReading(reading.id);
+          writeStoredDailyCardUnlock(dailyCard.local_date, reading.id);
+          setStoredDailyCardUnlock({
+            localDate: dailyCard.local_date,
+            readingId: reading.id
+          });
           await refreshDailyCard({ silent: true });
           navigate(`/reading/${reading.id}`, { state: { reading: viewed } });
           return;
@@ -271,7 +335,15 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     } finally {
       setDailyCardUnlocking(false);
     }
-  }, [dailyCard, dailyCardCanViewInterpretation, dailyCardUnlockCost, interfaceLocale, navigate, refreshDailyCard]);
+  }, [
+    dailyCard,
+    dailyCardCanViewInterpretation,
+    dailyCardUnlockCost,
+    interfaceLocale,
+    navigate,
+    refreshDailyCard,
+    resolvedDailyCardReadingId
+  ]);
 
   const metrics = [
     { label: "Энергия", value: formattedEnergy },
