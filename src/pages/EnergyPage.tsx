@@ -143,7 +143,7 @@ const REFERRAL_SHARE_COPY: Record<
     inviteButton: "Получить бонус",
     instructionTitle: "Поделиться через Telegram",
     instructionText:
-      "Выберите язык приглашения. В чатах нажмите на карточку приглашения и подтвердите отправку зелёной галочкой ✅.",
+      "Выберите язык приглашения. В чатах нажмите именно на прикреплённую карточку с изображением над строкой @via Telegram и отправьте её зелёной галочкой ✅. Саму ссылку из строки @via отправлять не нужно.",
     confirmText: "Открыть чаты",
     cancelText: "Отмена",
     fallbackText: "Присоединяйся к Tarotolog AI и забирай бонусную энергию ⚡",
@@ -157,7 +157,7 @@ const REFERRAL_SHARE_COPY: Record<
     inviteButton: "Claim bonus",
     instructionTitle: "Share via Telegram",
     instructionText:
-      "Choose the invite language. In chats, tap the invite card and confirm sending it with the green check mark ✅.",
+      "Choose the invite language. In chats, tap the attached image card above the @via Telegram line and send it with the green check mark ✅. Do not send the raw @via link itself.",
     confirmText: "Open chats",
     cancelText: "Cancel",
     fallbackText: "Join Tarotolog AI and claim bonus energy ⚡",
@@ -1948,7 +1948,7 @@ export default function EnergyPage() {
 
       {shareHintOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-          <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
+          <div className="max-h-[calc(100vh-32px)] w-full max-w-sm overflow-y-auto rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
             <div className="mb-3 flex gap-2">
               {(["ru", "en"] as const).map((language) => {
                 const copy = REFERRAL_SHARE_COPY[language];
@@ -1978,20 +1978,19 @@ export default function EnergyPage() {
               />
             </div>
 
-            <div className="mt-3 rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">{referralShareCopy.previewBadge}</p>
-              <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{referralShareCopy.inviteTitle}</p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{referralShareCopy.inviteCaption}</p>
-              <div className="mt-3 inline-flex rounded-full border border-[rgba(215,185,139,0.3)] bg-[rgba(215,185,139,0.12)] px-4 py-2 text-sm font-medium text-[var(--accent-gold)]">
-                {referralShareCopy.inviteButton}
-              </div>
-            </div>
-
             <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-primary)]">
               <Share2 className="h-4 w-4 text-[var(--accent-gold)]" />
               {referralShareCopy.instructionTitle}
             </div>
-            <p className="mt-3 text-sm text-[var(--text-secondary)]">{referralShareCopy.instructionText}</p>
+
+            <div className="mt-3 overflow-hidden rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.04)]">
+              <img
+                src="/assets/tarot/rws/share-instruction.png"
+                alt="Инструкция отправки приглашения"
+                className="h-auto w-full"
+              />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{referralShareCopy.instructionText}</p>
             <div className="mt-4 flex gap-3">
               <Button
                 variant="outline"
