@@ -1478,9 +1478,11 @@ export default function EnergyPage() {
                 <h2 className="font-['Cormorant_Garamond'] text-[1.9rem] font-medium leading-none text-[var(--text-primary)]">
                   Верните ресурс без покупки
                 </h2>
-                <p className="max-w-[330px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">
-                  Нажмите `Go`, перейдите в рекламируемый проект, затем вернитесь и нажмите `Claim`, чтобы получить награду за выполненное задание и поддержать развитие проекта.
-                </p>
+                {adsState?.task.available ? (
+                  <p className="max-w-[330px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">
+                    Нажмите `Go`, перейдите в рекламируемый проект, затем вернитесь и нажмите `Claim`, чтобы получить награду за выполненное задание и поддержать развитие проекта.
+                  </p>
+                ) : null}
               </div>
               <div className="hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-right sm:block">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Награда</p>

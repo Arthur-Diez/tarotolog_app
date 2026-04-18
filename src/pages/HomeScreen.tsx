@@ -39,6 +39,8 @@ interface ServiceItem {
   onClick?: () => void;
 }
 
+const DAILY_CARD_PENDING_STATUSES = new Set(["pending", "queued", "processing"]);
+
 function getFocusTheme(energy: number) {
   if (energy <= 6) {
     return {
@@ -163,6 +165,11 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const premiumCta = hasSubscription ? "Открыть прогноз" : "Открыть персональный прогноз";
   const dailyCardCardReady = Boolean(dailyCard?.card_code) && dailyCard?.status === "ready";
   const dailyCardInterpretationLocked = Boolean(dailyCard?.interpretation_locked ?? dailyCard?.is_shared);
+  const dailyCardHasInterpretation = Boolean(dailyCard?.reading_id);
+  const dailyCardInterpretationPending = Boolean(
+    dailyCardHasInterpretation && dailyCard?.status && DAILY_CARD_PENDING_STATUSES.has(dailyCard.status)
+  );
+  const dailyCardCanViewInterpretation = Boolean(dailyCardHasInterpretation && dailyCard?.status === "ready");
   const dailyCardPending = dailyCardLoading || dailyCardUnlocking;
   const dailyCardDateLabel = formatDailyCardDate(dailyCard?.local_date);
   const dailyCardUnlockCost = dailyCard?.unlock_energy_cost ?? 2;
@@ -172,10 +179,12 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       ? "Открываем карту дня"
       : "Карта дня временно недоступна";
   const dailyCardAssetName = dailyCard?.card_name ?? null;
-  const dailyCardPrimaryCta = dailyCardInterpretationLocked
-    ? `Личная трактовка за ${dailyCardUnlockCost} ⚡`
-    : "Посмотреть толкование";
-  const dailyCardSecondaryCta = dailyCardInterpretationLocked ? null : "Сохранить в дневник";
+  const dailyCardPrimaryCta = dailyCardCanViewInterpretation
+    ? "Посмотреть толкование"
+    : dailyCardInterpretationPending
+      ? "Толкование готовится"
+      : `Личная трактовка за ${dailyCardUnlockCost} ⚡`;
+  const dailyCardSecondaryCta = dailyCardCanViewInterpretation ? "Сохранить в дневник" : null;
   const dailyCardTitle = dailyCardCardReady
     ? dailyCard?.card_name ?? "Карта дня"
     : dailyCardLoading
@@ -184,9 +193,11 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         ? "Карта дня временно недоступна"
         : "Карта дня";
   const dailyCardBody = dailyCardCardReady
-    ? dailyCardInterpretationLocked
-      ? `Карта дня уже выбрана для вашего ритма и текущего дня. Личную трактовку и совет именно для вас можно открыть за ${dailyCardUnlockCost} ⚡.`
-      : "Личная трактовка уже открыта для вашего текущего дня. Можно вернуться к толкованию в любое время до конца суток."
+    ? dailyCardCanViewInterpretation
+      ? "Личная трактовка уже открыта для вашего текущего дня. Можно вернуться к толкованию в любое время до конца суток."
+      : dailyCardInterpretationPending
+        ? "Личная трактовка уже создаётся для вашего текущего дня. Вернитесь через несколько секунд, и она откроется без повторной оплаты."
+        : `Карта дня уже выбрана для вашего ритма и текущего дня. Личную трактовку и совет именно для вас можно открыть за ${dailyCardUnlockCost} ⚡.`
     : dailyCardLoading
       ? "Подбираем карту дня под ваш текущий день."
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
@@ -198,7 +209,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       return;
     }
 
-    if (!dailyCardInterpretationLocked && dailyCard?.reading_id) {
+    if (dailyCardCanViewInterpretation && dailyCard?.reading_id) {
       navigate(`/reading/${dailyCard.reading_id}`);
       return;
     }
@@ -260,7 +271,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     } finally {
       setDailyCardUnlocking(false);
     }
-  }, [dailyCard, dailyCardInterpretationLocked, dailyCardUnlockCost, interfaceLocale, navigate, refreshDailyCard]);
+  }, [dailyCard, dailyCardCanViewInterpretation, dailyCardUnlockCost, interfaceLocale, navigate, refreshDailyCard]);
 
   const metrics = [
     { label: "Энергия", value: formattedEnergy },
