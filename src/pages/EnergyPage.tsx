@@ -1327,12 +1327,14 @@ export default function EnergyPage() {
   const accountModeLabel = energyBalance <= 10 ? "Нужна подпитка" : energyBalance <= 35 ? "Рабочий запас" : "Сильный ресурс";
   const resourcePressureLabel =
     energyBalance <= 10 ? "Критически низко" : energyBalance <= 35 ? "Ниже комфортного запаса" : "Комфортный запас";
+  const resourcePressureTitle =
+    energyBalance <= 10 ? "Энергии хватит ненадолго" : energyBalance <= 35 ? "Запас лучше усилить заранее" : "Ресурс держит хороший темп";
   const resourcePressureHint =
     energyBalance <= 10
-      ? "Энергии мало: часть сценариев быстро упрётся в оплату. Лучше пополнить запас сейчас, пока пользователь в разогретом состоянии."
+      ? "Часть дорогих сценариев скоро упрётся в пополнение. Лучше закрыть запас сейчас, чтобы не терять импульс внутри продукта."
       : energyBalance <= 35
-        ? "Запаса хватит ненадолго. Если планируете расклады и персональные прогнозы, лучше усилить баланс заранее."
-        : "Запас позволяет спокойно идти в ключевые сценарии без остановки на пополнение.";
+        ? "На пару сценариев ресурса хватит, но для персональных прогнозов и глубоких раскладов лучше поднять баланс заранее."
+        : "Можно спокойно идти в расклады, трактовки и персональные прогнозы без паузы на срочное пополнение.";
   const resourceFillPercent = Math.max(8, Math.min(100, Math.round((Math.min(energyBalance, 120) / 120) * 100)));
   const resourceToneClass =
     energyBalance <= 10
@@ -1340,6 +1342,12 @@ export default function EnergyPage() {
       : energyBalance <= 35
         ? "from-[#E4BE7A] to-[#CFA974]"
         : "from-[#CDAA7A] to-[#8FD0A6]";
+  const resourceAccentClass =
+    energyBalance <= 10
+      ? "text-[#F4A38A]"
+      : energyBalance <= 35
+        ? "text-[#E6C688]"
+        : "text-[#A7DDB6]";
   const energyDateLabel = adsState?.local_date
     ? formatWalletHistoryTimestamp(`${adsState.local_date}T12:00:00`).split(",")[0]
     : null;
@@ -1367,28 +1375,42 @@ export default function EnergyPage() {
                 <h1 className="font-['Cormorant_Garamond'] text-[2.05rem] font-semibold leading-none text-[var(--text-primary)]">
                   Управление вашим ресурсом
                 </h1>
-                <div className="max-w-[380px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Индикатор ресурса</p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{resourcePressureLabel}</p>
-                    </div>
-                    <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                      {resourceFillPercent}%
-                    </span>
-                  </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r ${resourceToneClass}`}
-                      style={{ width: `${resourceFillPercent}%` }}
-                    />
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{resourcePressureHint}</p>
-                </div>
               </div>
               <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">
                 {accountModeLabel}
               </span>
+            </div>
+
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))] p-4 shadow-[var(--surface-shadow-soft)]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">Индикатор ресурса</p>
+                  <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{resourcePressureTitle}</p>
+                </div>
+                <div className="shrink-0 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                  {resourceFillPercent}%
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${resourceToneClass} shadow-[0_0_18px_rgba(255,255,255,0.08)]`}
+                    style={{ width: `${resourceFillPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-semibold ${resourceAccentClass}`}>{resourcePressureLabel}</p>
+                  <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{resourcePressureHint}</p>
+                </div>
+                <div className="shrink-0 rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-right">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Баланс</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{formattedEnergyBalance} ⚡</p>
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
