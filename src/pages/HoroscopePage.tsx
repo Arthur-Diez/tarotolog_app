@@ -75,6 +75,53 @@ interface IssueStructuredSection {
   advice?: string | null;
 }
 
+interface PremiumIssueArea {
+  key: string;
+  icon: string;
+  title: string;
+  state: string;
+  meaning: string;
+  action: string;
+}
+
+interface PremiumIssueContent {
+  version: string;
+  dateLabel: string;
+  periodLabel: string;
+  persona: {
+    zodiacSign: string | null;
+    gender: string | null;
+    archetype: string | null;
+    personalContext: string | null;
+  };
+  hero: {
+    eyebrow: string | null;
+    title: string | null;
+    subtitle: string | null;
+    verdict: string | null;
+  };
+  dayStory: {
+    title: string | null;
+    text: string | null;
+    innerTask: string | null;
+  };
+  timing: {
+    bestWindow: { label: string | null; timeRange: string | null; text: string | null };
+    cautionWindow: { label: string | null; timeRange: string | null; text: string | null };
+  };
+  areas: PremiumIssueArea[];
+  opportunity: { title: string | null; text: string | null };
+  risk: { title: string | null; text: string | null };
+  finalAdvice: { title: string | null; text: string | null };
+  ritual: { title: string | null; text: string | null };
+  eveningReflection: { title: string | null; text: string | null };
+  uiHints: {
+    moodTags: string[];
+    highlightArea: string | null;
+    intensity: string | null;
+  };
+}
+
 interface NormalizedLocalizedContent {
   sections: StructuredSection[];
   bestTime: string | null;
@@ -1747,10 +1794,125 @@ function IssueSectionCard({ section }: { section: IssueStructuredSection }) {
   );
 }
 
+function PremiumIssueHero({
+  content,
+  issueStatus
+}: {
+  content: PremiumIssueContent;
+  issueStatus: HoroscopeIssueStatus;
+}) {
+  const personaParts = [content.persona.zodiacSign, content.persona.gender, content.dateLabel].filter(Boolean);
+  return (
+    <div className="space-y-3 rounded-[26px] border border-[var(--accent-gold)]/20 bg-[radial-gradient(circle_at_top,_rgba(231,201,232,0.12),_transparent_48%),linear-gradient(180deg,rgba(55,42,75,0.95),rgba(24,17,34,0.94))] p-5 shadow-[0_20px_48px_rgba(0,0,0,0.32)]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">
+          {content.hero.eyebrow || "Главный вектор дня"}
+        </p>
+        <div className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+          {issueStatus === "ready" ? content.periodLabel || "Сегодня" : "Формируется"}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h5 className="text-[30px] font-semibold leading-[1.05] text-[var(--text-primary)]">
+          {content.hero.title || "Персональный прогноз на день"}
+        </h5>
+        {content.hero.subtitle ? (
+          <p className="max-w-[34rem] text-sm leading-relaxed text-[var(--text-secondary)]">{content.hero.subtitle}</p>
+        ) : null}
+      </div>
+      {personaParts.length ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {personaParts.map((item, index) => (
+            <span
+              key={`persona-${index}`}
+              className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {content.persona.personalContext ? (
+        <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
+          <p className="text-sm leading-relaxed text-[var(--text-primary)]">{content.persona.personalContext}</p>
+        </div>
+      ) : null}
+      {content.hero.verdict ? (
+        <div className="rounded-2xl border border-[var(--accent-gold)]/25 bg-[var(--accent-gold)]/10 p-4">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--accent-gold)]">Главный вывод</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{content.hero.verdict}</p>
+        </div>
+      ) : null}
+      {content.uiHints.moodTags.length ? (
+        <div className="flex flex-wrap gap-2">
+          {content.uiHints.moodTags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full border border-[var(--accent-gold)]/18 bg-[var(--accent-gold)]/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--accent-gold)]"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PremiumTimingCard({
+  tone,
+  label,
+  timeRange,
+  text
+}: {
+  tone: "good" | "warning";
+  label: string;
+  timeRange: string;
+  text: string;
+}) {
+  const toneClass =
+    tone === "good"
+      ? "border-[var(--accent-gold)]/22 bg-[var(--accent-gold)]/10"
+      : "border-white/10 bg-white/5";
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{timeRange}</p>
+      {text ? <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{text}</p> : null}
+    </div>
+  );
+}
+
+function PremiumIssueAreaCard({ area }: { area: PremiumIssueArea }) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
+      <p className="text-sm font-semibold text-[var(--text-primary)]">
+        {resolveIssueIcon(area.icon)} {area.title}
+      </p>
+      <div className="mt-3 space-y-3">
+        {area.state ? <p className="text-sm leading-relaxed text-[var(--text-primary)]">{area.state}</p> : null}
+        {area.meaning ? <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{area.meaning}</p> : null}
+        {area.action ? (
+          <div className="rounded-2xl border border-[var(--accent-gold)]/24 bg-[var(--accent-gold)]/10 p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">Что делать</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-primary)]">{area.action}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose: () => void }) {
   if (!state.open) return null;
   const issue = state.issue;
   const issueSections = normalizeIssueSections(issue?.content_json, issue?.summary_text ?? null, issue?.content_md ?? null);
+  const premiumIssue = normalizePremiumIssueContent(
+    issue?.content_json,
+    issue?.summary_text ?? null,
+    issue?.start_date ?? null,
+    issue?.end_date ?? null
+  );
   const issueStatus = normalizeIssueStatus(issue?.status);
 
   return (
@@ -1781,17 +1943,113 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
           <div className="rounded-2xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100">{state.error}</div>
         ) : issue ? (
           <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-1">
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#2c2846]/70 to-[#171a2a]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Период прогноза</p>
-              <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
-                {formatIssuePeriod(issue.start_date, issue.end_date)}
-              </p>
-              <div className="mt-3 inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
-                Статус: {issueStatus}
-              </div>
-            </div>
+            {premiumIssue ? (
+              <div className="space-y-3">
+                <PremiumIssueHero content={premiumIssue} issueStatus={issueStatus} />
 
-            {issueSections.length ? (
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">
+                      {premiumIssue.dayStory.title || "Сюжет дня"}
+                    </p>
+                    <div className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+                      {premiumIssue.periodLabel}
+                    </div>
+                  </div>
+                  {premiumIssue.dayStory.text ? (
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{premiumIssue.dayStory.text}</p>
+                  ) : null}
+                  {premiumIssue.dayStory.innerTask ? (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Внутренняя задача</p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+                        {premiumIssue.dayStory.innerTask}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {(premiumIssue.timing.bestWindow.timeRange || premiumIssue.timing.cautionWindow.timeRange) && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {premiumIssue.timing.bestWindow.timeRange ? (
+                      <PremiumTimingCard
+                        tone="good"
+                        label={premiumIssue.timing.bestWindow.label || "Лучшее время"}
+                        timeRange={premiumIssue.timing.bestWindow.timeRange}
+                        text={premiumIssue.timing.bestWindow.text || ""}
+                      />
+                    ) : null}
+                    {premiumIssue.timing.cautionWindow.timeRange ? (
+                      <PremiumTimingCard
+                        tone="warning"
+                        label={premiumIssue.timing.cautionWindow.label || "Осторожное время"}
+                        timeRange={premiumIssue.timing.cautionWindow.timeRange}
+                        text={premiumIssue.timing.cautionWindow.text || ""}
+                      />
+                    ) : null}
+                  </div>
+                )}
+
+                {premiumIssue.areas.length ? (
+                  <div className="space-y-3">
+                    {premiumIssue.areas.map((area) => (
+                      <PremiumIssueAreaCard key={area.key} area={area} />
+                    ))}
+                  </div>
+                ) : null}
+
+                {(premiumIssue.opportunity.text || premiumIssue.risk.text) && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {premiumIssue.opportunity.text ? (
+                      <div className="rounded-[24px] border border-[var(--accent-gold)]/18 bg-[var(--accent-gold)]/10 p-4">
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">🚀 {premiumIssue.opportunity.title}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+                          {premiumIssue.opportunity.text}
+                        </p>
+                      </div>
+                    ) : null}
+                    {premiumIssue.risk.text ? (
+                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">⚠️ {premiumIssue.risk.title}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{premiumIssue.risk.text}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {premiumIssue.finalAdvice.text ? (
+                  <div className="rounded-[24px] border border-[var(--accent-gold)]/22 bg-[linear-gradient(180deg,rgba(215,185,139,0.16),rgba(215,185,139,0.08))] p-5">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--accent-gold)]">
+                      {premiumIssue.finalAdvice.title || "Финальный совет"}
+                    </p>
+                    <p className="mt-3 text-base leading-relaxed text-[var(--text-primary)]">
+                      {premiumIssue.finalAdvice.text}
+                    </p>
+                  </div>
+                ) : null}
+
+                {(premiumIssue.ritual.text || premiumIssue.eveningReflection.text) && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {premiumIssue.ritual.text ? (
+                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">🪄 {premiumIssue.ritual.title}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{premiumIssue.ritual.text}</p>
+                      </div>
+                    ) : null}
+                    {premiumIssue.eveningReflection.text ? (
+                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">
+                          🌙 {premiumIssue.eveningReflection.title}
+                        </p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+                          {premiumIssue.eveningReflection.text}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : issueSections.length ? (
               <div className="space-y-3">
                 {issueSections.map((section) => (
                   <IssueSectionCard key={section.key} section={section} />
@@ -1893,6 +2151,156 @@ function normalizeIssueSections(
   return sections;
 }
 
+function normalizePremiumIssueContent(
+  contentJson: HoroscopeIssueResponse["content_json"],
+  summaryText: string | null,
+  startDate: string | null,
+  endDate: string | null
+): PremiumIssueContent | null {
+  const payload = resolveIssueContentPayload(contentJson);
+  if (!payload) return null;
+
+  const hasPremiumShape =
+    readString(payload.version) === "daily_personal_v2" ||
+    isRecord(payload.hero) ||
+    isRecord(payload.day_story) ||
+    Array.isArray(payload.areas);
+  const hasLegacyDailyShape =
+    Boolean(readString(payload.summary) || readString(payload.main_energy) || readString(payload.focus)) &&
+    (isRecord(payload.love) || isRecord(payload.career) || isRecord(payload.money) || isRecord(payload.health));
+
+  if (!hasPremiumShape && !hasLegacyDailyShape) return null;
+
+  const persona = isRecord(payload.persona) ? payload.persona : {};
+  const hero = isRecord(payload.hero) ? payload.hero : {};
+  const dayStory = isRecord(payload.day_story) ? payload.day_story : {};
+  const timing = isRecord(payload.timing) ? payload.timing : {};
+  const bestWindow = isRecord(timing.best_window)
+    ? timing.best_window
+    : { label: "Лучшее время", time_range: readString(timing.best_period), text: null };
+  const cautionWindow = isRecord(timing.caution_window)
+    ? timing.caution_window
+    : { label: "Осторожное время", time_range: readString(timing.caution_period), text: null };
+
+  const rawAreas =
+    Array.isArray(payload.areas) && payload.areas.length
+      ? payload.areas
+      : [
+          { key: "love", icon: "heart", title: "Любовь", ...(isRecord(payload.love) ? payload.love : {}) },
+          { key: "career", icon: "briefcase", title: "Карьера", ...(isRecord(payload.career) ? payload.career : {}) },
+          { key: "money", icon: "coins", title: "Деньги", ...(isRecord(payload.money) ? payload.money : {}) },
+          {
+            key: "wellbeing",
+            icon: "sparkles",
+            title: "Состояние",
+            ...((isRecord(payload.wellbeing) ? payload.wellbeing : isRecord(payload.health) ? payload.health : {}) as Record<
+              string,
+              unknown
+            >)
+          }
+        ];
+
+  const areas = rawAreas
+    .map((rawArea, index) => normalizePremiumIssueArea(rawArea, index))
+    .filter((area): area is PremiumIssueArea => Boolean(area));
+
+  const uiHints = isRecord(payload.ui_hints) ? payload.ui_hints : {};
+  const opportunity = isRecord(payload.opportunity)
+    ? payload.opportunity
+    : { title: "Главная возможность", text: readString(payload.opportunity) ?? readString(payload.chance) };
+  const risk = isRecord(payload.risk)
+    ? payload.risk
+    : { title: "Главный риск", text: readString(payload.risk) ?? readString(payload.warning) ?? readString(payload.risks) };
+  const finalAdvice = isRecord(payload.final_advice)
+    ? payload.final_advice
+    : { title: "Финальный совет", text: readString(payload.final_advice) ?? readString(payload.advice) };
+  const ritual = isRecord(payload.ritual) ? payload.ritual : {};
+  const eveningReflection = isRecord(payload.evening_reflection) ? payload.evening_reflection : {};
+  const periodLabel = readString(payload.period_label) ?? "Сегодня";
+
+  return {
+    version: readString(payload.version) ?? "daily_personal_v2",
+    dateLabel: readString(payload.date_label) ?? formatIssuePeriod(startDate, endDate),
+    periodLabel,
+    persona: {
+      zodiacSign: getZodiacDisplayLabel(persona.zodiac_sign) ?? readString(persona.zodiac_sign),
+      gender: getGenderLabel(readString(persona.gender)) ?? readString(persona.gender),
+      archetype: normalizeIssueText(readString(persona.archetype)),
+      personalContext:
+        normalizeIssueText(readString(persona.personal_context)) ??
+        normalizeIssueText(summaryText) ??
+        normalizeIssueText(readString(payload.summary)),
+    },
+    hero: {
+      eyebrow: readString(hero.eyebrow) ?? "Главный вектор дня",
+      title:
+        normalizeIssueText(readString(hero.title)) ??
+        normalizeIssueText(readString(payload.main_energy) ?? readString(payload.focus)) ??
+        "Персональный прогноз на день",
+      subtitle:
+        normalizeIssueText(readString(hero.subtitle)) ??
+        normalizeIssueText(summaryText) ??
+        normalizeIssueText(readString(payload.summary)),
+      verdict:
+        normalizeIssueText(readString(hero.verdict)) ??
+        normalizeIssueText(readString(payload.final_advice) ?? readString(payload.advice)),
+    },
+    dayStory: {
+      title: readString(dayStory.title) ?? "Сюжет дня",
+      text:
+        normalizeIssueText(readString(dayStory.text)) ??
+        normalizeIssueText(readString(payload.summary)) ??
+        normalizeIssueText(summaryText),
+      innerTask:
+        normalizeIssueText(readString(dayStory.inner_task)) ??
+        normalizeIssueText(readString(payload.focus) ?? readString(payload.main_energy)),
+    },
+    timing: {
+      bestWindow: {
+        label: readString(bestWindow.label) ?? "Лучшее время",
+        timeRange: normalizeIssueText(readString(bestWindow.time_range)),
+        text: normalizeIssueText(readString(bestWindow.text)),
+      },
+      cautionWindow: {
+        label: readString(cautionWindow.label) ?? "Осторожное время",
+        timeRange: normalizeIssueText(readString(cautionWindow.time_range)),
+        text: normalizeIssueText(readString(cautionWindow.text)),
+      },
+    },
+    areas,
+    opportunity: {
+      title: readString(opportunity.title) ?? "Главная возможность",
+      text: normalizeIssueText(readString(opportunity.text)),
+    },
+    risk: {
+      title: readString(risk.title) ?? "Главный риск",
+      text: normalizeIssueText(readString(risk.text)),
+    },
+    finalAdvice: {
+      title: readString(finalAdvice.title) ?? "Финальный совет",
+      text: normalizeIssueText(readString(finalAdvice.text)),
+    },
+    ritual: {
+      title: readString(ritual.title) ?? "Ритуал дня",
+      text: normalizeIssueText(readString(ritual.text)),
+    },
+    eveningReflection: {
+      title: readString(eveningReflection.title) ?? "Вопрос на вечер",
+      text: normalizeIssueText(readString(eveningReflection.text)),
+    },
+    uiHints: {
+      moodTags: Array.isArray(uiHints.mood_tags)
+        ? uiHints.mood_tags
+            .map((item) => (typeof item === "string" ? item.trim() : ""))
+            .filter(Boolean)
+            .slice(0, 3)
+        : [],
+      highlightArea: readString(uiHints.highlight_area),
+      intensity: readString(uiHints.intensity),
+    },
+  };
+}
+
 function resolveIssueContentPayload(contentJson: HoroscopeIssueResponse["content_json"]): Record<string, unknown> | null {
   if (!isRecord(contentJson)) return null;
   if (isRecord(contentJson.content_json)) return contentJson.content_json;
@@ -1927,6 +2335,32 @@ function buildIssueSectionFromBlock(
     body: analysis ?? advice ?? "",
     advice: advice && advice !== analysis ? advice : null
   };
+}
+
+function normalizePremiumIssueArea(raw: unknown, index: number): PremiumIssueArea | null {
+  if (!isRecord(raw)) return null;
+  const key = readString(raw.key) ?? `area-${index}`;
+  const state = normalizeIssueText(readString(raw.state) ?? readString(raw.analysis) ?? readString(raw.focus) ?? readString(raw.text));
+  const meaning = normalizeIssueText(readString(raw.meaning));
+  const action = normalizeIssueText(readString(raw.action) ?? readString(raw.advice));
+  if (!state && !meaning && !action) return null;
+  return {
+    key,
+    icon: readString(raw.icon) ?? "sparkles",
+    title: readString(raw.title) ?? "Сфера дня",
+    state: state ?? "",
+    meaning: meaning ?? "",
+    action: action ?? "",
+  };
+}
+
+function resolveIssueIcon(icon: string): string {
+  const normalized = icon.trim().toLowerCase();
+  if (normalized === "heart") return "❤️";
+  if (normalized === "briefcase") return "💼";
+  if (normalized === "coins") return "💰";
+  if (normalized === "sparkles") return "✨";
+  return "✨";
 }
 
 function parseIssueMarkdownSections(markdownText: string | null, summaryText: string | null): IssueStructuredSection[] {
