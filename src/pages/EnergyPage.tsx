@@ -1312,23 +1312,23 @@ export default function EnergyPage() {
                 <h1 className="font-['Cormorant_Garamond'] text-[2.05rem] font-semibold leading-none text-[var(--text-primary)]">
                   Управление вашим ресурсом
                 </h1>
-                <div className="max-w-[340px] space-y-3">
-                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Индикатор ресурса</p>
-                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{resourcePressureLabel}</p>
-                      </div>
-                      <span className="text-xs text-[var(--text-secondary)]">{resourceFillPercent}%</span>
+                <div className="max-w-[380px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Индикатор ресурса</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{resourcePressureLabel}</p>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${resourceToneClass}`}
-                        style={{ width: `${resourceFillPercent}%` }}
-                      />
-                    </div>
-                    <p className="mt-3 text-[0.92rem] leading-6 text-[var(--text-secondary)]">{resourcePressureHint}</p>
+                    <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                      {resourceFillPercent}%
+                    </span>
                   </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${resourceToneClass}`}
+                      style={{ width: `${resourceFillPercent}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{resourcePressureHint}</p>
                 </div>
               </div>
               <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">

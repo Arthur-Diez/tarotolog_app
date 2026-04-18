@@ -379,20 +379,27 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
                   <span className="mt-1">сегодня</span>
                 </span>
               ) : null}
-              <span
-                className={`inline-flex min-w-[80px] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-3 py-1.5 text-sm font-semibold text-[var(--accent-rose)] transition-all duration-500 ${
-                  rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
-                }`}
-              >
-                {displayAmount === null ? (
-                  <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
-                ) : (
-                  <>
-                    +{displayAmount}
-                    <Zap className="h-4 w-4" strokeWidth={1.9} />
-                  </>
-                )}
-              </span>
+              {regularReplayAvailable ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent-gold)]">
+                  <Zap className="h-3.5 w-3.5" strokeWidth={1.9} />
+                  Получить ещё 1 энергию
+                </span>
+              ) : (
+                <span
+                  className={`inline-flex min-w-[80px] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-3 py-1.5 text-sm font-semibold text-[var(--accent-rose)] transition-all duration-500 ${
+                    rewardPulse ? "scale-110 border-emerald-300/50 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.45)]" : ""
+                  }`}
+                >
+                  {displayAmount === null ? (
+                    <span className="inline-flex h-5 w-14 animate-pulse rounded-md bg-white/10 align-middle" />
+                  ) : (
+                    <>
+                      +{displayAmount}
+                      <Zap className="h-4 w-4" strokeWidth={1.9} />
+                    </>
+                  )}
+                </span>
+              )}
               {bonusDelta ? (
                 <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100 animate-pulse">
                   +{bonusDelta} ⚡ начислено
