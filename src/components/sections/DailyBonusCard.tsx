@@ -338,6 +338,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
   const title = "Ежедневная энергия";
   const promoX2Active = !hasSubscription && reward.nextRewardKind === "daily_x2" && reward.status !== "cooldown";
   const displayAmount = reward.amount ?? null;
+  const regularReplayAvailable = !hasSubscription && reward.nextRewardKind === "reward_regular" && reward.status === "idle";
 
   const countdownLabel = useMemo(() => {
     if (cooldownSeconds === null) return "";
@@ -367,7 +368,6 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
                 <Gift className="h-4.5 w-4.5" strokeWidth={1.6} />
               </span>
               <div>
-                <p className="text-[10px] uppercase tracking-[0.24em] text-[rgba(231,204,158,0.78)]">Монетизация дня</p>
                 <p className="text-[1.35rem] font-semibold text-[var(--text-primary)]">{title}</p>
               </div>
             </div>
@@ -404,19 +404,15 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
               {hasSubscription
                 ? "Подписка активна, рекламный бонус отключён."
                 : promoX2Active
-                  ? "Сегодня пользователь получает +2 энергии за одно видео."
+                  ? "Одно видео даёт +2 энергии и помогает проекту развиваться."
+                  : regularReplayAvailable
+                    ? "Одно видео даёт +1 энергии и помогает проекту развиваться. Можно посмотреть рекламу повторно и забрать ещё +1 ⚡."
                   : reward.status === "cooldown"
                     ? `Следующая награда откроется через ${countdownLabel || "короткое время"}.`
                     : displayAmount !== null
-                      ? `Одно видео даёт +${displayAmount} энергии и создаёт ежедневный повод вернуться.`
-                      : "Ежедневный повод вернуться за энергией."}
+                      ? `Одно видео даёт +${displayAmount} энергии и помогает проекту развиваться.`
+                      : "Верните немного энергии и поддержите развитие проекта."}
             </p>
-          </div>
-
-          <div className="rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] px-3 py-2 text-right">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Ритуал</p>
-            <p className="mt-1 text-[13px] font-semibold text-[var(--text-primary)]">1 просмотр</p>
-            <p className="mt-1 text-[11px] text-[var(--text-secondary)]">энергия</p>
           </div>
         </div>
 
@@ -437,13 +433,7 @@ export function DailyBonusCard({ hasSubscription, onBonusClaimed }: DailyBonusCa
             <Sparkles className="h-4 w-4" strokeWidth={1.8} />
             {actionLabel}
           </button>
-
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[11px] text-[var(--text-secondary)]">
-              <Zap className="h-3.5 w-3.5 text-[var(--accent-gold)]" strokeWidth={1.8} />
-              Ежедневное возвращение
-            </div>
-
             {reward.status === "error" && reward.error ? (
               <div className="flex items-center gap-2 text-xs text-[var(--accent-gold)]">
                 <span>{reward.error}</span>

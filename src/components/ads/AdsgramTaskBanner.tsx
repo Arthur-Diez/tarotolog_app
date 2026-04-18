@@ -148,7 +148,7 @@ export function AdsgramTaskBanner({
           color: "#eef5ff"
         }}
       >
-        +1 ⚡
+        +2 ⚡
       </span>
       <span
         slot="button"

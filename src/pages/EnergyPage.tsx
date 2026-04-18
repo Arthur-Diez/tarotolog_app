@@ -98,6 +98,15 @@ interface PaymentStatusView {
   energy_credited: number;
 }
 
+interface OfferPositioning {
+  displayName: string;
+  eyebrow: string;
+  summary: string;
+  usageHint: string;
+  outcome: string;
+  cta: string;
+}
+
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "RUB", label: "₽ RUB" },
   { code: "USD", label: "$ USD" },
@@ -317,6 +326,76 @@ function getOfferTotalEnergy(offer: PaymentOfferResponse): number {
 function getOfferBonusPercent(offer: PaymentOfferResponse): number {
   if (offer.energy_amount <= 0 || offer.bonus_energy <= 0) return 0;
   return Math.floor((offer.bonus_energy / offer.energy_amount) * 100);
+}
+
+function getOfferPersonalization(triggerType: string): string | null {
+  const normalized = String(triggerType || "").trim().toLowerCase();
+  if (!normalized || normalized === "auto" || normalized === "manual") return null;
+  if (normalized === "first_purchase") return "Подходит для первого сильного касания с продуктом: меньше страха оплаты, больше ощущения выгоды.";
+  if (normalized === "low_energy") return "Помогает не выпасть из воронки именно в момент, когда энергия заканчивается и пользователь уже прогрет.";
+  if (normalized === "post_ads") return "Логичное продолжение после бесплатной энергии: пользователь уже вовлечён и готов усилить сценарий покупкой.";
+  if (normalized === "comeback") return "Хороший оффер для возврата: даёт повод снова пользоваться продуктом регулярно, а не разово.";
+  if (normalized === "vip" || normalized === "personal") return "Этот оффер выглядит персональным и лучше ощущается как предложение под текущий ритм пользователя.";
+  return null;
+}
+
+function getOfferPositioning(offer: PaymentOfferResponse): OfferPositioning {
+  const totalEnergy = getOfferTotalEnergy(offer);
+  const personalDailyCount = Math.max(1, Math.floor(totalEnergy / 10));
+  const oneCardCount = Math.max(1, Math.floor(totalEnergy / 2));
+
+  if (totalEnergy <= 12) {
+    return {
+      displayName: "Быстрый старт",
+      eyebrow: "Снять блок прямо сейчас",
+      summary: "Компактный пакет для пользователя, который уже заинтересован, но ещё не готов к большому чеку.",
+      usageHint: `Хватит примерно на ${personalDailyCount} персональный прогноз или до ${oneCardCount} трактовок карты дня.`,
+      outcome: "Даёт быстрый вход в платный слой без ощущения лишнего риска.",
+      cta: "Взять быстрый старт"
+    };
+  }
+
+  if (totalEnergy <= 30) {
+    return {
+      displayName: "Рабочий запас",
+      eyebrow: "Самый практичный выбор",
+      summary: "Баланс между ценой и глубиной: можно спокойно открыть несколько ключевых сценариев подряд без новых пауз.",
+      usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
+      outcome: "Оптимален, если пользователь уже вошёл в ритм и будет возвращаться в продукт.",
+      cta: "Забрать рабочий запас"
+    };
+  }
+
+  if (totalEnergy <= 70) {
+    return {
+      displayName: "Поток без пауз",
+      eyebrow: "Лучший value-оффер",
+      summary: "Комфортный запас под регулярное использование: расклады, трактовки и персональные прогнозы без постоянного контроля остатка.",
+      usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
+      outcome: "Лучший пакет для превращения разового пользователя в привычного.",
+      cta: "Открыть лучший value"
+    };
+  }
+
+  if (totalEnergy <= 130) {
+    return {
+      displayName: "Глубокий режим",
+      eyebrow: "Для серьёзного сценария",
+      summary: "Большой запас для пользователей, которые хотят проходить продукт глубже и дольше, не возвращаясь к оплате после каждой покупки.",
+      usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
+      outcome: "Снимает внутренний барьер “жалко тратить энергию” и увеличивает глубину использования.",
+      cta: "Включить глубокий режим"
+    };
+  }
+
+  return {
+    displayName: "Премиальный запас",
+    eyebrow: "Максимум свободы",
+    summary: "Сильный резерв для пользователей с высокой вовлечённостью, которым важен непрерывный доступ к дорогим сценариям.",
+    usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
+    outcome: "Лучший пакет для долгого удержания и высокой жизненной ценности пользователя.",
+    cta: "Забрать премиальный запас"
+  };
 }
 
 function pickFeaturedOffer(offers: PaymentOfferResponse[]): PaymentOfferResponse | null {
@@ -1178,18 +1257,34 @@ export default function EnergyPage() {
   }, [adsAction, adsState?.ads_enabled, adsState?.task.available, adsState?.task.next_energy, taskCooldownLeft]);
 
   const featuredOffer = useMemo(() => pickFeaturedOffer(paymentOffers), [paymentOffers]);
+  const featuredOfferPositioning = useMemo(
+    () => (featuredOffer ? getOfferPositioning(featuredOffer) : null),
+    [featuredOffer]
+  );
+  const featuredOfferPersonalization = useMemo(
+    () => (featuredOffer ? getOfferPersonalization(featuredOffer.trigger_type) : null),
+    [featuredOffer]
+  );
   const secondaryOffers = useMemo(
     () => paymentOffers.filter((offer) => offer.offer_id !== featuredOffer?.offer_id),
     [featuredOffer?.offer_id, paymentOffers]
   );
   const accountModeLabel = energyBalance <= 10 ? "Нужна подпитка" : energyBalance <= 35 ? "Рабочий запас" : "Сильный ресурс";
-  const energyStory =
+  const resourcePressureLabel =
+    energyBalance <= 10 ? "Критически низко" : energyBalance <= 35 ? "Ниже комфортного запаса" : "Комфортный запас";
+  const resourcePressureHint =
     energyBalance <= 10
-      ? "Баланс на нижней границе. Лучше быстро вернуть энергию через рекламу или компактный пакет, чтобы не упираться в блокировки."
+      ? "Энергии мало: часть сценариев быстро упрётся в оплату. Лучше пополнить запас сейчас, пока пользователь в разогретом состоянии."
       : energyBalance <= 35
-        ? "Запаса хватит на несколько сценариев, но для комфортного ритма лучше держать запас выше среднего."
-        : "Баланс выглядит уверенно. Можно спокойно идти в расклады, персональные прогнозы и расширенные сценарии."
-      ;
+        ? "Запаса хватит ненадолго. Если планируете расклады и персональные прогнозы, лучше усилить баланс заранее."
+        : "Запас позволяет спокойно идти в ключевые сценарии без остановки на пополнение.";
+  const resourceFillPercent = Math.max(8, Math.min(100, Math.round((Math.min(energyBalance, 120) / 120) * 100)));
+  const resourceToneClass =
+    energyBalance <= 10
+      ? "from-[#F08A62] to-[#D8604B]"
+      : energyBalance <= 35
+        ? "from-[#E4BE7A] to-[#CFA974]"
+        : "from-[#CDAA7A] to-[#8FD0A6]";
   const energyDateLabel = adsState?.local_date
     ? formatWalletHistoryTimestamp(`${adsState.local_date}T12:00:00`).split(",")[0]
     : null;
@@ -1200,8 +1295,8 @@ export default function EnergyPage() {
     selectedPaymentMethod === "telegram_stars" ? "Пополнение через Telegram Stars" : "Премиальные пакеты энергии";
   const paymentSectionBody =
     selectedPaymentMethod === "telegram_stars"
-      ? "Быстрый платёж прямо внутри Telegram. Подходит тем, кто хочет закрывать покупку без выхода из мини-приложения."
-      : "Выберите пакет под свой темп: быстрый добор энергии, лучший value-оффер или глубокий запас под серию раскладов.";
+      ? "Быстрый платёж прямо внутри Telegram: меньше трения, выше шанс закрыть покупку в момент максимального интереса."
+      : "Пакеты энергии убирают паузы внутри продукта: можно открывать трактовки, персональные прогнозы и расклады без постоянной остановки на пополнение.";
 
   return (
     <>
@@ -1217,7 +1312,24 @@ export default function EnergyPage() {
                 <h1 className="font-['Cormorant_Garamond'] text-[2.05rem] font-semibold leading-none text-[var(--text-primary)]">
                   Управление вашим ресурсом
                 </h1>
-                <p className="max-w-[320px] text-[0.96rem] leading-6 text-[var(--text-secondary)]">{energyStory}</p>
+                <div className="max-w-[340px] space-y-3">
+                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Индикатор ресурса</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{resourcePressureLabel}</p>
+                      </div>
+                      <span className="text-xs text-[var(--text-secondary)]">{resourceFillPercent}%</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${resourceToneClass}`}
+                        style={{ width: `${resourceFillPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-3 text-[0.92rem] leading-6 text-[var(--text-secondary)]">{resourcePressureHint}</p>
+                  </div>
+                </div>
               </div>
               <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-gold)]">
                 {accountModeLabel}
@@ -1290,11 +1402,7 @@ export default function EnergyPage() {
                     {checkingStatus ? "Проверяем платёж" : "Проверить платёж"}
                     {checkingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" strokeWidth={1.7} />}
                   </Button>
-                ) : (
-                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm leading-5 text-[var(--text-secondary)]">
-                    Платёжный сценарий уже привязан к backend: офферы, статусы и автопроверка работают в одном потоке.
-                  </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -1310,7 +1418,7 @@ export default function EnergyPage() {
                   Верните ресурс без покупки
                 </h2>
                 <p className="max-w-[330px] text-[0.95rem] leading-6 text-[var(--text-secondary)]">
-                  Один рекламный ритуал в день возвращает энергию пользователю и одновременно поддерживает монетизацию проекта.
+                  Нажмите `Go`, перейдите в рекламируемый проект, затем вернитесь и нажмите `Claim`, чтобы получить награду за выполненное задание и поддержать развитие проекта.
                 </p>
               </div>
               <div className="hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-right sm:block">
@@ -1321,10 +1429,11 @@ export default function EnergyPage() {
 
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-[rgba(215,185,139,0.2)] bg-[rgba(215,185,139,0.1)] px-3 py-1.5 text-[12px] font-medium text-[var(--accent-gold)]">
-                {hasFreeEnergyTask ? "Рекламный ритуал активен" : "Реклама сейчас недоступна"}
-              </span>
-              <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)]">
-                {taskButtonLabel}
+                {hasFreeEnergyTask
+                  ? adsState?.task.available
+                    ? "Рекламный ритуал активен"
+                    : "Рекламный ритуал будет активен через время"
+                  : "Реклама сейчас недоступна"}
               </span>
             </div>
 
@@ -1363,7 +1472,11 @@ export default function EnergyPage() {
               </div>
             ) : (
               <div className="rounded-[22px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-4 py-4">
-                <p className="text-sm leading-6 text-[var(--text-secondary)]">{taskButtonLabel}</p>
+                <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                  {adsState?.ads_enabled
+                    ? `Доступно через ${formatCountdown(taskCooldownLeft)}`
+                    : "Сейчас рекламные задания недоступны."}
+                </p>
               </div>
             )}
 
@@ -1439,7 +1552,7 @@ export default function EnergyPage() {
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
-                          Рекомендуем
+                          {featuredOfferPositioning?.eyebrow || "Рекомендуем"}
                         </span>
                         {featuredOffer.trigger_type !== "manual" ? (
                           <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
@@ -1454,16 +1567,33 @@ export default function EnergyPage() {
                             <p className="text-sm text-[var(--text-tertiary)] line-through">{featuredOffer.energy_amount} ⚡</p>
                           ) : null}
                           <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
-                            {getOfferTotalEnergy(featuredOffer)} ⚡
+                            {featuredOfferPositioning?.displayName || `${getOfferTotalEnergy(featuredOffer)} ⚡`}
                           </p>
                         </div>
                         <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
-                          {featuredOffer.label || "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
+                          {featuredOfferPositioning?.summary ||
+                            featuredOffer.label ||
+                            "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
                         </p>
+                        <div className="mt-4 space-y-2 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Что даёт этот пакет</p>
+                          <p className="text-sm leading-6 text-[var(--text-primary)]">
+                            {featuredOfferPositioning?.usageHint}
+                          </p>
+                          <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                            {featuredOfferPositioning?.outcome}
+                          </p>
+                          {featuredOfferPersonalization ? (
+                            <p className="text-xs leading-5 text-[var(--accent-gold)]">{featuredOfferPersonalization}</p>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
 
                     <div className="min-w-[112px] text-left sm:text-right">
+                      <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
+                        {getOfferTotalEnergy(featuredOffer)} ⚡
+                      </p>
                       <p className="text-2xl font-semibold text-[var(--accent-gold)]">{formatOfferPrice(featuredOffer, selectedCurrency)}</p>
                       {formatOfferOldPrice(featuredOffer, selectedCurrency) ? (
                         <p className="mt-1 text-xs text-[var(--text-tertiary)] line-through">
@@ -1502,7 +1632,7 @@ export default function EnergyPage() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-2">
-                        Забрать пакет энергии
+                        {featuredOfferPositioning?.cta || "Забрать пакет энергии"}
                         <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
                       </span>
                     )}
@@ -1527,6 +1657,7 @@ export default function EnergyPage() {
                       : offer.bonus_energy > 0
                         ? `+${offer.bonus_energy} бонус`
                         : null;
+                    const positioning = getOfferPositioning(offer);
 
                     return (
                       <div
@@ -1536,7 +1667,7 @@ export default function EnergyPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium text-[var(--text-primary)]">{offer.title}</p>
+                              <p className="text-sm font-medium text-[var(--text-primary)]">{positioning.displayName}</p>
                               {discountBadge ? (
                                 <span className="rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
                                   {discountBadge}
@@ -1549,7 +1680,9 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{positioning.summary}</p>
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
+                            <p className="mt-1 text-xs leading-5 text-[var(--text-tertiary)]">{positioning.usageHint}</p>
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
                           <div className="text-right">
@@ -1579,7 +1712,7 @@ export default function EnergyPage() {
                               Подготовка платежа...
                             </span>
                           ) : (
-                            "Выбрать пакет"
+                            positioning.cta
                           )}
                         </Button>
                       </div>
