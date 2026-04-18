@@ -47,6 +47,21 @@ export function useDailyCard() {
     };
   }, [clearPoll, loadDailyCard]);
 
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        void loadDailyCard({ silent: true });
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    return () => {
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, [loadDailyCard]);
+
   return {
     dailyCard,
     loading,
