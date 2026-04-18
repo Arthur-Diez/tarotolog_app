@@ -1947,8 +1947,8 @@ export default function EnergyPage() {
       </div>
 
       {shareHintOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-          <div className="max-h-[calc(100vh-32px)] w-full max-w-sm overflow-y-auto rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 px-4">
+          <div className="max-h-[calc(100vh-32px)] w-full max-w-sm overflow-y-auto rounded-[24px] border border-white/15 bg-[#17151f] p-4 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
             <div className="mb-3 flex gap-2">
               {(["ru", "en"] as const).map((language) => {
                 const copy = REFERRAL_SHARE_COPY[language];
