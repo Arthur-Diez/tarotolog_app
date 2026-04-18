@@ -108,6 +108,17 @@ interface OfferPositioning {
   cta: string;
 }
 
+interface PaymentMethodPresentation {
+  title: string;
+  body: string;
+  badge: string;
+  trustPoints: string[];
+  featuredLabel: string;
+  secondaryLabel: string;
+  featuredButton: string;
+  secondaryButton: string;
+}
+
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "RUB", label: "₽ RUB" },
   { code: "USD", label: "$ USD" },
@@ -440,6 +451,32 @@ function getOfferPositioning(offer: PaymentOfferResponse): OfferPositioning {
     usageHint: `Хватит примерно на ${personalDailyCount} персональных прогнозов или до ${oneCardCount} трактовок карты дня.`,
     outcome: "Лучший пакет для долгого удержания и высокой жизненной ценности пользователя.",
     cta: "Забрать премиальный запас"
+  };
+}
+
+function getPaymentMethodPresentation(method: PaymentMethod): PaymentMethodPresentation {
+  if (method === "telegram_stars") {
+    return {
+      title: "Пополнение через Telegram Stars",
+      body: "Нативная оплата внутри Telegram: быстрый вход в платный слой без перехода на внешнюю кассу.",
+      badge: "Нативно в Telegram",
+      trustPoints: ["Моментальное открытие счёта", "Без смены среды", "Подходит всем пользователям"],
+      featuredLabel: "Лучший пакет в Stars",
+      secondaryLabel: "Другие пакеты в Stars",
+      featuredButton: "Открыть оплату в Stars",
+      secondaryButton: "Оплатить в Stars"
+    };
+  }
+
+  return {
+    title: "Оплата в рублях для пользователей из России",
+    body: "Отдельный сценарий для рублёвой оплаты. Офферы, бонусы и персональные предложения сохраняются такими же, как в Stars.",
+    badge: "Отдельный RUB-канал",
+    trustPoints: ["Оплата в рублях", "Те же акции и бонусы", "Переход на защищённую страницу оплаты"],
+    featuredLabel: "Лучший пакет в рублях",
+    secondaryLabel: "Другие рублёвые пакеты",
+    featuredButton: "Открыть оплату в рублях",
+    secondaryButton: "Оплатить в рублях"
   };
 }
 
@@ -1355,14 +1392,9 @@ export default function EnergyPage() {
   const hasFreeEnergyTask = Boolean(adsState?.ads_enabled);
   const taskRewardAmount = adsState?.task.next_energy ?? 0;
   const adBannerReady = Boolean(adsState?.ads_enabled && adsState?.task.available && taskBlockId);
-  const paymentSectionTitle =
-    selectedPaymentMethod === "telegram_stars"
-      ? "Пополнение через Telegram Stars"
-      : "Оплата в рублях для пользователей из России";
-  const paymentSectionBody =
-    selectedPaymentMethod === "telegram_stars"
-      ? "Основной нативный способ оплаты внутри Telegram: быстро, привычно и без перехода на внешние платёжные страницы."
-      : "Отдельный путь оплаты в рублях для пользователей из России. Офферы, бонусы и персональные предложения здесь работают по той же продуктовой логике.";
+  const paymentMethodPresentation = getPaymentMethodPresentation(selectedPaymentMethod);
+  const paymentSectionTitle = paymentMethodPresentation.title;
+  const paymentSectionBody = paymentMethodPresentation.body;
 
   return (
     <>
@@ -1560,7 +1592,6 @@ export default function EnergyPage() {
           <div className="px-1">
             <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Пополнение энергии</p>
             <h2 className="mt-1 text-[1.15rem] font-semibold text-[var(--text-primary)]">{paymentSectionTitle}</h2>
-            <p className="mt-2 max-w-[340px] text-sm leading-6 text-[var(--text-secondary)]">{paymentSectionBody}</p>
           </div>
 
           <Card className="overflow-hidden border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.92),rgba(17,13,22,0.96))] p-5 shadow-[var(--surface-shadow)]">
@@ -1570,7 +1601,7 @@ export default function EnergyPage() {
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                     selectedPaymentMethod === "telegram_stars"
-                      ? "border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]"
+                      ? "border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)] shadow-[0_0_0_1px_rgba(215,185,139,0.08)]"
                       : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                   onClick={() => setSelectedPaymentMethod("telegram_stars")}
@@ -1582,14 +1613,36 @@ export default function EnergyPage() {
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
                     selectedPaymentMethod === "robokassa"
-                      ? "border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]"
+                      ? "border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)] shadow-[0_0_0_1px_rgba(215,185,139,0.08)]"
                       : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                   onClick={() => setSelectedPaymentMethod("robokassa")}
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Zap className="h-3.5 w-3.5" />
                   Для пользователей из России
                 </button>
+              </div>
+
+              <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.22)] bg-[rgba(215,185,139,0.1)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
+                      {paymentMethodPresentation.badge}
+                    </span>
+                    <p className="max-w-[360px] text-sm leading-6 text-[var(--text-secondary)]">{paymentSectionBody}</p>
+                  </div>
+                  <div className="grid min-w-[210px] gap-2 text-left">
+                    {paymentMethodPresentation.trustPoints.map((point) => (
+                      <div
+                        key={point}
+                        className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[11px] font-medium text-[var(--text-secondary)]"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        {point}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {offersLoading ? <div className="h-28 animate-pulse rounded-[24px] bg-white/10" /> : null}
@@ -1598,7 +1651,9 @@ export default function EnergyPage() {
               ) : null}
               {!offersLoading && !offersError && paymentOffers.length === 0 ? (
                 <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-4 text-sm leading-6 text-[var(--text-secondary)]">
-                  Сейчас нет доступных Stars-офферов.
+                  {selectedPaymentMethod === "telegram_stars"
+                    ? "Сейчас нет доступных Stars-офферов."
+                    : "Сейчас нет доступных рублёвых офферов."}
                 </div>
               ) : null}
 
@@ -1609,6 +1664,9 @@ export default function EnergyPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-gold)]">
                           {featuredOfferPositioning?.eyebrow || "Рекомендуем"}
+                        </span>
+                        <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                          {paymentMethodPresentation.featuredLabel}
                         </span>
                         {featuredOffer.trigger_type !== "manual" ? (
                           <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
@@ -1630,6 +1688,9 @@ export default function EnergyPage() {
                           {featuredOfferPositioning?.summary ||
                             featuredOffer.label ||
                             "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
+                        </p>
+                        <p className="mt-3 max-w-[340px] text-xs leading-6 text-[var(--text-tertiary)]">
+                          {featuredOfferPositioning?.usageHint}
                         </p>
                       </div>
                     </div>
@@ -1669,9 +1730,7 @@ export default function EnergyPage() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-2">
-                        {selectedPaymentMethod === "telegram_stars"
-                          ? "Открыть оплату в Stars"
-                          : "Открыть оплату в рублях"}
+                        {paymentMethodPresentation.featuredButton}
                         <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
                       </span>
                     )}
@@ -1719,6 +1778,9 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
+                            <p className="mt-2 text-xs leading-5 text-[var(--text-tertiary)]">
+                              {paymentMethodPresentation.secondaryLabel}
+                            </p>
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
@@ -1747,7 +1809,7 @@ export default function EnergyPage() {
                               Подготовка платежа...
                             </span>
                           ) : (
-                            selectedPaymentMethod === "telegram_stars" ? "Оплатить в Stars" : "Оплатить в рублях"
+                            paymentMethodPresentation.secondaryButton
                           )}
                         </Button>
                       </div>
