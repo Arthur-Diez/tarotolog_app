@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -102,10 +102,233 @@ const DEFAULT_RULE_DRAFT: RuleDraft = {
   is_test: false
 };
 
+const TAB_ITEMS: Array<{ id: AdminTab; label: string; icon: typeof LayoutDashboard }> = [
+  { id: "dashboard", label: "Обзор", icon: LayoutDashboard },
+  { id: "rules", label: "Акции", icon: BadgePercent },
+  { id: "personal", label: "Персональные", icon: Users },
+  { id: "tests", label: "Тесты", icon: FlaskConical },
+  { id: "logs", label: "Журнал", icon: ScrollText }
+];
+
+const TRIGGER_OPTIONS = [
+  { value: "scheduled", label: "Плановая акция" },
+  { value: "first_purchase", label: "Первая покупка" },
+  { value: "zero_balance", label: "Нулевой баланс" },
+  { value: "low_energy", label: "Мало энергии" },
+  { value: "exit_intent", label: "Попытка уйти / paywall" },
+  { value: "comeback", label: "Возврат пользователя" },
+  { value: "post_ads", label: "После рекламы" },
+  { value: "vip", label: "VIP-сегмент" },
+  { value: "personal", label: "Персональное предложение" },
+  { value: "manual", label: "Ручной оффер" }
+] as const;
+
+const PROVIDER_OPTIONS = [
+  { value: "", label: "Оба канала" },
+  { value: "telegram_stars", label: "Telegram Stars" },
+  { value: "robokassa", label: "Рубли для РФ" }
+] as const;
+
+const DISCOUNT_TYPE_OPTIONS = [
+  { value: "percent", label: "Скидка в %" },
+  { value: "fixed_amount", label: "Фиксированная скидка" },
+  { value: "override_price", label: "Жёсткая цена" }
+] as const;
+
+const RULE_PRESETS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  patch: Partial<RuleDraft>;
+}> = [
+  {
+    id: "first_purchase",
+    label: "Первая покупка",
+    description: "Мягкий welcome-оффер для первого платежа",
+    patch: {
+      trigger_type: "first_purchase",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "40",
+      display_order: "40",
+      title: "Первое пополнение",
+      description: "Welcome-оффер для первой покупки",
+      code: "first_purchase_offer"
+    }
+  },
+  {
+    id: "low_energy",
+    label: "Низкий баланс",
+    description: "Подталкивает к пополнению, когда энергии почти не осталось",
+    patch: {
+      trigger_type: "low_energy",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "10",
+      bonus_energy: "2",
+      bonus_percent: "0",
+      priority: "60",
+      display_order: "60",
+      title: "Быстрое пополнение",
+      description: "Оффер при низком балансе энергии",
+      code: "low_energy_rescue"
+    }
+  },
+  {
+    id: "comeback",
+    label: "Возврат",
+    description: "Возвращает в ритуал после паузы",
+    patch: {
+      trigger_type: "comeback",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "15",
+      priority: "70",
+      display_order: "70",
+      title: "Возвращение в ритуал",
+      description: "Comeback-оффер после паузы",
+      code: "comeback_offer"
+    }
+  },
+  {
+    id: "scheduled",
+    label: "Плановая акция",
+    description: "Ограниченная акция на период или событие",
+    patch: {
+      trigger_type: "scheduled",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "0",
+      priority: "80",
+      display_order: "80",
+      title: "Временная акция",
+      description: "Плановый промо-период",
+      code: "scheduled_offer"
+    }
+  }
+];
+
+const QUICK_CAMPAIGNS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  icon: typeof Gift;
+  patch: () => Partial<RuleDraft>;
+}> = [
+  {
+    id: "welcome",
+    label: "Welcome offer",
+    description: "Первое пополнение с мягкой выгодой для снятия страха первой оплаты",
+    icon: Gift,
+    patch: () => ({
+      code: "welcome_offer",
+      title: "Первое пополнение",
+      description: "Welcome-оффер для первой покупки",
+      trigger_type: "first_purchase",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "40",
+      display_order: "40",
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
+    id: "weekend",
+    label: "Акция выходного дня",
+    description: "Быстрый плановый промо-период с фиксированным окном показа",
+    icon: CalendarClock,
+    patch: () => ({
+      code: "weekend_flash",
+      title: "Акция выходного дня",
+      description: "Плановая акция на ограниченный период",
+      trigger_type: "scheduled",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "0",
+      priority: "55",
+      display_order: "55",
+      starts_at: toDatetimeLocalInput(new Date()),
+      ends_at: toDatetimeLocalInput(new Date(Date.now() + 48 * 60 * 60 * 1000)),
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
+    id: "comeback",
+    label: "Comeback offer",
+    description: "Возвращает в ритуал пользователей после паузы",
+    icon: Rocket,
+    patch: () => ({
+      code: "comeback_offer",
+      title: "Возвращение в ритуал",
+      description: "Оффер для пользователей после паузы",
+      trigger_type: "comeback",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "15",
+      priority: "70",
+      display_order: "70",
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
+    id: "vip",
+    label: "VIP-предложение",
+    description: "Большой пакет для пользователей с высокой вовлечённостью",
+    icon: Crown,
+    patch: () => ({
+      code: "vip_stock_offer",
+      title: "Премиальный запас",
+      description: "Объёмный пакет для активных пользователей",
+      trigger_type: "vip",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "10",
+      bonus_energy: "0",
+      bonus_percent: "25",
+      priority: "85",
+      display_order: "85",
+      target_offer_code: "energy_200",
+      is_active: true
+    })
+  }
+];
+
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
+    date.getMinutes()
+  )}`;
+}
+
+function toDatetimeLocalInput(date: Date): string {
   const pad = (num: number) => String(num).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
     date.getMinutes()
@@ -169,6 +392,99 @@ function ruleSummary(rule: DiscountRuleResponse): string {
         ? ` +${rule.bonus_percent}% энергии`
         : "";
   return `${discount}${bonus}`;
+}
+
+function triggerLabel(value: string): string {
+  return TRIGGER_OPTIONS.find((item) => item.value === value)?.label ?? value;
+}
+
+function providerLabel(value: string | null | undefined): string {
+  if (!value) return "Оба канала";
+  return PROVIDER_OPTIONS.find((item) => item.value === value)?.label ?? value;
+}
+
+function discountTypeLabel(value: string): string {
+  return DISCOUNT_TYPE_OPTIONS.find((item) => item.value === value)?.label ?? value;
+}
+
+function compactRuleTarget(rule: DiscountRuleResponse): string {
+  const provider = providerLabel(rule.target_provider);
+  const currency = rule.target_currency || "все валюты";
+  return `${provider} • ${currency}`;
+}
+
+function assignmentRuleLabel(ruleId: string, rules: DiscountRuleResponse[]): string {
+  const rule = rules.find((item) => item.id === ruleId);
+  return rule ? `${rule.title} (${rule.code})` : ruleId;
+}
+
+function normalizeDraft(draft: RuleDraft): RuleDraft {
+  if (draft.target_provider === "telegram_stars") {
+    return { ...draft, target_currency: "XTR" };
+  }
+  if (draft.target_provider === "robokassa" && (!draft.target_currency || draft.target_currency === "XTR")) {
+    return { ...draft, target_currency: "RUB" };
+  }
+  if (!draft.target_provider) {
+    return { ...draft, target_currency: "" };
+  }
+  return draft;
+}
+
+function buildRulePayload(ruleDraft: RuleDraft) {
+  return {
+    code: ruleDraft.code.trim().toLowerCase(),
+    title: ruleDraft.title.trim(),
+    description: ruleDraft.description || null,
+    trigger_type: ruleDraft.trigger_type,
+    target_provider: ruleDraft.target_provider || null,
+    target_purchase_type: ruleDraft.target_purchase_type || "energy",
+    target_currency: ruleDraft.target_currency || null,
+    target_offer_code: ruleDraft.target_offer_code || null,
+    discount_type: ruleDraft.discount_type,
+    discount_value: Number(ruleDraft.discount_value || "0"),
+    bonus_energy: Number(ruleDraft.bonus_energy || "0"),
+    bonus_percent: ruleDraft.bonus_percent.trim() ? Number(ruleDraft.bonus_percent) : null,
+    priority: Number(ruleDraft.priority || "100"),
+    display_order: Number(ruleDraft.display_order || ruleDraft.priority || "100"),
+    starts_at: ruleDraft.starts_at ? new Date(ruleDraft.starts_at).toISOString() : null,
+    ends_at: ruleDraft.ends_at ? new Date(ruleDraft.ends_at).toISOString() : null,
+    cooldown_hours: Number(ruleDraft.cooldown_hours || "0"),
+    global_cooldown_hours: Number(ruleDraft.global_cooldown_hours || "0"),
+    max_shows_per_day: Number(ruleDraft.max_shows_per_day || "0"),
+    max_uses_total: Number(ruleDraft.max_uses_total || "0"),
+    max_uses_per_user: Number(ruleDraft.max_uses_per_user || "0"),
+    source: ruleDraft.source || "admin",
+    is_active: ruleDraft.is_active,
+    is_test: ruleDraft.is_test,
+    audience_filter: {},
+    meta: {}
+  };
+}
+
+function previewTitle(draft: RuleDraft): string {
+  if (draft.title.trim()) return draft.title.trim();
+  return "Новый оффер";
+}
+
+function previewValue(draft: RuleDraft): string {
+  const discount =
+    draft.discount_type === "percent"
+      ? `-${draft.discount_value || "0"}%`
+      : draft.discount_type === "fixed_amount"
+        ? `-${draft.discount_value || "0"}`
+        : `цена ${draft.discount_value || "0"}`;
+  const bonusEnergy = Number(draft.bonus_energy || "0");
+  const bonusPercent = Number(draft.bonus_percent || "0");
+  if (bonusEnergy > 0) return `${discount} +${bonusEnergy}⚡`;
+  if (bonusPercent > 0) return `${discount} +${bonusPercent}% энергии`;
+  return discount;
+}
+
+function previewCta(draft: RuleDraft): string {
+  if (draft.target_provider === "telegram_stars") return "Открыть оплату в Stars";
+  if (draft.target_provider === "robokassa") return "Открыть оплату в рублях";
+  return "Открыть предложение";
 }
 
 export default function AdminDiscountsPage() {
@@ -346,6 +662,24 @@ export default function AdminDiscountsPage() {
     }
   }, [selectedUser, loadAssignments]);
 
+  useEffect(() => {
+    if (ruleDraft.target_provider === "telegram_stars" && ruleDraft.target_currency !== "XTR") {
+      setRuleDraft((prev) => ({ ...prev, target_currency: "XTR" }));
+    }
+    if (ruleDraft.target_provider === "robokassa" && (!ruleDraft.target_currency || ruleDraft.target_currency === "XTR")) {
+      setRuleDraft((prev) => ({ ...prev, target_currency: "RUB" }));
+    }
+  }, [ruleDraft.target_currency, ruleDraft.target_provider]);
+
+  useEffect(() => {
+    if (testProvider === "telegram_stars" && testCurrency !== "XTR") {
+      setTestCurrency("XTR");
+    }
+    if (testProvider === "robokassa" && testCurrency === "XTR") {
+      setTestCurrency("RUB");
+    }
+  }, [testCurrency, testProvider]);
+
   const filteredRules = useMemo(() => {
     return rules.filter((rule) => {
       const isArchived = Boolean(rule.archived_at) || Boolean((rule.meta as Record<string, unknown>)?.archived);
@@ -358,6 +692,56 @@ export default function AdminDiscountsPage() {
       return true;
     });
   }, [ruleFilter, ruleProviderFilter, ruleTriggerFilter, rules]);
+
+  const rulesOverview = useMemo(() => {
+    const active = rules.filter((rule) => rule.is_active && !rule.archived_at);
+    return {
+      all: active.length,
+      stars: active.filter((rule) => rule.target_provider === "telegram_stars").length,
+      rub: active.filter((rule) => rule.target_provider === "robokassa").length,
+      personal: active.filter((rule) => rule.trigger_type === "personal").length,
+      scheduled: active.filter((rule) => rule.trigger_type === "scheduled").length
+    };
+  }, [rules]);
+
+  const previewDraft = useMemo(() => normalizeDraft(ruleDraft), [ruleDraft]);
+
+  const applyQuickCampaign = useCallback(
+    async (patch: Partial<RuleDraft>, mode: "prepare" | "launch") => {
+      const merged = normalizeDraft({
+        ...DEFAULT_RULE_DRAFT,
+        ...ruleDraft,
+        ...patch,
+        id: undefined
+      });
+
+      if (mode === "prepare") {
+        setRuleDraft(merged);
+        setRuleActionError(null);
+        return;
+      }
+
+      try {
+        setRuleSaving(true);
+        setRuleActionError(null);
+        const payload = buildRulePayload(merged);
+        const existing = rules.find((item) => item.code === payload.code);
+        if (existing) {
+          await adminUpdateDiscountRule(existing.id, payload);
+          setRuleDraft({ ...merged, id: existing.id });
+        } else {
+          await adminCreateDiscountRule(payload);
+          setRuleDraft(merged);
+        }
+        await Promise.all([loadRules(), loadDashboard()]);
+      } catch (error) {
+        setRuleActionError(error instanceof Error ? error.message : "Не удалось запустить акцию");
+      } finally {
+        setRuleSaving(false);
+      }
+    },
+    [loadDashboard, loadRules, ruleDraft, rules]
+  );
 
   if ((loading && !profile) || accessLoading) {
     return (
@@ -392,8 +776,8 @@ export default function AdminDiscountsPage() {
       <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-lg font-semibold text-[var(--text-primary)]">Admin Panel</p>
-            <p className="text-sm text-[var(--text-secondary)]">Скидки, офферы, тестирование и аналитика</p>
+            <p className="text-lg font-semibold text-[var(--text-primary)]">Админка скидок и офферов</p>
+            <p className="text-sm text-[var(--text-secondary)]">Акции, персональные предложения, тесты и аналитика</p>
           </div>
           <Button
             variant="outline"
@@ -405,25 +789,28 @@ export default function AdminDiscountsPage() {
             Обновить всё
           </Button>
         </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MetricCard title="Активных правил" value={stats?.active_rules ?? 0} />
+          <MetricCard title="Покупок по акциям" value={stats?.usages_purchased ?? 0} />
+          <MetricCard title="Конверсия" value={`${analytics?.conversion_rate ?? stats?.conversion_rate ?? 0}%`} />
+          <MetricCard title="Назначений" value={analytics?.users_with_assignments ?? 0} />
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["dashboard", "Dashboard"],
-            ["rules", "Акции"],
-            ["personal", "Персональные"],
-            ["tests", "Тесты"],
-            ["logs", "Логи"]
-          ] as const).map(([value, label]) => (
+          {TAB_ITEMS.map(({ id, label, icon: Icon }) => (
             <button
-              key={value}
+              key={id}
               type="button"
-              onClick={() => setActiveTab(value)}
+              onClick={() => setActiveTab(id)}
               className={`rounded-full border px-4 py-2 text-sm transition ${
-                activeTab === value
+                activeTab === id
                   ? "border-[var(--accent-pink)]/60 bg-[var(--accent-pink)]/20 text-[var(--text-primary)]"
                   : "border-white/20 bg-white/5 text-[var(--text-secondary)]"
               }`}
             >
-              {label}
+              <span className="inline-flex items-center gap-2">
+                <Icon className="h-4 w-4" />
+                {label}
+              </span>
             </button>
           ))}
         </div>
@@ -462,6 +849,136 @@ export default function AdminDiscountsPage() {
       {activeTab === "rules" ? (
         <div className="space-y-4">
           <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Быстрые сценарии</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Готовые рабочие кампании. Можно сразу запустить правило или сначала подгрузить его в конструктор и подправить детали.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--text-secondary)]">
+                <Eye className="h-3.5 w-3.5" />
+                Быстрый запуск без ручного заполнения
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1.5fr_1fr]">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {QUICK_CAMPAIGNS.map((campaign) => {
+                  const Icon = campaign.icon;
+                  return (
+                    <div key={campaign.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-2.5 text-[var(--accent-gold)]">
+                          <Icon className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">{campaign.label}</p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{campaign.description}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button variant="outline" className="border-white/20" onClick={() => void applyQuickCampaign(campaign.patch(), "prepare")}>
+                          Подготовить
+                        </Button>
+                        <Button disabled={ruleSaving} onClick={() => void applyQuickCampaign(campaign.patch(), "launch")}>
+                          Запустить сразу
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-2xl border border-[var(--accent-pink)]/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Как увидит пользователь</p>
+                <div className="mt-3 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(31,22,43,0.95),rgba(22,16,29,0.98))] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="rounded-full border border-[var(--accent-gold)]/30 bg-[var(--accent-gold)]/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">
+                      {triggerLabel(previewDraft.trigger_type)}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-[var(--text-secondary)]">
+                      {providerLabel(previewDraft.target_provider)}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-2xl font-semibold leading-tight text-[var(--text-primary)]">{previewTitle(previewDraft)}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                    {previewDraft.description?.trim() || "Короткое описание оффера появится здесь после настройки правила."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100">
+                      {previewValue(previewDraft)}
+                    </span>
+                    {previewDraft.target_offer_code ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--text-secondary)]">
+                        Пакет: {previewDraft.target_offer_code}
+                      </span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-5 w-full rounded-full bg-[linear-gradient(180deg,#E4C48C,#CFA463)] px-4 py-3 text-sm font-semibold text-[#24170F]"
+                  >
+                    {previewCta(previewDraft)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <p className="text-base font-semibold text-[var(--text-primary)]">Список правил</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Здесь видно, какие акции сейчас активны, для какого канала оплаты они работают и что именно дают.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <MetricCard title="Активных всего" value={rulesOverview.all} />
+              <MetricCard title="Telegram Stars" value={rulesOverview.stars} />
+              <MetricCard title="Рубли для РФ" value={rulesOverview.rub} />
+              <MetricCard title="Персональные" value={rulesOverview.personal} />
+              <MetricCard title="Плановые" value={rulesOverview.scheduled} />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <QuickFilterChip
+                label="Все активные"
+                onClick={() => {
+                  setRuleFilter("active");
+                  setRuleTriggerFilter("all");
+                  setRuleProviderFilter("all");
+                }}
+              />
+              <QuickFilterChip
+                label="Только Stars"
+                onClick={() => {
+                  setRuleFilter("active");
+                  setRuleTriggerFilter("all");
+                  setRuleProviderFilter("telegram_stars");
+                }}
+              />
+              <QuickFilterChip
+                label="Только RUB"
+                onClick={() => {
+                  setRuleFilter("active");
+                  setRuleTriggerFilter("all");
+                  setRuleProviderFilter("robokassa");
+                }}
+              />
+              <QuickFilterChip
+                label="Персональные"
+                onClick={() => {
+                  setRuleFilter("active");
+                  setRuleTriggerFilter("personal");
+                  setRuleProviderFilter("all");
+                }}
+              />
+              <QuickFilterChip
+                label="Плановые"
+                onClick={() => {
+                  setRuleFilter("active");
+                  setRuleTriggerFilter("scheduled");
+                  setRuleProviderFilter("all");
+                }}
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               <select
                 className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm"
@@ -479,15 +996,11 @@ export default function AdminDiscountsPage() {
                 onChange={(e) => setRuleTriggerFilter(e.target.value)}
               >
                 <option value="all">Любой триггер</option>
-                <option value="scheduled">scheduled</option>
-                <option value="first_purchase">first_purchase</option>
-                <option value="zero_balance">zero_balance</option>
-                <option value="low_energy">low_energy</option>
-                <option value="exit_intent">exit_intent</option>
-                <option value="comeback">comeback</option>
-                <option value="post_ads">post_ads</option>
-                <option value="vip">vip</option>
-                <option value="personal">personal</option>
+                {TRIGGER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <select
                 className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm"
@@ -495,8 +1008,8 @@ export default function AdminDiscountsPage() {
                 onChange={(e) => setRuleProviderFilter(e.target.value)}
               >
                 <option value="all">Любой провайдер</option>
-                <option value="robokassa">robokassa</option>
-                <option value="telegram_stars">telegram_stars</option>
+                <option value="robokassa">Рубли для РФ</option>
+                <option value="telegram_stars">Telegram Stars</option>
               </select>
               <Button
                 variant="outline"
@@ -521,10 +1034,23 @@ export default function AdminDiscountsPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-[var(--text-primary)]">{rule.title}</p>
-                      <p className="text-xs text-[var(--text-tertiary)]">
-                        {rule.code} • {rule.trigger_type} • {rule.target_provider ?? "all"} • {rule.target_currency ?? "all"}
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)]">
+                          {triggerLabel(rule.trigger_type)}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)]">
+                          {compactRuleTarget(rule)}
+                        </span>
+                        <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">
+                          {ruleSummary(rule)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+                        {rule.code}
+                        {rule.starts_at || rule.ends_at
+                          ? ` • ${rule.starts_at ? `с ${prettyDate(rule.starts_at)}` : ""}${rule.ends_at ? ` до ${prettyDate(rule.ends_at)}` : ""}`
+                          : ""}
                       </p>
-                      <p className="mt-1 text-xs text-emerald-100">{ruleSummary(rule)}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <MiniAction
@@ -561,63 +1087,128 @@ export default function AdminDiscountsPage() {
             <p className="text-base font-semibold text-[var(--text-primary)]">
               {ruleDraft.id ? "Редактирование правила" : "Создание правила"}
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Input value={ruleDraft.code} onChange={(e) => setRuleDraft((p) => ({ ...p, code: e.target.value }))} placeholder="code" />
-              <Input value={ruleDraft.title} onChange={(e) => setRuleDraft((p) => ({ ...p, title: e.target.value }))} placeholder="title" />
-              <Input value={ruleDraft.description} onChange={(e) => setRuleDraft((p) => ({ ...p, description: e.target.value }))} placeholder="description" />
-              <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.trigger_type} onChange={(e) => setRuleDraft((p) => ({ ...p, trigger_type: e.target.value }))}>
-                <option value="scheduled">scheduled</option>
-                <option value="first_purchase">first_purchase</option>
-                <option value="zero_balance">zero_balance</option>
-                <option value="low_energy">low_energy</option>
-                <option value="exit_intent">exit_intent</option>
-                <option value="comeback">comeback</option>
-                <option value="post_ads">post_ads</option>
-                <option value="vip">vip</option>
-                <option value="personal">personal</option>
-                <option value="manual">manual</option>
-              </select>
-              <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.target_provider} onChange={(e) => setRuleDraft((p) => ({ ...p, target_provider: e.target.value as RuleDraft["target_provider"] }))}>
-                <option value="">all providers</option>
-                <option value="robokassa">robokassa</option>
-                <option value="telegram_stars">telegram_stars</option>
-              </select>
-              <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.target_currency} onChange={(e) => setRuleDraft((p) => ({ ...p, target_currency: e.target.value as RuleDraft["target_currency"] }))}>
-                <option value="">all currencies</option>
-                <option value="RUB">RUB</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="XTR">XTR</option>
-              </select>
-              <Input value={ruleDraft.target_purchase_type} onChange={(e) => setRuleDraft((p) => ({ ...p, target_purchase_type: e.target.value }))} placeholder="purchase_type (energy)" />
-              <Input value={ruleDraft.target_offer_code} onChange={(e) => setRuleDraft((p) => ({ ...p, target_offer_code: e.target.value }))} placeholder="offer_code (optional)" />
-              <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.discount_type} onChange={(e) => setRuleDraft((p) => ({ ...p, discount_type: e.target.value as RuleDraft["discount_type"] }))}>
-                <option value="percent">percent</option>
-                <option value="fixed_amount">fixed_amount</option>
-                <option value="override_price">override_price</option>
-              </select>
-              <Input value={ruleDraft.discount_value} onChange={(e) => setRuleDraft((p) => ({ ...p, discount_value: e.target.value }))} placeholder="discount_value" />
-              <Input value={ruleDraft.bonus_energy} onChange={(e) => setRuleDraft((p) => ({ ...p, bonus_energy: e.target.value }))} placeholder="bonus_energy" />
-              <Input value={ruleDraft.bonus_percent} onChange={(e) => setRuleDraft((p) => ({ ...p, bonus_percent: e.target.value }))} placeholder="bonus_percent" />
-              <Input value={ruleDraft.priority} onChange={(e) => setRuleDraft((p) => ({ ...p, priority: e.target.value }))} placeholder="priority" />
-              <Input value={ruleDraft.display_order} onChange={(e) => setRuleDraft((p) => ({ ...p, display_order: e.target.value }))} placeholder="display_order" />
-              <Input type="datetime-local" value={ruleDraft.starts_at} onChange={(e) => setRuleDraft((p) => ({ ...p, starts_at: e.target.value }))} />
-              <Input type="datetime-local" value={ruleDraft.ends_at} onChange={(e) => setRuleDraft((p) => ({ ...p, ends_at: e.target.value }))} />
-              <Input value={ruleDraft.cooldown_hours} onChange={(e) => setRuleDraft((p) => ({ ...p, cooldown_hours: e.target.value }))} placeholder="cooldown_hours" />
-              <Input value={ruleDraft.global_cooldown_hours} onChange={(e) => setRuleDraft((p) => ({ ...p, global_cooldown_hours: e.target.value }))} placeholder="global_cooldown_hours" />
-              <Input value={ruleDraft.max_shows_per_day} onChange={(e) => setRuleDraft((p) => ({ ...p, max_shows_per_day: e.target.value }))} placeholder="max_shows_per_day" />
-              <Input value={ruleDraft.max_uses_total} onChange={(e) => setRuleDraft((p) => ({ ...p, max_uses_total: e.target.value }))} placeholder="max_uses_total" />
-              <Input value={ruleDraft.max_uses_per_user} onChange={(e) => setRuleDraft((p) => ({ ...p, max_uses_per_user: e.target.value }))} placeholder="max_uses_per_user" />
-              <Input value={ruleDraft.source} onChange={(e) => setRuleDraft((p) => ({ ...p, source: e.target.value }))} placeholder="source" />
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Используй шаблон ниже, а потом при необходимости подправь детали.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {RULE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-[var(--accent-pink)]/40 hover:bg-[var(--accent-pink)]/10"
+                  onClick={() =>
+                    setRuleDraft((prev) => ({
+                      ...prev,
+                      ...preset.patch
+                    }))
+                  }
+                >
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{preset.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{preset.description}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Служебный код">
+                <Input value={ruleDraft.code} onChange={(e) => setRuleDraft((p) => ({ ...p, code: e.target.value }))} placeholder="first_purchase_offer" />
+              </Field>
+              <Field label="Название акции">
+                <Input value={ruleDraft.title} onChange={(e) => setRuleDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Первое пополнение" />
+              </Field>
+              <Field label="Короткое описание">
+                <Input value={ruleDraft.description} onChange={(e) => setRuleDraft((p) => ({ ...p, description: e.target.value }))} placeholder="Что это за предложение" />
+              </Field>
+              <Field label="Триггер показа">
+                <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.trigger_type} onChange={(e) => setRuleDraft((p) => ({ ...p, trigger_type: e.target.value }))}>
+                  {TRIGGER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Канал оплаты">
+                <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.target_provider} onChange={(e) => setRuleDraft((p) => ({ ...p, target_provider: e.target.value as RuleDraft["target_provider"] }))}>
+                  {PROVIDER_OPTIONS.map((option) => (
+                    <option key={option.value || "all"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Валюта">
+                <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.target_currency} onChange={(e) => setRuleDraft((p) => ({ ...p, target_currency: e.target.value as RuleDraft["target_currency"] }))}>
+                  <option value="">Все валюты</option>
+                  <option value="RUB">RUB</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="XTR">XTR</option>
+                </select>
+              </Field>
+              <Field label="Тип скидки">
+                <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={ruleDraft.discount_type} onChange={(e) => setRuleDraft((p) => ({ ...p, discount_type: e.target.value as RuleDraft["discount_type"] }))}>
+                  {DISCOUNT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Значение скидки">
+                <Input value={ruleDraft.discount_value} onChange={(e) => setRuleDraft((p) => ({ ...p, discount_value: e.target.value }))} placeholder="15" />
+              </Field>
+              <Field label="Бонус энергии">
+                <Input value={ruleDraft.bonus_energy} onChange={(e) => setRuleDraft((p) => ({ ...p, bonus_energy: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Бонус % энергии">
+                <Input value={ruleDraft.bonus_percent} onChange={(e) => setRuleDraft((p) => ({ ...p, bonus_percent: e.target.value }))} placeholder="20" />
+              </Field>
+              <Field label="Для конкретного пакета">
+                <Input value={ruleDraft.target_offer_code} onChange={(e) => setRuleDraft((p) => ({ ...p, target_offer_code: e.target.value }))} placeholder="energy_60" />
+              </Field>
+              <Field label="Тип покупки">
+                <Input value={ruleDraft.target_purchase_type} onChange={(e) => setRuleDraft((p) => ({ ...p, target_purchase_type: e.target.value }))} placeholder="energy" />
+              </Field>
+              <Field label="Приоритет">
+                <Input value={ruleDraft.priority} onChange={(e) => setRuleDraft((p) => ({ ...p, priority: e.target.value }))} placeholder="100" />
+              </Field>
+              <Field label="Порядок в UI">
+                <Input value={ruleDraft.display_order} onChange={(e) => setRuleDraft((p) => ({ ...p, display_order: e.target.value }))} placeholder="100" />
+              </Field>
+              <Field label="Начало действия">
+                <Input type="datetime-local" value={ruleDraft.starts_at} onChange={(e) => setRuleDraft((p) => ({ ...p, starts_at: e.target.value }))} />
+              </Field>
+              <Field label="Конец действия">
+                <Input type="datetime-local" value={ruleDraft.ends_at} onChange={(e) => setRuleDraft((p) => ({ ...p, ends_at: e.target.value }))} />
+              </Field>
+              <Field label="Пауза на пользователя (часы)">
+                <Input value={ruleDraft.cooldown_hours} onChange={(e) => setRuleDraft((p) => ({ ...p, cooldown_hours: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Глобальная пауза (часы)">
+                <Input value={ruleDraft.global_cooldown_hours} onChange={(e) => setRuleDraft((p) => ({ ...p, global_cooldown_hours: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Показов в день">
+                <Input value={ruleDraft.max_shows_per_day} onChange={(e) => setRuleDraft((p) => ({ ...p, max_shows_per_day: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Лимит использований всего">
+                <Input value={ruleDraft.max_uses_total} onChange={(e) => setRuleDraft((p) => ({ ...p, max_uses_total: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Лимит на пользователя">
+                <Input value={ruleDraft.max_uses_per_user} onChange={(e) => setRuleDraft((p) => ({ ...p, max_uses_per_user: e.target.value }))} placeholder="0" />
+              </Field>
+              <Field label="Источник">
+                <Input value={ruleDraft.source} onChange={(e) => setRuleDraft((p) => ({ ...p, source: e.target.value }))} placeholder="admin" />
+              </Field>
             </div>
             <div className="mt-3 flex gap-3 text-sm">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={ruleDraft.is_active} onChange={(e) => setRuleDraft((p) => ({ ...p, is_active: e.target.checked }))} />
-                active
+                Активно
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={ruleDraft.is_test} onChange={(e) => setRuleDraft((p) => ({ ...p, is_test: e.target.checked }))} />
-                test
+                Тестовое правило
               </label>
             </div>
             {ruleActionError ? <p className="mt-2 text-xs text-red-200">{ruleActionError}</p> : null}
@@ -628,34 +1219,7 @@ export default function AdminDiscountsPage() {
                   try {
                     setRuleSaving(true);
                     setRuleActionError(null);
-                    const payload = {
-                      code: ruleDraft.code.trim().toLowerCase(),
-                      title: ruleDraft.title.trim(),
-                      description: ruleDraft.description || null,
-                      trigger_type: ruleDraft.trigger_type,
-                      target_provider: ruleDraft.target_provider || null,
-                      target_purchase_type: ruleDraft.target_purchase_type || "energy",
-                      target_currency: ruleDraft.target_currency || null,
-                      target_offer_code: ruleDraft.target_offer_code || null,
-                      discount_type: ruleDraft.discount_type,
-                      discount_value: Number(ruleDraft.discount_value || "0"),
-                      bonus_energy: Number(ruleDraft.bonus_energy || "0"),
-                      bonus_percent: ruleDraft.bonus_percent.trim() ? Number(ruleDraft.bonus_percent) : null,
-                      priority: Number(ruleDraft.priority || "100"),
-                      display_order: Number(ruleDraft.display_order || ruleDraft.priority || "100"),
-                      starts_at: ruleDraft.starts_at ? new Date(ruleDraft.starts_at).toISOString() : null,
-                      ends_at: ruleDraft.ends_at ? new Date(ruleDraft.ends_at).toISOString() : null,
-                      cooldown_hours: Number(ruleDraft.cooldown_hours || "0"),
-                      global_cooldown_hours: Number(ruleDraft.global_cooldown_hours || "0"),
-                      max_shows_per_day: Number(ruleDraft.max_shows_per_day || "0"),
-                      max_uses_total: Number(ruleDraft.max_uses_total || "0"),
-                      max_uses_per_user: Number(ruleDraft.max_uses_per_user || "0"),
-                      source: ruleDraft.source || "admin",
-                      is_active: ruleDraft.is_active,
-                      is_test: ruleDraft.is_test,
-                      audience_filter: {},
-                      meta: {}
-                    };
+                    const payload = buildRulePayload(normalizeDraft(ruleDraft));
                     if (ruleDraft.id) {
                       await adminUpdateDiscountRule(ruleDraft.id, payload);
                     } else {
@@ -696,7 +1260,10 @@ export default function AdminDiscountsPage() {
       {activeTab === "personal" ? (
         <div className="space-y-4">
           <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
-            <p className="text-base font-semibold text-[var(--text-primary)]">Поиск пользователя</p>
+            <p className="text-base font-semibold text-[var(--text-primary)]">Найти пользователя</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Найди человека по имени, username, telegram id или UUID, чтобы выдать ему персональный оффер.
+            </p>
             <Input
               className="mt-3"
               value={userSearch}
@@ -729,7 +1296,7 @@ export default function AdminDiscountsPage() {
           <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
             <p className="text-base font-semibold text-[var(--text-primary)]">Назначить персональную акцию</p>
             <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              Пользователь: {selectedUser?.user_id ?? "не выбран"}
+              Пользователь: {selectedUser?.display_name || selectedUser?.username || selectedUser?.user_id || "не выбран"}
             </p>
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <select
@@ -737,10 +1304,10 @@ export default function AdminDiscountsPage() {
                 value={selectedRuleId}
                 onChange={(e) => setSelectedRuleId(e.target.value)}
               >
-                <option value="">Выбери rule</option>
+                <option value="">Выбери акцию</option>
                 {rules.map((rule) => (
                   <option key={rule.id} value={rule.id}>
-                    {rule.title} ({rule.code})
+                    {rule.title} • {triggerLabel(rule.trigger_type)}
                   </option>
                 ))}
               </select>
@@ -771,22 +1338,23 @@ export default function AdminDiscountsPage() {
             <div className="mt-3 space-y-2">
               {assignments.map((item) => (
                 <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <p className="text-sm text-[var(--text-primary)]">
-                    rule: {item.rule_id} • user: {item.user_id}
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{assignmentRuleLabel(item.rule_id, rules)}</p>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                    Показов: {item.show_count} • Использований: {item.usage_count}
                   </p>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    show/use: {item.show_count}/{item.usage_count}
+                  <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                    Назначено: {prettyDate(item.assigned_at)} • Истекает: {prettyDate(item.expires_at)}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <MiniAction
-                      label="Disable"
+                      label="Выключить"
                       onClick={async () => {
                         await adminDisableAssignment(item.id);
                         await loadAssignments(selectedUser?.user_id);
                       }}
                     />
                     <MiniAction
-                      label="Expire"
+                      label="Завершить"
                       danger
                       onClick={async () => {
                         await adminExpireAssignment(item.id);
@@ -810,12 +1378,15 @@ export default function AdminDiscountsPage() {
 
       {activeTab === "tests" ? (
         <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
-          <p className="text-base font-semibold text-[var(--text-primary)]">Тестирование правил</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Тестирование логики офферов</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Проверяй, какой оффер увидит конкретный пользователь, и симулируй показ, dismiss или покупку без ручных запросов.
+          </p>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input value={testUserId} onChange={(e) => setTestUserId(e.target.value)} placeholder="user_id" />
             <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={testProvider} onChange={(e) => setTestProvider(e.target.value === "telegram_stars" ? "telegram_stars" : "robokassa")}>
-              <option value="robokassa">robokassa</option>
-              <option value="telegram_stars">telegram_stars</option>
+              <option value="robokassa">Рубли для РФ</option>
+              <option value="telegram_stars">Telegram Stars</option>
             </select>
             <select className="rounded-xl border border-white/15 bg-white/5 px-3 py-2" value={testCurrency} onChange={(e) => setTestCurrency(e.target.value as typeof testCurrency)}>
               <option value="RUB">RUB</option>
@@ -823,11 +1394,11 @@ export default function AdminDiscountsPage() {
               <option value="EUR">EUR</option>
               <option value="XTR">XTR</option>
             </select>
-            <Input value={testSource} onChange={(e) => setTestSource(e.target.value)} placeholder="source" />
-            <Input value={testTriggerType} onChange={(e) => setTestTriggerType(e.target.value)} placeholder="trigger_type" />
+            <Input value={testSource} onChange={(e) => setTestSource(e.target.value)} placeholder="source, например energy_page" />
+            <Input value={testTriggerType} onChange={(e) => setTestTriggerType(e.target.value)} placeholder="trigger_type, например auto" />
             <Input value={testBalanceOverride} onChange={(e) => setTestBalanceOverride(e.target.value)} placeholder="balance override" />
-            <Input value={simulateUsageId} onChange={(e) => setSimulateUsageId(e.target.value)} placeholder="usage_id" />
-            <Input value={simulatePaymentId} onChange={(e) => setSimulatePaymentId(e.target.value)} placeholder="payment_id (optional)" />
+            <Input value={simulateUsageId} onChange={(e) => setSimulateUsageId(e.target.value)} placeholder="usage_id после показа" />
+            <Input value={simulatePaymentId} onChange={(e) => setSimulatePaymentId(e.target.value)} placeholder="payment_id, если нужен" />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -844,7 +1415,7 @@ export default function AdminDiscountsPage() {
                 }
               }}
             >
-              Resolve rule
+              Проверить оффер
             </Button>
             <Button
               variant="outline"
@@ -874,7 +1445,7 @@ export default function AdminDiscountsPage() {
                 }
               }}
             >
-              Simulate show
+              Симулировать показ
             </Button>
             <Button
               variant="outline"
@@ -893,7 +1464,7 @@ export default function AdminDiscountsPage() {
                 }
               }}
             >
-              Simulate dismiss
+              Симулировать dismiss
             </Button>
             <Button
               variant="outline"
@@ -915,7 +1486,7 @@ export default function AdminDiscountsPage() {
                 }
               }}
             >
-              Simulate purchase
+              Симулировать покупку
             </Button>
           </div>
           {testError ? <p className="mt-2 text-xs text-red-200">{testError}</p> : null}
@@ -930,7 +1501,7 @@ export default function AdminDiscountsPage() {
       {activeTab === "logs" ? (
         <div className="space-y-4">
           <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
-            <p className="text-base font-semibold text-[var(--text-primary)]">Последние admin actions</p>
+            <p className="text-base font-semibold text-[var(--text-primary)]">Последние действия в админке</p>
             <div className="mt-3 space-y-2">
               {recentActions.map((item, idx) => (
                 <div key={idx} className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -959,6 +1530,39 @@ function MetricCard({ title, value }: { title: string; value: string | number })
       <p className="text-[11px] text-[var(--text-tertiary)]">{title}</p>
       <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{String(value)}</p>
     </div>
+  );
+}
+
+function QuickFilterChip({
+  label,
+  onClick
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:border-[var(--accent-pink)]/40 hover:bg-[var(--accent-pink)]/10 hover:text-[var(--text-primary)]"
+    >
+      {label}
+    </button>
+  );
+}
+
+function Field({
+  label,
+  children
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="space-y-1.5">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</span>
+      {children}
+    </label>
   );
 }
 
