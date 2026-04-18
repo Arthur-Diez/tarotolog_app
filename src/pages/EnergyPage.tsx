@@ -1645,11 +1645,17 @@ export default function EnergyPage() {
                         ? `+${featuredOffer.bonus_energy} ⚡`
                         : null;
                     const featuredValueBadge = [featuredDiscountBadge, featuredBonusBadge].filter(Boolean).join(" • ");
+                    const isFirstPurchaseOffer = featuredOffer.trigger_type === "first_purchase";
 
                     return (
                       <>
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="space-y-3">
+                            {isFirstPurchaseOffer ? (
+                              <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
+                                Акция на первую покупку
+                              </span>
+                            ) : null}
                             {featuredValueBadge ? (
                               <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-400/12 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
                                 {featuredValueBadge}
@@ -1729,6 +1735,7 @@ export default function EnergyPage() {
                         ? `+${offer.bonus_energy} бонус`
                         : null;
                     const positioning = getOfferPositioning(offer);
+                    const isFirstPurchaseOffer = offer.trigger_type === "first_purchase";
 
                     return (
                       <div
@@ -1739,6 +1746,11 @@ export default function EnergyPage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-medium text-[var(--text-primary)]">{positioning.displayName}</p>
+                              {isFirstPurchaseOffer ? (
+                                <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent-gold)]">
+                                  Первая покупка
+                                </span>
+                              ) : null}
                               {discountBadge ? (
                                 <span className="rounded-full border border-emerald-300/35 bg-emerald-400/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
                                   {discountBadge}
