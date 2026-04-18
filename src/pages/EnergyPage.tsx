@@ -328,17 +328,6 @@ function getOfferBonusPercent(offer: PaymentOfferResponse): number {
   return Math.floor((offer.bonus_energy / offer.energy_amount) * 100);
 }
 
-function getOfferPersonalization(triggerType: string): string | null {
-  const normalized = String(triggerType || "").trim().toLowerCase();
-  if (!normalized || normalized === "auto" || normalized === "manual") return null;
-  if (normalized === "first_purchase") return "Подходит для первого сильного касания с продуктом: меньше страха оплаты, больше ощущения выгоды.";
-  if (normalized === "low_energy") return "Помогает не выпасть из воронки именно в момент, когда энергия заканчивается и пользователь уже прогрет.";
-  if (normalized === "post_ads") return "Логичное продолжение после бесплатной энергии: пользователь уже вовлечён и готов усилить сценарий покупкой.";
-  if (normalized === "comeback") return "Хороший оффер для возврата: даёт повод снова пользоваться продуктом регулярно, а не разово.";
-  if (normalized === "vip" || normalized === "personal") return "Этот оффер выглядит персональным и лучше ощущается как предложение под текущий ритм пользователя.";
-  return null;
-}
-
 function getOfferPositioning(offer: PaymentOfferResponse): OfferPositioning {
   const totalEnergy = getOfferTotalEnergy(offer);
   const personalDailyCount = Math.max(1, Math.floor(totalEnergy / 10));
@@ -1261,10 +1250,6 @@ export default function EnergyPage() {
     () => (featuredOffer ? getOfferPositioning(featuredOffer) : null),
     [featuredOffer]
   );
-  const featuredOfferPersonalization = useMemo(
-    () => (featuredOffer ? getOfferPersonalization(featuredOffer.trigger_type) : null),
-    [featuredOffer]
-  );
   const secondaryOffers = useMemo(
     () => paymentOffers.filter((offer) => offer.offer_id !== featuredOffer?.offer_id),
     [featuredOffer?.offer_id, paymentOffers]
@@ -1575,18 +1560,6 @@ export default function EnergyPage() {
                             featuredOffer.label ||
                             "Оптимальный пакет для тех, кто хочет держать запас энергии и не прерывать пользовательский сценарий."}
                         </p>
-                        <div className="mt-4 space-y-2 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] p-4">
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Что даёт этот пакет</p>
-                          <p className="text-sm leading-6 text-[var(--text-primary)]">
-                            {featuredOfferPositioning?.usageHint}
-                          </p>
-                          <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                            {featuredOfferPositioning?.outcome}
-                          </p>
-                          {featuredOfferPersonalization ? (
-                            <p className="text-xs leading-5 text-[var(--accent-gold)]">{featuredOfferPersonalization}</p>
-                          ) : null}
-                        </div>
                       </div>
                     </div>
 
@@ -1680,9 +1653,7 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{positioning.summary}</p>
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
-                            <p className="mt-1 text-xs leading-5 text-[var(--text-tertiary)]">{positioning.usageHint}</p>
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
                           <div className="text-right">
