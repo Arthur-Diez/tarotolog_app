@@ -21,8 +21,9 @@ import CardFaceImage from "@/components/tarot/CardFaceImage";
 import { Button } from "@/components/ui/button";
 import { useDailyCard } from "@/hooks/useDailyCard";
 import { useProfile } from "@/hooks/useProfile";
+import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { ApiError, createReading, getReading, viewReading } from "@/lib/api";
+import { ApiError, DEFAULT_WIDGET_KEYS, createReading, getReading, viewReading, type WidgetKey } from "@/lib/api";
 import type { TelegramUser } from "@/lib/telegram";
 
 interface HomeScreenProps {
@@ -186,10 +187,12 @@ function clearStoredDailyCardUnlock() {
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
+  const { saveProfile } = useSaveProfile();
   const { dailyCard, loading: dailyCardLoading, error: dailyCardError, refresh: refreshDailyCard } = useDailyCard();
   const { hasSubscription, loading: subscriptionLoading } = useSubscriptionStatus();
   const [dailyCardUnlocking, setDailyCardUnlocking] = useState(false);
   const [dailyCardActionError, setDailyCardActionError] = useState<string | null>(null);
+  const [widgetActionPendingKey, setWidgetActionPendingKey] = useState<WidgetKey | null>(null);
   const [storedDailyCardUnlock, setStoredDailyCardUnlock] = useState<StoredDailyCardUnlock | null>(() =>
     readStoredDailyCardUnlock()
   );
@@ -201,6 +204,14 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const interfaceLocale = resolvePreferredLanguage(profile?.birth_profile?.interface_language ?? profile?.user?.lang);
   const focusTheme = useMemo(() => getFocusTheme(energyBalance), [energyBalance]);
   const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energyBalance)));
+  const homeWidgets = useMemo<WidgetKey[]>(
+    () => (profile ? profile.preferences.widgets : DEFAULT_WIDGET_KEYS),
+    [profile]
+  );
+  const enabledWidgets = useMemo(() => new Set(homeWidgets), [homeWidgets]);
+  const showDailyCardWidget = enabledWidgets.has("card_of_day");
+  const showIndividualHoroscopeWidget = enabledWidgets.has("individual_horoscope");
+  const showNumerologyWidget = enabledWidgets.has("numerology_forecast");
 
   const premiumLabel = hasSubscription ? "Premium" : "Base";
   const premiumTitle = hasSubscription ? "Премиум уже активен" : "Личный разбор недели";
@@ -257,6 +268,23 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       ? "Подбираем карту дня под ваш текущий день."
       : "Не удалось получить ежедневную карту. Попробуйте обновить блок ещё раз.";
   const dailyCardOrientationLabel = dailyCard?.reversed ? "Перевернутое положение" : "Прямое положение";
+
+  const handleHideWidget = useCallback(
+    async (widgetKey: WidgetKey) => {
+      if (!profile || widgetActionPendingKey === widgetKey) {
+        return;
+      }
+      setWidgetActionPendingKey(widgetKey);
+      try {
+        await saveProfile({
+          widgets: homeWidgets.filter((item) => item !== widgetKey)
+        });
+      } finally {
+        setWidgetActionPendingKey(null);
+      }
+    },
+    [homeWidgets, profile, saveProfile, widgetActionPendingKey]
+  );
 
   useEffect(() => {
     if (!dailyCard?.local_date || !dailyCard?.reading_id) {
@@ -427,6 +455,17 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     }
   ];
 
+  const buildRemoveButton = (widgetKey: WidgetKey) => (
+    <button
+      type="button"
+      className="inline-flex items-center rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-60"
+      onClick={() => void handleHideWidget(widgetKey)}
+      disabled={widgetActionPendingKey === widgetKey || !profile}
+    >
+      {widgetActionPendingKey === widgetKey ? "Скрываем..." : "Убрать"}
+    </button>
+  );
+
   return (
     <div className="space-y-5 pb-6">
       <section className="flex items-center justify-between px-1">
@@ -482,6 +521,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
 
       </section>
 
+      {showDailyCardWidget ? (
       <section className="relative overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.94),rgba(19,14,24,0.94))] p-5 shadow-[var(--surface-shadow)]">
         <div className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[rgba(110,77,120,0.18)] blur-3xl" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -491,6 +531,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
               <span className="inline-flex items-center rounded-full border border-[rgba(215,185,139,0.16)] bg-[rgba(215,185,139,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--accent-gold)]">
                 {dailyCardDateLabel}
               </span>
+              <div className="ml-auto">{buildRemoveButton("card_of_day")}</div>
             </div>
 
             <div className="space-y-2">
@@ -568,6 +609,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           <p className="relative mt-3 text-sm leading-6 text-[var(--accent-gold)]">{dailyCardActionError}</p>
         ) : null}
       </section>
+      ) : null}
 
       <section className="grid grid-cols-3 gap-3">
         {metrics.map((metric) => (
@@ -630,8 +672,10 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
         </div>
       </section>
 
+      {showIndividualHoroscopeWidget ? (
       <section className="relative overflow-hidden rounded-[28px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(35,27,42,0.96))] p-5 shadow-[0_16px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,138,87,0.1)]">
         <div className="pointer-events-none absolute -right-4 top-2 h-24 w-24 rounded-full bg-[rgba(215,185,139,0.14)] blur-3xl" />
+        <div className="relative flex justify-end">{buildRemoveButton("individual_horoscope")}</div>
         <div className="relative flex items-start gap-3">
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-[rgba(215,185,139,0.22)] bg-[rgba(215,185,139,0.12)] text-[var(--accent-gold)]">
             <Crown className="h-5 w-5" strokeWidth={1.55} />
@@ -654,6 +698,37 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           </Button>
         </div>
       </section>
+      ) : null}
+
+      {showNumerologyWidget ? (
+        <section className="relative overflow-hidden rounded-[28px] border border-[rgba(184,163,210,0.18)] bg-[linear-gradient(180deg,rgba(40,31,48,0.96),rgba(22,17,29,0.96))] p-5 shadow-[var(--surface-shadow)]">
+          <div className="pointer-events-none absolute -left-3 top-3 h-20 w-20 rounded-full bg-[rgba(184,163,210,0.18)] blur-3xl" />
+          <div className="relative flex justify-end">{buildRemoveButton("numerology_forecast")}</div>
+          <div className="relative flex items-start gap-3">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-[rgba(184,163,210,0.24)] bg-[rgba(184,163,210,0.12)] text-[var(--accent-lavender)]">
+              <Calculator className="h-5 w-5" strokeWidth={1.55} />
+            </span>
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-tertiary)]">Нумерологический прогноз</p>
+              <h3 className="font-['Cormorant_Garamond'] text-[1.8rem] font-medium leading-none text-[var(--text-primary)]">
+                Число дня скоро появится
+              </h3>
+              <p className="text-[0.95rem] leading-6 text-[var(--text-secondary)]">
+                Блок уже закреплён в вашем домашнем ритуале. Как только нумерологический сценарий будет открыт, вы увидите здесь персональный числовой фокус дня.
+              </p>
+            </div>
+          </div>
+          <div className="relative mt-5">
+            <Button
+              variant="outline"
+              className="h-11 rounded-full border-[rgba(184,163,210,0.22)] bg-[rgba(255,255,255,0.04)] px-5 text-[var(--text-primary)]"
+              onClick={() => navigate("/spreads")}
+            >
+              Открыть расклады
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(34,27,41,0.9),rgba(17,13,22,0.94))] p-5 shadow-[var(--surface-shadow)]">
         <div className="flex items-start gap-3">

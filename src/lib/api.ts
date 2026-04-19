@@ -8,14 +8,16 @@ export const API_BASE = `${API_ORIGIN}/api`;
 
 export const WIDGET_KEYS = [
   "card_of_day",
-  "daily_spread",
   "individual_horoscope",
-  "astro_forecast",
   "numerology_forecast"
 ] as const;
 
 export type WidgetKey = (typeof WIDGET_KEYS)[number];
-export const DEFAULT_WIDGET_KEYS: WidgetKey[] = ["card_of_day", "astro_forecast"];
+export const DEFAULT_WIDGET_KEYS: WidgetKey[] = [
+  "card_of_day",
+  "individual_horoscope",
+  "numerology_forecast"
+];
 
 export class ApiError extends Error {
   code?: string;
@@ -860,6 +862,46 @@ export interface AdminAnalyticsResponse {
   conversion_rate: number;
 }
 
+export interface AdminPricingCountryTierItem {
+  country_code: string;
+  pricing_tier: "A" | "B" | "C";
+  is_active: boolean;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminPricingCountryTierListResponse {
+  items: AdminPricingCountryTierItem[];
+  total_mapped: number;
+  tier_a: number;
+  tier_b: number;
+  tier_c: number;
+  fallback_tier: "B";
+  reference_country_total: number;
+  unmapped_count: number;
+  coverage_percent: number;
+}
+
+export interface AdminPricingOfferMatrixItem {
+  provider: string;
+  currency: string;
+  pricing_tier: string;
+  code: string;
+  title: string;
+  base_amount: string | null;
+  stars_amount: number | null;
+  energy_amount: number;
+  bonus_energy: number;
+  total_energy: number;
+  is_featured: boolean;
+  sort_order: number;
+}
+
+export interface AdminPricingOfferMatrixResponse {
+  items: AdminPricingOfferMatrixItem[];
+}
+
 export interface ShareCreateResponse {
   share_token: string;
   expires_at: string;
@@ -1470,6 +1512,40 @@ export async function adminGetDiscountAnalytics(): Promise<AdminAnalyticsRespons
     headers: withAuthHeaders()
   });
   return handleResponse<AdminAnalyticsResponse>(res);
+}
+
+export async function adminListPricingCountryTiers(includeInactive = true): Promise<AdminPricingCountryTierListResponse> {
+  const params = new URLSearchParams();
+  params.set("include_inactive", includeInactive ? "true" : "false");
+  const res = await fetch(`${API_BASE}/admin/pricing/country-tiers?${params.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminPricingCountryTierListResponse>(res);
+}
+
+export async function adminUpsertPricingCountryTier(payload: {
+  country_code: string;
+  pricing_tier: "A" | "B" | "C";
+  is_active?: boolean;
+  notes?: string | null;
+}): Promise<AdminPricingCountryTierItem> {
+  const res = await fetch(`${API_BASE}/admin/pricing/country-tiers`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<AdminPricingCountryTierItem>(res);
+}
+
+export async function adminGetPricingOfferMatrix(provider = "telegram_stars"): Promise<AdminPricingOfferMatrixResponse> {
+  const params = new URLSearchParams();
+  params.set("provider", provider);
+  const res = await fetch(`${API_BASE}/admin/pricing/offer-matrix?${params.toString()}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminPricingOfferMatrixResponse>(res);
 }
 
 export async function adminGetUserOfferDebug(userId: string): Promise<AdminUserOfferDebugResponse> {

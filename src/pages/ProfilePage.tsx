@@ -23,6 +23,7 @@ import {
   getPricingSourceLabel,
   getPricingTierLabel
 } from "@/lib/pricingRegion";
+import { COUNTRY_OPTIONS, getCountryLabelEnglish } from "@/lib/countries";
 import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
 
 type GenderOption = "male" | "female" | "other" | "";
@@ -46,27 +47,9 @@ const GENDER_OPTIONS: Array<{ value: GenderOption; label: string }> = [
 
 const WIDGET_LABELS: Record<WidgetKey, string> = {
   card_of_day: "Карта дня",
-  daily_spread: "Ежедневный расклад",
   individual_horoscope: "Индивидуальный гороскоп",
-  astro_forecast: "Астропрогноз",
   numerology_forecast: "Нумерологический прогноз"
 };
-
-const COUNTRY_OPTIONS = [
-  { code: "RU", label: "Россия" },
-  { code: "AM", label: "Армения" },
-  { code: "KZ", label: "Казахстан" },
-  { code: "BY", label: "Беларусь" },
-  { code: "UA", label: "Украина" },
-  { code: "GE", label: "Грузия" },
-  { code: "DE", label: "Германия" },
-  { code: "US", label: "США" },
-  { code: "GB", label: "Великобритания" },
-  { code: "FR", label: "Франция" },
-  { code: "ES", label: "Испания" },
-  { code: "IT", label: "Италия" },
-  { code: "TR", label: "Турция" }
-];
 
 const LANGUAGE_OPTIONS = [
   { code: "ru", label: "Русский" },
@@ -183,9 +166,8 @@ function getUrlLangParam(): string | null {
 }
 
 function getCountryLabel(code: string | null): string {
-  if (!code) return "Не выбрано";
-  const option = COUNTRY_OPTIONS.find((item) => item.code === code.toUpperCase());
-  return option ? option.label : code;
+  if (!code) return "Unknown";
+  return getCountryLabelEnglish(code);
 }
 
 function getLanguageLabel(code: string | null): string {
@@ -280,7 +262,7 @@ export default function ProfilePage() {
   ]);
 
   const initialWidgets = useMemo<WidgetKey[]>(() => {
-    if (profile?.preferences?.widgets?.length) {
+    if (profile?.preferences?.widgets) {
       return normalizeWidgets(profile.preferences.widgets);
     }
     return [...DEFAULT_WIDGET_KEYS];
@@ -770,12 +752,10 @@ export default function ProfilePage() {
       return;
     }
 
-    const widgetsPayload = selectedWidgets.length ? selectedWidgets : [...DEFAULT_WIDGET_KEYS];
-
     setActiveSave("widgets");
     setWidgetsStatus(null);
 
-    const result = await runSave("save-widgets", { widgets: widgetsPayload });
+    const result = await runSave("save-widgets", { widgets: selectedWidgets });
 
     if (result) {
       setWidgetsStatus({ type: "success", message: "Настройки главной сохранены" });

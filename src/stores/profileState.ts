@@ -27,12 +27,12 @@ interface ProfileState {
 const allowedWidgets = new Set<WidgetKey>(WIDGET_KEYS);
 
 export function normalizeWidgets(widgets: WidgetKey[] | null | undefined): WidgetKey[] {
-  if (!Array.isArray(widgets) || widgets.length === 0) {
+  if (!Array.isArray(widgets)) {
     return [...DEFAULT_WIDGET_KEYS];
   }
 
   const filtered = widgets.filter((widget): widget is WidgetKey => allowedWidgets.has(widget));
-  return filtered.length > 0 ? filtered : [...DEFAULT_WIDGET_KEYS];
+  return filtered;
 }
 
 export const useProfileState = create<ProfileState>((set) => ({

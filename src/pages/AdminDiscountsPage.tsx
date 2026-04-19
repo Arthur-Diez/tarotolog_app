@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Users } from "lucide-react";
+import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, Globe2, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,12 @@ import {
   adminGetDashboardSummary,
   adminGetDiscountAnalytics,
   adminGetDiscountStats,
+  adminGetPricingOfferMatrix,
   adminGetRecentActions,
   adminGetRecentPurchases,
   adminGetRecentUsages,
   adminGetUserOfferDebug,
+  adminListPricingCountryTiers,
   adminListAssignments,
   adminListAssignmentsHistory,
   adminListDiscountRules,
@@ -32,9 +34,14 @@ import {
   adminSimulateDiscountPurchase,
   adminSimulateDiscountShow,
   adminToggleDiscountRule,
+  adminUpsertPricingCountryTier,
   adminUpdateDiscountRule,
   type AdminAnalyticsResponse,
   type AdminDashboardSummaryResponse,
+  type AdminPricingCountryTierItem,
+  type AdminPricingCountryTierListResponse,
+  type AdminPricingOfferMatrixItem,
+  type AdminPricingOfferMatrixResponse,
   type AdminUserOfferDebugResponse,
   type AdminUserSearchItem,
   type DiscountAssignmentResponse,
@@ -45,7 +52,7 @@ import {
 
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 
-type AdminTab = "dashboard" | "rules" | "personal" | "tests" | "logs";
+type AdminTab = "dashboard" | "rules" | "pricing" | "personal" | "tests" | "logs";
 
 type RuleDraft = {
   id?: string;
@@ -105,10 +112,25 @@ const DEFAULT_RULE_DRAFT: RuleDraft = {
 const TAB_ITEMS: Array<{ id: AdminTab; label: string; icon: typeof LayoutDashboard }> = [
   { id: "dashboard", label: "Обзор", icon: LayoutDashboard },
   { id: "rules", label: "Акции", icon: BadgePercent },
+  { id: "pricing", label: "Тиры цен", icon: Globe2 },
   { id: "personal", label: "Персональные", icon: Users },
   { id: "tests", label: "Тесты", icon: FlaskConical },
   { id: "logs", label: "Журнал", icon: ScrollText }
 ];
+
+type PricingTierDraft = {
+  country_code: string;
+  pricing_tier: "A" | "B" | "C";
+  notes: string;
+  is_active: boolean;
+};
+
+const DEFAULT_PRICING_TIER_DRAFT: PricingTierDraft = {
+  country_code: "",
+  pricing_tier: "B",
+  notes: "",
+  is_active: true
+};
 
 const TRIGGER_OPTIONS = [
   { value: "scheduled", label: "Плановая акция" },
@@ -487,6 +509,27 @@ function previewCta(draft: RuleDraft): string {
   return "Открыть предложение";
 }
 
+function pricingTierTone(tier: "A" | "B" | "C"): string {
+  if (tier === "A") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (tier === "B") return "border-sky-300/25 bg-sky-400/10 text-sky-100";
+  return "border-violet-300/25 bg-violet-400/10 text-violet-100";
+}
+
+function pricingTierLabel(tier: "A" | "B" | "C"): string {
+  if (tier === "A") return "Tier A";
+  if (tier === "B") return "Tier B";
+  return "Tier C";
+}
+
+function regionDisplayName(countryCode: string): string {
+  try {
+    const displayNames = new Intl.DisplayNames(["ru"], { type: "region" });
+    return displayNames.of(countryCode.toUpperCase()) || countryCode.toUpperCase();
+  } catch {
+    return countryCode.toUpperCase();
+  }
+}
+
 export default function AdminDiscountsPage() {
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
@@ -501,6 +544,15 @@ export default function AdminDiscountsPage() {
   const [recentActions, setRecentActions] = useState<Record<string, unknown>[]>([]);
   const [stats, setStats] = useState<DiscountStatsResponse | null>(null);
   const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
+  const [pricingSummary, setPricingSummary] = useState<AdminPricingCountryTierListResponse | null>(null);
+  const [pricingMatrix, setPricingMatrix] = useState<AdminPricingOfferMatrixResponse | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [pricingSearch, setPricingSearch] = useState("");
+  const [pricingTierFilter, setPricingTierFilter] = useState<"all" | "A" | "B" | "C">("all");
+  const [pricingDraft, setPricingDraft] = useState<PricingTierDraft>(DEFAULT_PRICING_TIER_DRAFT);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingActionError, setPricingActionError] = useState<string | null>(null);
 
   const [rules, setRules] = useState<DiscountRuleResponse[]>([]);
   const [rulesLoading, setRulesLoading] = useState(false);
@@ -601,6 +653,23 @@ export default function AdminDiscountsPage() {
     }
   }, []);
 
+  const loadPricing = useCallback(async () => {
+    try {
+      setPricingLoading(true);
+      setPricingError(null);
+      const [summary, matrix] = await Promise.all([
+        adminListPricingCountryTiers(true),
+        adminGetPricingOfferMatrix("telegram_stars")
+      ]);
+      setPricingSummary(summary);
+      setPricingMatrix(matrix);
+    } catch (error) {
+      setPricingError(error instanceof Error ? error.message : "Не удалось загрузить тиры цен");
+    } finally {
+      setPricingLoading(false);
+    }
+  }, []);
+
   const loadAssignments = useCallback(
     async (userId?: string) => {
       const [list, history] = await Promise.all([
@@ -638,8 +707,9 @@ export default function AdminDiscountsPage() {
     if (!accessGranted) return;
     void loadDashboard();
     void loadRules();
+    void loadPricing();
     void loadAssignments();
-  }, [accessGranted, loadAssignments, loadDashboard, loadRules]);
+  }, [accessGranted, loadAssignments, loadDashboard, loadPricing, loadRules]);
 
   useEffect(() => {
     const trimmed = userSearch.trim();
@@ -703,6 +773,27 @@ export default function AdminDiscountsPage() {
       scheduled: active.filter((rule) => rule.trigger_type === "scheduled").length
     };
   }, [rules]);
+
+  const filteredPricingMappings = useMemo(() => {
+    const items = pricingSummary?.items ?? [];
+    const query = pricingSearch.trim().toLowerCase();
+    return items.filter((item) => {
+      if (pricingTierFilter !== "all" && item.pricing_tier !== pricingTierFilter) return false;
+      if (!query) return true;
+      const code = item.country_code.toLowerCase();
+      const name = regionDisplayName(item.country_code).toLowerCase();
+      return code.includes(query) || name.includes(query);
+    });
+  }, [pricingSearch, pricingSummary?.items, pricingTierFilter]);
+
+  const pricingMatrixByTier = useMemo(() => {
+    const grouped: Record<string, AdminPricingOfferMatrixItem[]> = {};
+    for (const item of pricingMatrix?.items ?? []) {
+      if (!grouped[item.pricing_tier]) grouped[item.pricing_tier] = [];
+      grouped[item.pricing_tier].push(item);
+    }
+    return grouped;
+  }, [pricingMatrix?.items]);
 
   const previewDraft = useMemo(() => normalizeDraft(ruleDraft), [ruleDraft]);
 
@@ -783,7 +874,7 @@ export default function AdminDiscountsPage() {
             variant="outline"
             className="border-white/20"
             onClick={() => {
-              void Promise.all([loadDashboard(), loadRules(), loadAssignments(selectedUser?.user_id)]);
+              void Promise.all([loadDashboard(), loadRules(), loadPricing(), loadAssignments(selectedUser?.user_id)]);
             }}
           >
             Обновить всё
@@ -1252,6 +1343,277 @@ export default function AdminDiscountsPage() {
               >
                 Обновить порядок
               </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === "pricing" ? (
+        <div className="space-y-4">
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Карта региональных тиров</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Сейчас Stars-цены явно заданы не для всех стран. Непокрытые страны автоматически уходят в fallback <span className="text-[var(--text-primary)]">Tier B</span>.
+                </p>
+              </div>
+              <Button variant="outline" className="border-white/20" onClick={() => void loadPricing()}>
+                Обновить тиры
+              </Button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <MetricCard title="Явно настроено" value={pricingSummary?.total_mapped ?? 0} />
+              <MetricCard title="Tier A" value={pricingSummary?.tier_a ?? 0} />
+              <MetricCard title="Tier B" value={pricingSummary?.tier_b ?? 0} />
+              <MetricCard title="Tier C" value={pricingSummary?.tier_c ?? 0} />
+              <MetricCard title="Fallback B" value={pricingSummary?.unmapped_count ?? 0} />
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Покрытие по странам</p>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                    Явно распределено {pricingSummary?.total_mapped ?? 0} из {pricingSummary?.reference_country_total ?? 249} стран.
+                    Остальные используют стандартный fallback Tier B.
+                  </p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--text-primary)]">
+                  {pricingSummary?.coverage_percent ?? 0}% явного покрытия
+                </span>
+              </div>
+            </div>
+            {pricingError ? <p className="mt-2 text-xs text-red-200">{pricingError}</p> : null}
+          </Card>
+
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Матрица Stars-цен по тирам</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Это текущие пакеты из каталога `v2`, которые реально увидит пользователь в зависимости от тира страны.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 xl:grid-cols-3">
+              {(["A", "B", "C"] as const).map((tier) => (
+                <div key={tier} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{pricingTierLabel(tier)}</p>
+                    <span className={`rounded-full border px-2.5 py-1 text-[11px] ${pricingTierTone(tier)}`}>
+                      {pricingMatrixByTier[tier]?.length ?? 0} пакетов
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {(pricingMatrixByTier[tier] ?? []).map((item) => (
+                      <div key={`${tier}-${item.code}`} className="rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                            <p className="text-xs text-[var(--text-secondary)]">
+                              {item.total_energy} ⚡
+                              {item.bonus_energy > 0 ? ` • +${item.bonus_energy} бонус` : ""}
+                            </p>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--accent-gold)]">
+                            {item.stars_amount ?? item.base_amount} {item.currency}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_1.6fr]">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-base font-semibold text-[var(--text-primary)]">Редактор страны</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Подтверждённая страна пользователя будет использовать именно этот тир. Если страны нет в списке, по умолчанию включается fallback Tier B.
+                </p>
+                <div className="mt-4 space-y-3">
+                  <Field label="Код страны ISO-2">
+                    <Input
+                      value={pricingDraft.country_code}
+                      onChange={(e) => setPricingDraft((prev) => ({ ...prev, country_code: e.target.value.toUpperCase().slice(0, 2) }))}
+                      placeholder="DE"
+                    />
+                  </Field>
+                  <Field label="Название">
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--text-secondary)]">
+                      {pricingDraft.country_code ? regionDisplayName(pricingDraft.country_code) : "Введите код страны"}
+                    </div>
+                  </Field>
+                  <Field label="Тир цен">
+                    <select
+                      className="rounded-xl border border-white/15 bg-white/5 px-3 py-2"
+                      value={pricingDraft.pricing_tier}
+                      onChange={(e) => setPricingDraft((prev) => ({ ...prev, pricing_tier: e.target.value as "A" | "B" | "C" }))}
+                    >
+                      <option value="A">Tier A</option>
+                      <option value="B">Tier B</option>
+                      <option value="C">Tier C</option>
+                    </select>
+                  </Field>
+                  <Field label="Комментарий">
+                    <Input
+                      value={pricingDraft.notes}
+                      onChange={(e) => setPricingDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Например: high-income market"
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={pricingDraft.is_active}
+                      onChange={(e) => setPricingDraft((prev) => ({ ...prev, is_active: e.target.checked }))}
+                    />
+                    Активно
+                  </label>
+                  {pricingActionError ? <p className="text-xs text-red-200">{pricingActionError}</p> : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={pricingSaving || pricingDraft.country_code.trim().length !== 2}
+                      onClick={async () => {
+                        try {
+                          setPricingSaving(true);
+                          setPricingActionError(null);
+                          await adminUpsertPricingCountryTier({
+                            country_code: pricingDraft.country_code,
+                            pricing_tier: pricingDraft.pricing_tier,
+                            is_active: pricingDraft.is_active,
+                            notes: pricingDraft.notes.trim() || null
+                          });
+                          await loadPricing();
+                          setPricingDraft(DEFAULT_PRICING_TIER_DRAFT);
+                        } catch (error) {
+                          setPricingActionError(error instanceof Error ? error.message : "Не удалось сохранить страну");
+                        } finally {
+                          setPricingSaving(false);
+                        }
+                      }}
+                    >
+                      {pricingSaving ? "Сохраняем..." : "Сохранить тир"}
+                    </Button>
+                    <Button variant="outline" className="border-white/20" onClick={() => setPricingDraft(DEFAULT_PRICING_TIER_DRAFT)}>
+                      Сбросить
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-[var(--text-primary)]">Явно распределённые страны</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      Сейчас явно настроено {pricingSummary?.total_mapped ?? 0} стран. По остальным будет работать fallback Tier B, пока ты не задашь им явный тир.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Input
+                    className="min-w-[220px] flex-1"
+                    value={pricingSearch}
+                    onChange={(e) => setPricingSearch(e.target.value)}
+                    placeholder="Поиск по коду или названию страны"
+                  />
+                  <select
+                    className="rounded-xl border border-white/15 bg-white/5 px-3 py-2"
+                    value={pricingTierFilter}
+                    onChange={(e) => setPricingTierFilter(e.target.value as "all" | "A" | "B" | "C")}
+                  >
+                    <option value="all">Все тиры</option>
+                    <option value="A">Tier A</option>
+                    <option value="B">Tier B</option>
+                    <option value="C">Tier C</option>
+                  </select>
+                </div>
+                <div className="mt-4 max-h-[640px] space-y-2 overflow-y-auto pr-1">
+                  {pricingLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Загружаем карту стран...
+                    </div>
+                  ) : null}
+                  {filteredPricingMappings.map((item) => (
+                    <div key={item.country_code} className="rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            {regionDisplayName(item.country_code)} <span className="text-[var(--text-tertiary)]">({item.country_code})</span>
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            <span className={`rounded-full border px-2.5 py-1 text-[11px] ${pricingTierTone(item.pricing_tier)}`}>
+                              {pricingTierLabel(item.pricing_tier)}
+                            </span>
+                            {!item.is_active ? (
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)]">
+                                выключено
+                              </span>
+                            ) : null}
+                            {item.notes ? (
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-[var(--text-secondary)]">
+                                {item.notes}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-2 text-xs text-[var(--text-tertiary)]">Обновлено: {prettyDate(item.updated_at)}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(["A", "B", "C"] as const).map((tier) => (
+                            <button
+                              key={`${item.country_code}-${tier}`}
+                              type="button"
+                              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                                item.pricing_tier === tier
+                                  ? pricingTierTone(tier)
+                                  : "border-white/10 bg-white/5 text-[var(--text-secondary)]"
+                              }`}
+                              onClick={async () => {
+                                await adminUpsertPricingCountryTier({
+                                  country_code: item.country_code,
+                                  pricing_tier: tier,
+                                  is_active: true,
+                                  notes: item.notes
+                                });
+                                await loadPricing();
+                              }}
+                            >
+                              {pricingTierLabel(tier)}
+                            </button>
+                          ))}
+                          <MiniAction
+                            label="Ред."
+                            onClick={() =>
+                              setPricingDraft({
+                                country_code: item.country_code,
+                                pricing_tier: item.pricing_tier,
+                                notes: item.notes ?? "",
+                                is_active: item.is_active
+                              })
+                            }
+                          />
+                          <MiniAction
+                            label={item.is_active ? "Выкл." : "Вкл."}
+                            onClick={async () => {
+                              await adminUpsertPricingCountryTier({
+                                country_code: item.country_code,
+                                pricing_tier: item.pricing_tier,
+                                is_active: !item.is_active,
+                                notes: item.notes
+                              });
+                              await loadPricing();
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
         </div>
