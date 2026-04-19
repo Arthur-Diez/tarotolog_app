@@ -27,6 +27,7 @@ import {
   type TelegramStarsPaymentStatusResponse,
   type WalletHistoryItemResponse
 } from "@/lib/api";
+import { detectCountryBySignals } from "@/lib/pricingRegion";
 import {
   openExternalLink,
   openInlineQueryWithFallback,
@@ -545,6 +546,7 @@ export default function EnergyPage() {
   const [referralProgram, setReferralProgram] = useState<ReferralProgramResponse | null>(null);
   const [referralLoading, setReferralLoading] = useState(true);
   const [referralError, setReferralError] = useState<string | null>(null);
+  const [ipCountry, setIpCountry] = useState<string | null>(null);
   const [shareHintOpen, setShareHintOpen] = useState(false);
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [referralShareLanguage, setReferralShareLanguage] = useState<ReferralShareLanguage>("ru");
@@ -577,6 +579,19 @@ export default function EnergyPage() {
     if (typeof window === "undefined") return null;
     return window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || null;
   }, []);
+  const deviceLanguage = useMemo(() => {
+    if (typeof navigator === "undefined") return null;
+    return typeof navigator.language === "string" ? navigator.language : null;
+  }, []);
+  const detectedCountry = useMemo(
+    () =>
+      detectCountryBySignals({
+        ipCountry,
+        telegramLang: telegramLanguage,
+        deviceLang: deviceLanguage
+      }),
+    [deviceLanguage, ipCountry, telegramLanguage]
+  );
 
   const referralShareCopy = useMemo(
     () => REFERRAL_SHARE_COPY[referralShareLanguage],
@@ -600,6 +615,28 @@ export default function EnergyPage() {
   useEffect(() => {
     writeStoredCurrency(selectedCurrency);
   }, [selectedCurrency]);
+
+  useEffect(() => {
+    if (ipCountry !== null || typeof window === "undefined") return;
+    let cancelled = false;
+
+    fetch("https://ipapi.co/json/")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setIpCountry(typeof data?.country === "string" ? data.country.toUpperCase() : null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIpCountry(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ipCountry]);
 
   useEffect(() => {
     if (selectedPaymentMethod === "robokassa" && selectedCurrency !== "RUB") {
@@ -763,7 +800,10 @@ export default function EnergyPage() {
         provider: selectedPaymentMethod,
         currency: offersCurrency,
         source: "energy_page",
-        trigger_type: "auto"
+        trigger_type: "auto",
+        detected_country: detectedCountry !== "Unknown" ? detectedCountry : undefined,
+        telegram_lang: telegramLanguage ?? undefined,
+        device_lang: deviceLanguage ?? undefined
       });
       const sorted = [...(response.offers || [])].sort((a, b) => {
         if (a.final_energy_amount !== b.final_energy_amount) {
@@ -827,7 +867,7 @@ export default function EnergyPage() {
     } finally {
       setOffersLoading(false);
     }
-  }, [selectedCurrency, selectedPaymentMethod]);
+  }, [detectedCountry, deviceLanguage, selectedCurrency, selectedPaymentMethod, telegramLanguage]);
 
   useEffect(() => {
     void loadPaymentOffers();

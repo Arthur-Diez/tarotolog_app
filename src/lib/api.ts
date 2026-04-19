@@ -148,6 +148,14 @@ export interface BirthProfile {
   current_tz_offset_min?: number | null;
   current_tz_confirmed?: boolean | null;
   zodiac_sign?: string | null;
+  detected_region_tier?: string | null;
+  pricing_country_confirmed?: boolean | null;
+  pricing_country_source?: string | null;
+  pricing_country_confidence?: string | null;
+  pricing_ip_country?: string | null;
+  pricing_telegram_lang?: string | null;
+  pricing_device_lang?: string | null;
+  pricing_country_confirmed_at?: string | null;
 }
 
 export interface ProfileResponse {
@@ -195,10 +203,17 @@ export interface UpdateProfilePayload {
     birth_tz_offset_min?: number | null;
     gender?: "male" | "female" | "other" | null;
     detected_country?: string | null;
+    detected_region_tier?: string | null;
     interface_language?: string | null;
     current_tz_name?: string | null;
     current_tz_offset_min?: number | null;
     current_tz_confirmed?: boolean | null;
+    pricing_country_confirmed?: boolean | null;
+    pricing_country_source?: string | null;
+    pricing_country_confidence?: string | null;
+    pricing_ip_country?: string | null;
+    pricing_telegram_lang?: string | null;
+    pricing_device_lang?: string | null;
   };
 }
 
@@ -1183,12 +1198,18 @@ export async function getPaymentOffers(params: {
   currency?: "RUB" | "USD" | "EUR" | "XTR";
   source?: string;
   trigger_type?: string;
+  detected_country?: string;
+  telegram_lang?: string;
+  device_lang?: string;
 }): Promise<PaymentOffersResponse> {
   const searchParams = new URLSearchParams();
   searchParams.set("provider", params.provider);
   if (params.currency) searchParams.set("currency", params.currency);
   if (params.source) searchParams.set("source", params.source);
   if (params.trigger_type) searchParams.set("trigger_type", params.trigger_type);
+  if (params.detected_country) searchParams.set("detected_country", params.detected_country);
+  if (params.telegram_lang) searchParams.set("telegram_lang", params.telegram_lang);
+  if (params.device_lang) searchParams.set("device_lang", params.device_lang);
 
   const res = await fetch(`${API_BASE}/payments/offers?${searchParams.toString()}`, {
     method: "GET",

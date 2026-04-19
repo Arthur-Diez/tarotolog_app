@@ -17,6 +17,12 @@ import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { normalizeWidgets } from "@/stores/profileState";
 import { TimezoneSelectorUnified } from "@/components/TimezoneSelectorUnified";
+import {
+  detectCountryBySignals,
+  detectPricingConfidence,
+  getPricingSourceLabel,
+  getPricingTierLabel
+} from "@/lib/pricingRegion";
 import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
 
 type GenderOption = "male" | "female" | "other" | "";
@@ -176,32 +182,6 @@ function getUrlLangParam(): string | null {
   return null;
 }
 
-function detectCountry({
-  telegramCountry,
-  ipCountry,
-  telegramLang,
-  deviceLang
-}: {
-  telegramCountry?: string | null;
-  ipCountry?: string | null;
-  telegramLang?: string | null;
-  deviceLang?: string | null;
-}): string {
-  if (telegramCountry) {
-    return telegramCountry.toUpperCase();
-  }
-  if (ipCountry) {
-    return ipCountry.toUpperCase();
-  }
-
-  const normalizedTelegramLang = normalizeLang(telegramLang ?? null);
-  const normalizedDeviceLang = normalizeLang(deviceLang ?? null);
-  if (normalizedTelegramLang === "ru" || normalizedDeviceLang === "ru") {
-    return "RU";
-  }
-  return "Unknown";
-}
-
 function getCountryLabel(code: string | null): string {
   if (!code) return "Не выбрано";
   const option = COUNTRY_OPTIONS.find((item) => item.code === code.toUpperCase());
@@ -319,7 +299,8 @@ export default function ProfilePage() {
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
   const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "country" | "language" | null>(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
-  const initialConfirmedCountry = birthProfile?.detected_country ?? null;
+  const initialConfirmedCountry =
+    birthProfile?.pricing_country_confirmed && birthProfile?.detected_country ? birthProfile.detected_country : null;
   const [confirmedCountry, setConfirmedCountry] = useState<string | null>(initialConfirmedCountry);
   const [countryConfirmed, setCountryConfirmed] = useState<boolean>(Boolean(initialConfirmedCountry));
   const [countrySelectOpen, setCountrySelectOpen] = useState(false);
@@ -522,13 +503,17 @@ export default function ProfilePage() {
     };
   }, [ipCountry]);
 
-  const detectedCountry = detectCountry({
+  const detectedCountry = detectCountryBySignals({
     ipCountry,
     telegramLang: diag.tgLangCodeNorm,
     deviceLang: diag.navLangRaw ?? deviceLanguageFallback
   });
 
   const suggestedCountry = (detectedCountry !== "Unknown" ? detectedCountry : "RU").toUpperCase();
+  const suggestedPricingConfidence = detectPricingConfidence({
+    ipCountry,
+    detectedCountry: suggestedCountry
+  });
   const suggestedLanguage = diag.navLangNorm
     ? mapSupportedLang(diag.navLangNorm)
     : diag.effectiveLang;
@@ -585,7 +570,13 @@ export default function ProfilePage() {
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
-        detected_country: value
+        detected_country: value,
+        pricing_country_confirmed: true,
+        pricing_country_source: "user_confirmed",
+        pricing_country_confidence: "high",
+        pricing_ip_country: ipCountry?.toUpperCase() ?? null,
+        pricing_telegram_lang: diag.tgLangCodeRaw ?? null,
+        pricing_device_lang: diag.navLangRaw ?? deviceLanguageFallback ?? null
       }
     };
     const result = await runSave("confirm-country", payload);
@@ -603,7 +594,13 @@ export default function ProfilePage() {
     setActiveSave("country");
     const payload: UpdateProfilePayload = {
       birth_profile: {
-        detected_country: value
+        detected_country: value,
+        pricing_country_confirmed: true,
+        pricing_country_source: "user_confirmed",
+        pricing_country_confidence: "high",
+        pricing_ip_country: ipCountry?.toUpperCase() ?? null,
+        pricing_telegram_lang: diag.tgLangCodeRaw ?? null,
+        pricing_device_lang: diag.navLangRaw ?? deviceLanguageFallback ?? null
       }
     };
     const result = await runSave("select-country", payload);
@@ -735,6 +732,12 @@ export default function ProfilePage() {
     const countryToPersist = (confirmedCountry ?? suggestedCountry)?.toUpperCase();
     if (countryToPersist) {
       birthPayload.detected_country = countryToPersist;
+      birthPayload.pricing_country_confirmed = countryConfirmed;
+      birthPayload.pricing_country_source = countryConfirmed ? "user_confirmed" : "auto_detected";
+      birthPayload.pricing_country_confidence = countryConfirmed ? "high" : suggestedPricingConfidence;
+      birthPayload.pricing_ip_country = ipCountry?.toUpperCase() ?? null;
+      birthPayload.pricing_telegram_lang = diag.tgLangCodeRaw ?? null;
+      birthPayload.pricing_device_lang = diag.navLangRaw ?? deviceLanguageFallback ?? null;
     }
 
     const languageToPersist = confirmedLanguage ?? suggestedLanguage;
@@ -940,6 +943,9 @@ export default function ProfilePage() {
                     <div>
                       <p className="text-sm text-[var(--text-secondary)]">Подтверждённая страна</p>
                       <p className="text-base font-semibold text-[var(--text-primary)]">{getCountryLabel(confirmedCountry)}</p>
+                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                        {getPricingTierLabel(birthProfile?.detected_region_tier)} • {getPricingSourceLabel(birthProfile?.pricing_country_source)}
+                      </p>
                     </div>
                     <Button
                       type="button"
@@ -957,6 +963,9 @@ export default function ProfilePage() {
                       {`Надеюсь, ваша страна — ${getCountryLabel(suggestedCountry)}?`}
                     </p>
                     <Input disabled value={getCountryLabel(suggestedCountry)} />
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      {getPricingTierLabel(birthProfile?.detected_region_tier)} • {getPricingSourceLabel("auto_detected")}
+                    </p>
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <Button
                         type="button"
