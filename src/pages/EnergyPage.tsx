@@ -18,7 +18,6 @@ import {
   getWalletHistory,
   markPaymentOfferDismissed,
   markPaymentOfferExpired,
-  markPaymentOffersShown,
   startEnergyRewardAd,
   type EnergyAdsStateResponse,
   type PaymentOfferResponse,
@@ -569,7 +568,6 @@ export default function EnergyPage() {
   const currencyWasChangedManuallyRef = useRef(Boolean(readStoredCurrency()));
   const lastAdsReloadAtRef = useRef(0);
   const taskRewardInFlightRef = useRef(false);
-  const trackedOfferIdsRef = useRef<Set<string>>(new Set());
   const handledExpiredUsageRef = useRef<Set<string>>(new Set());
   const handledDismissedUsageRef = useRef<Set<string>>(new Set());
   const offerExpiryInFlightRef = useRef(false);
@@ -823,36 +821,6 @@ export default function EnergyPage() {
         return next;
       });
       setOffersError(null);
-
-      const unseenOfferIds = sorted
-        .map((offer) => offer.offer_id)
-        .filter((offerId) => !trackedOfferIdsRef.current.has(offerId));
-      if (unseenOfferIds.length > 0) {
-        try {
-          const marked = await markPaymentOffersShown({
-            offer_ids: unseenOfferIds,
-            source: "energy_page",
-            trigger_snapshot: {
-              provider: selectedPaymentMethod,
-              currency: offersCurrency
-            }
-          });
-          setOfferUsageMap((prev) => {
-            const next = { ...prev };
-            marked.items.forEach((item) => {
-              trackedOfferIdsRef.current.add(item.offer_id);
-              if (item.usage_id) {
-                next[item.offer_id] = item.usage_id;
-              } else if (!(item.offer_id in next)) {
-                next[item.offer_id] = null;
-              }
-            });
-            return next;
-          });
-        } catch (trackError) {
-          console.warn("[EnergyPage] offer shown tracking failed", trackError);
-        }
-      }
     } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           setOffersError(
@@ -1685,7 +1653,9 @@ export default function EnergyPage() {
                         ? `+${featuredOffer.bonus_energy} ⚡`
                         : null;
                     const featuredValueBadge = [featuredDiscountBadge, featuredBonusBadge].filter(Boolean).join(" • ");
-                    const isFirstPurchaseOffer = featuredOffer.trigger_type === "first_purchase";
+                    const isFirstPurchaseOffer =
+                      featuredOffer.trigger_type === "first_purchase" &&
+                      (Boolean(featuredOffer.rule_id) || hasOfferDiscount(featuredOffer) || getOfferBonusPercent(featuredOffer) > 0);
 
                     return (
                       <>
@@ -1775,7 +1745,9 @@ export default function EnergyPage() {
                         ? `+${offer.bonus_energy} бонус`
                         : null;
                     const positioning = getOfferPositioning(offer);
-                    const isFirstPurchaseOffer = offer.trigger_type === "first_purchase";
+                    const isFirstPurchaseOffer =
+                      offer.trigger_type === "first_purchase" &&
+                      (Boolean(offer.rule_id) || hasOfferDiscount(offer) || getOfferBonusPercent(offer) > 0);
 
                     return (
                       <div
