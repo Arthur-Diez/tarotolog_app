@@ -36,6 +36,7 @@ interface LocationState {
 
 interface ReadingInputMeta {
   question: string | null;
+  kind: string | null;
   deckId: string | null;
   spreadId: string | null;
   cards: Array<{ position: number; card_code: string; reversed: boolean }>;
@@ -86,11 +87,12 @@ function normalizeReading(input: ReadingResponse | ViewReadingResponse | undefin
 
 function extractInputMeta(payload: unknown): ReadingInputMeta {
   if (!payload || typeof payload !== "object") {
-    return { question: null, deckId: null, spreadId: null, cards: [] };
+    return { question: null, kind: null, deckId: null, spreadId: null, cards: [] };
   }
 
   const obj = payload as Record<string, unknown>;
   const question = typeof obj.question === "string" ? obj.question : null;
+  const kind = typeof obj.kind === "string" ? obj.kind : null;
   const deckId = typeof obj.deck_id === "string" ? obj.deck_id : null;
   const spreadId = typeof obj.spread_id === "string" ? obj.spread_id : null;
   const cards = Array.isArray(obj.cards)
@@ -118,7 +120,7 @@ function extractInputMeta(payload: unknown): ReadingInputMeta {
         .filter(Boolean) as Array<{ position: number; card_code: string; reversed: boolean }>)
     : [];
 
-  return { question, deckId, spreadId, cards };
+  return { question, kind, deckId, spreadId, cards };
 }
 
 function coerceObject(payload: unknown): Record<string, unknown> | null {
@@ -323,6 +325,13 @@ export default function InterpretationPage() {
       .sort((a, b) => a.position - b.position);
   }, [inputMeta?.cards, output.cards]);
   const questionText = inputMeta?.question ?? "Вопрос не указан";
+  const displayQuestionText = useMemo(() => {
+    const kind = (inputMeta?.kind || "").trim().toLowerCase();
+    if (kind === "daily_card_unlock") {
+      return "Что важно понять в энергии этого дня и на что мне стоит обратить внимание сегодня?";
+    }
+    return questionText;
+  }, [inputMeta?.kind, questionText]);
   const deckTitle =
     (inputMeta?.deckId && DECKS.find((deck) => deck.id === inputMeta.deckId)?.title) || "Неизвестная колода";
   const resolvedDeckId = useMemo(() => {
@@ -631,7 +640,7 @@ export default function InterpretationPage() {
         <div className="space-y-5">
           <div className="space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
             <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
-            <p className="text-base text-[var(--text-primary)]">{questionText}</p>
+            <p className="text-base text-[var(--text-primary)]">{displayQuestionText}</p>
           </div>
 
           {headlineText ? (
@@ -731,7 +740,7 @@ export default function InterpretationPage() {
           title="Послание вашей карты"
           spreadTitle={spreadTitle}
           deckTitle={deckTitle}
-          question={questionText}
+          question={displayQuestionText}
           headline={headlineText}
           summary={summaryText}
           sections={shareSections}
