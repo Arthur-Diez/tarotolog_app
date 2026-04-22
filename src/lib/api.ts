@@ -1370,6 +1370,14 @@ export async function getOfferPlacements(params?: {
   detected_country?: string;
   telegram_lang?: string;
   device_lang?: string;
+  session_key?: string;
+  session_is_first?: boolean;
+  session_seconds?: number;
+  session_screen_count?: number;
+  session_energy_visited?: boolean;
+  session_paid_action_attempted?: boolean;
+  session_reward_ad_completed?: boolean;
+  energy_page_seconds?: number;
 }): Promise<OfferPlacementsResponse> {
   const searchParams = new URLSearchParams();
   if (params?.provider) searchParams.set("provider", params.provider);
@@ -1378,6 +1386,14 @@ export async function getOfferPlacements(params?: {
   if (params?.detected_country) searchParams.set("detected_country", params.detected_country);
   if (params?.telegram_lang) searchParams.set("telegram_lang", params.telegram_lang);
   if (params?.device_lang) searchParams.set("device_lang", params.device_lang);
+  if (params?.session_key) searchParams.set("session_key", params.session_key);
+  if (typeof params?.session_is_first === "boolean") searchParams.set("session_is_first", String(params.session_is_first));
+  if (typeof params?.session_seconds === "number") searchParams.set("session_seconds", String(Math.max(0, Math.floor(params.session_seconds))));
+  if (typeof params?.session_screen_count === "number") searchParams.set("session_screen_count", String(Math.max(0, Math.floor(params.session_screen_count))));
+  if (typeof params?.session_energy_visited === "boolean") searchParams.set("session_energy_visited", String(params.session_energy_visited));
+  if (typeof params?.session_paid_action_attempted === "boolean") searchParams.set("session_paid_action_attempted", String(params.session_paid_action_attempted));
+  if (typeof params?.session_reward_ad_completed === "boolean") searchParams.set("session_reward_ad_completed", String(params.session_reward_ad_completed));
+  if (typeof params?.energy_page_seconds === "number") searchParams.set("energy_page_seconds", String(Math.max(0, Math.floor(params.energy_page_seconds))));
   const suffix = searchParams.toString();
   const res = await fetch(`${API_BASE}/offers/placements${suffix ? `?${suffix}` : ""}`, {
     method: "GET",

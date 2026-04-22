@@ -36,6 +36,11 @@ import {
   markOfferDismissedInSession,
   markOfferShownInSession
 } from "@/lib/offerSessionState";
+import {
+  getOfferEngagementSignals,
+  markOfferScreenVisit,
+  markRewardAdCompleted
+} from "@/lib/offerEngagementState";
 import { detectCountryBySignals } from "@/lib/pricingRegion";
 import {
   openExternalLink,
@@ -1163,6 +1168,7 @@ export default function EnergyPage() {
 
       await refresh();
       await loadAdsState();
+      markRewardAdCompleted();
       setPostAdsBannerActive(true);
       void loadReferralProgram();
       if (historyOpen) {
@@ -1587,6 +1593,10 @@ export default function EnergyPage() {
   const paymentSectionBody = paymentMethodPresentation.body;
   const offerSessionKey = useMemo(() => getOfferSessionKey(), []);
 
+  useEffect(() => {
+    markOfferScreenVisit("energy");
+  }, []);
+
   const emitOfferEvent = useCallback(
     (offer: PaymentOfferResponse, eventType: string, surface: string) => {
       void recordOfferEvent({
@@ -1613,13 +1623,15 @@ export default function EnergyPage() {
 
   const loadOfferPlacements = useCallback(
     async (source: string) => {
+      const engagement = getOfferEngagementSignals();
       return getOfferPlacements({
         provider: selectedPaymentMethod,
         currency: offersCurrency,
         source,
         detected_country: detectedCountry !== "Unknown" ? detectedCountry : undefined,
         telegram_lang: telegramLanguage ?? undefined,
-        device_lang: deviceLanguage ?? undefined
+        device_lang: deviceLanguage ?? undefined,
+        ...engagement
       });
     },
     [detectedCountry, deviceLanguage, offersCurrency, selectedPaymentMethod, telegramLanguage]

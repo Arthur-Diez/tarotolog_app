@@ -30,6 +30,7 @@ import {
   type HoroscopeIssuesListResponse,
   type HoroscopeSubscriptionStatusResponse
 } from "@/lib/api";
+import { markOfferScreenVisit, markPaidActionAttempted } from "@/lib/offerEngagementState";
 
 type OneoffProductCode =
   | "horoscope_oneoff_personal_today"
@@ -896,6 +897,7 @@ export default function HoroscopePage() {
               className="mt-3"
               onClick={() => {
                 if (noticeAction === "energy") {
+                  markPaidActionAttempted();
                   navigate("/energy");
                 } else if (noticeAction === "profile") {
                   navigate("/profile");
@@ -1268,6 +1270,7 @@ export default function HoroscopePage() {
         }}
         onOpenEnergy={() => {
           setPersonalizeModal({ open: false, mode: "offer", purchasing: false });
+          markPaidActionAttempted();
           navigate("/energy");
         }}
         onConfirmPurchase={() => {
@@ -2448,3 +2451,6 @@ function normalizeIssueText(value: string | null): string | null {
     .trim();
   return normalized || null;
 }
+  useEffect(() => {
+    markOfferScreenVisit("horoscope");
+  }, []);

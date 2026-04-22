@@ -40,6 +40,12 @@ import {
   markOfferDismissedInSession,
   markOfferShownInSession
 } from "@/lib/offerSessionState";
+import {
+  getOfferEngagementSignals,
+  markOfferScreenVisit,
+  markPaidActionAttempted,
+  markRewardAdCompleted
+} from "@/lib/offerEngagementState";
 import type { TelegramUser } from "@/lib/telegram";
 
 interface HomeScreenProps {
@@ -463,6 +469,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
         setDailyCardActionError(`Для личной трактовки нужно ${dailyCardUnlockCost} ⚡. Откройте раздел энергии и пополните баланс.`);
+        markPaidActionAttempted();
         navigate("/energy");
         return;
       }
@@ -557,17 +564,24 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   );
 
   useEffect(() => {
+    markOfferScreenVisit("home");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const run = async () => {
       if (!profileData?.id) return;
       const telegramLang = profile?.user?.lang ?? undefined;
       const deviceLang = typeof navigator !== "undefined" ? navigator.language : undefined;
+      const engagement = getOfferEngagementSignals();
 
       try {
         const placements = await getOfferPlacements({
+          source: "home_screen",
           detected_country: detectedCountry ?? undefined,
           telegram_lang: telegramLang,
-          device_lang: deviceLang
+          device_lang: deviceLang,
+          ...engagement
         });
 
         if (cancelled) return;
@@ -909,7 +923,13 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
       </section>
 
       {!subscriptionLoading && !hasSubscription ? (
-        <DailyBonusCard hasSubscription={hasSubscription} onBonusClaimed={refresh} />
+        <DailyBonusCard
+          hasSubscription={hasSubscription}
+          onBonusClaimed={async () => {
+            markRewardAdCompleted();
+            await refresh();
+          }}
+        />
       ) : null}
 
       <section className="space-y-3">

@@ -25,6 +25,7 @@ import {
   markOfferDismissedInSession,
   markOfferShownInSession
 } from "@/lib/offerSessionState";
+import { getOfferEngagementSignals, markOfferScreenVisit } from "@/lib/offerEngagementState";
 import { normalizeWidgets } from "@/stores/profileState";
 import { TimezoneSelectorUnified } from "@/components/TimezoneSelectorUnified";
 import {
@@ -547,14 +548,21 @@ export default function ProfilePage() {
     : diag.effectiveLang;
 
   useEffect(() => {
+    markOfferScreenVisit("profile");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     const loadFirstPurchaseBannerOffer = async () => {
       try {
+        const engagement = getOfferEngagementSignals();
         const placements = await getOfferPlacements({
+          source: "profile_page",
           detected_country: suggestedCountry,
           telegram_lang: diag.tgLangCodeRaw ?? undefined,
-          device_lang: diag.navLangRaw ?? deviceLanguageFallback ?? undefined
+          device_lang: diag.navLangRaw ?? deviceLanguageFallback ?? undefined,
+          ...engagement
         });
 
         const firstPurchaseOffer = placements.profile_banner?.offer ?? null;
