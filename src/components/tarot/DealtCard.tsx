@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 
 import CardFaceImage from "@/components/tarot/CardFaceImage";
+import { faceUrlCandidates } from "@/lib/cardAsset";
 
 interface DealtCardProps {
   backSrc: string;
@@ -21,51 +23,84 @@ export default function DealtCard({
   className = "",
   onClick
 }: DealtCardProps) {
+  const faceCandidates = useMemo(() => faceUrlCandidates(deckId, faceName), [deckId, faceName]);
+  const [preloadedFaceSrc, setPreloadedFaceSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let cancelled = false;
+    setPreloadedFaceSrc(null);
+
+    const tryLoad = (index: number) => {
+      if (cancelled || index >= faceCandidates.length) return;
+      const src = faceCandidates[index];
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => {
+        if (!cancelled) setPreloadedFaceSrc(src);
+      };
+      image.onerror = () => {
+        tryLoad(index + 1);
+      };
+      image.src = src;
+
+      if (image.complete && image.naturalWidth > 0 && !cancelled) {
+        setPreloadedFaceSrc(src);
+      }
+    };
+
+    tryLoad(0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [faceCandidates]);
+
   const flipTransition = {
-    duration: isOpen ? 0.88 : 0.36,
-    ease: [0.22, 1, 0.36, 1]
+    duration: isOpen ? 1.04 : 0.4,
+    ease: [0.16, 1, 0.3, 1]
   } as const;
 
   const faceTransition = {
-    duration: isOpen ? 0.64 : 0.28,
-    ease: [0.2, 0.95, 0.3, 1]
+    duration: isOpen ? 0.8 : 0.3,
+    ease: [0.18, 0.96, 0.28, 1]
   } as const;
 
   const cardAnimate = isOpen
     ? reversed
       ? {
-          rotateY: [0, 188, 180],
-          rotateZ: [0, 2, -1.5],
+          rotateY: [0, 186, 180],
+          rotateZ: [0, 1.4, -0.9],
           y: [0, -3, 0],
-          scale: [1, 1.014, 1]
+          scale: [1, 1.01, 1]
         }
       : {
-          rotateY: [0, 196, 180],
-          rotateZ: [0, -2, 0],
-          y: [0, -6, 0],
-          scale: [1, 1.02, 1]
+          rotateY: [0, 190, 180],
+          rotateZ: [0, -1.4, 0],
+          y: [0, -5, 0],
+          scale: [1, 1.014, 1]
         }
     : { rotateY: 0, rotateZ: 0, x: 0, y: 0, scale: 1 };
 
   const faceAnimate = isOpen
     ? reversed
       ? {
-          rotateZ: [168, 186, 180],
-          scale: [0.985, 1.018, 1],
-          y: [-2, 1, 0],
+          rotateZ: [174, 184, 180],
+          scale: [0.992, 1.012, 1],
+          y: [-1, 0.5, 0],
           filter: [
-            "brightness(0.96) saturate(0.98)",
-            "brightness(1.08) saturate(1.04)",
+            "brightness(0.98) saturate(0.99)",
+            "brightness(1.05) saturate(1.03)",
             "brightness(1) saturate(1)"
           ]
         }
       : {
-          rotateZ: [-8, 2, 0],
-          scale: [0.99, 1.02, 1],
-          y: [-4, 1, 0],
+          rotateZ: [-4, 1, 0],
+          scale: [0.995, 1.014, 1],
+          y: [-2.5, 0.5, 0],
           filter: [
-            "brightness(0.98) saturate(0.98)",
-            "brightness(1.06) saturate(1.03)",
+            "brightness(0.99) saturate(0.99)",
+            "brightness(1.04) saturate(1.02)",
             "brightness(1) saturate(1)"
           ]
         }
@@ -79,23 +114,23 @@ export default function DealtCard({
   const faceGlowAnimate = isOpen
     ? reversed
       ? {
-          opacity: [0, 0.42, 0.1, 0],
-          scale: [0.9, 1.08, 1.02, 1],
+          opacity: [0, 0.22, 0.06, 0],
+          scale: [0.96, 1.04, 1.01, 1],
           filter: [
-            "blur(14px)",
-            "blur(18px)",
-            "blur(16px)",
-            "blur(14px)"
+            "blur(12px)",
+            "blur(15px)",
+            "blur(13px)",
+            "blur(12px)"
           ]
         }
       : {
-          opacity: [0, 0.32, 0.08, 0],
-          scale: [0.92, 1.05, 1.01, 1],
+          opacity: [0, 0.18, 0.05, 0],
+          scale: [0.97, 1.03, 1.01, 1],
           filter: [
-            "blur(12px)",
-            "blur(16px)",
+            "blur(10px)",
             "blur(14px)",
-            "blur(12px)"
+            "blur(12px)",
+            "blur(10px)"
           ]
         }
     : {
@@ -160,6 +195,7 @@ export default function DealtCard({
               <CardFaceImage
                 deckId={deckId}
                 cardName={faceName}
+                forcedSrc={preloadedFaceSrc ?? undefined}
                 alt=""
                 className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl"
                 draggable={false}
