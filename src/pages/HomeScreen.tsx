@@ -222,37 +222,49 @@ function clearStoredDailyCardUnlock() {
   window.sessionStorage.removeItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
 }
 
-function getHomeOfferContent(triggerType: string): { title: string; body: string; accent: string } {
+function getHomeOfferContent(
+  triggerType: string,
+  surface: "home_banner" | "home_popup"
+): { title: string; body: string; accent: string } {
   switch (triggerType) {
     case "personal":
       return {
-        title: "Для вас открыто персональное предложение",
-        body: "Сейчас доступен точечный оффер под ваш ритм и текущие сценарии. Его лучше открыть, пока предложение активно.",
+        title: surface === "home_popup" ? "Для вас открыт особый пакет" : "Доступно персональное предложение",
+        body:
+          surface === "home_popup"
+            ? "Сейчас для вас доступен пакет со скидкой и бонусной энергией. Можно перейти в энергию и забрать его, пока предложение активно."
+            : "Для вас уже открыт пакет на более выгодных условиях.",
         accent: "from-[#D7B98B] to-[#B78A57]"
       };
     case "zero_balance":
       return {
-        title: "Энергия закончилась",
-        body: "Баланс остановил платные сценарии. Откройте энергию и быстро верните доступ к трактовкам и прогнозам.",
+        title: surface === "home_popup" ? "Верните доступ к раскладам прямо сейчас" : "Энергия закончилась",
+        body:
+          surface === "home_popup"
+            ? "Энергия на нуле. Сейчас можно быстро пополнить запас на выгодных условиях и снова открыть трактовки, прогнозы и расклады."
+            : "Сейчас можно быстро вернуть доступ к сценариям.",
         accent: "from-[#F08A62] to-[#D8604B]"
       };
     case "low_energy":
       return {
-        title: "Запас лучше усилить заранее",
-        body: "Энергии осталось немного. Сейчас удобнее пополнить баланс, чем упереться в дефицит на следующем сценарии.",
+        title: "Лучше усилить запас заранее",
+        body: "Энергии осталось немного. Сейчас можно пополнить запас выгоднее и не прерывать сценарии позже.",
         accent: "from-[#E4BE7A] to-[#CFA974]"
       };
     case "comeback":
       return {
         title: "С возвращением",
-        body: "Хороший момент вернуться в личный ритм. Для вас уже открыт более выгодный пакет на пополнение запаса.",
+        body:
+          surface === "home_popup"
+            ? "Для вас уже открыт пакет со скидкой и бонусной энергией, чтобы быстро вернуться в личный ритм."
+            : "Для вас уже открыт пакет на более выгодных условиях.",
         accent: "from-[#B8A3D2] to-[#E7C9E8]"
       };
     case "first_purchase":
     default:
       return {
-        title: "Акция на первую покупку",
-        body: "Для первого входа в платный слой уже открыт бонусный оффер. Можно начать с меньшим барьером и усилить запас энергии.",
+        title: "Стартовый пакет уже ждёт вас",
+        body: "На первый пакет сейчас действуют лучшие условия: скидка и бонусная энергия уже ждут вас.",
         accent: "from-[#D7B98B] to-[#B78A57]"
       };
   }
@@ -567,7 +579,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
             ? {
                 offer: nextBannerOffer,
                 surface: "home_banner",
-                ...getHomeOfferContent(nextBannerOffer.trigger_type)
+                ...getHomeOfferContent(nextBannerOffer.trigger_type, "home_banner")
               }
             : null
         );
@@ -576,7 +588,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
             ? {
                 offer: nextPopupOffer,
                 surface: "home_popup",
-                ...getHomeOfferContent(nextPopupOffer.trigger_type)
+                ...getHomeOfferContent(nextPopupOffer.trigger_type, "home_popup")
               }
             : null
         );

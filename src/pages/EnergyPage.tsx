@@ -496,72 +496,72 @@ function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerP
     case "zero_balance":
       return {
         badge: "Энергия закончилась",
-        featuredSummary: "Быстро верните доступ к раскладам, трактовкам и персональным сценариям без лишней паузы.",
-        secondarySummary: "Быстро вернёт доступ к платным сценариям.",
+        featuredSummary: "Энергия на нуле. Сейчас можно быстро вернуть доступ к раскладам, трактовкам и прогнозам на более выгодных условиях.",
+        secondarySummary: "Вернёт доступ к раскладам и прогнозам без лишней паузы.",
         featuredCta: "Вернуть энергию",
         secondaryBadge: "Нулевой баланс"
       };
     case "low_energy":
       return {
         badge: "Низкий запас энергии",
-        featuredSummary: "Сейчас хороший момент усилить запас, чтобы спокойно продолжать расклады и личные сценарии без паузы.",
-        secondarySummary: "Поможет сохранить ритм и не прерываться на самом интересном месте.",
+        featuredSummary: "Энергии осталось немного. Сейчас можно пополнить запас выгоднее и не прерываться позже.",
+        secondarySummary: "Поможет сохранить ритм и не останавливаться на следующем сценарии.",
         featuredCta: "Усилить запас",
         secondaryBadge: "Мало энергии"
       };
     case "comeback":
       return {
         badge: "С возвращением",
-        featuredSummary: "Хороший момент вернуться и взять пакет на более выгодных условиях, пока предложение открыто для вас.",
-        secondarySummary: "Поможет быстро вернуться к раскладам, трактовкам и прогнозам.",
+        featuredSummary: "Для вас уже открыт пакет со скидкой и бонусной энергией, чтобы быстро вернуться в личный ритм.",
+        secondarySummary: "Позволит вернуться к раскладам и прогнозам на лучших условиях.",
         featuredCta: "Вернуться в ритм",
         secondaryBadge: "Возвращение"
       };
     case "exit_intent":
       return {
         badge: "Бонус перед выходом",
-        featuredSummary: "Небольшой бонус, чтобы войти в платный слой без лишнего барьера именно сейчас, пока интерес уже разогрет.",
-        secondarySummary: "Небольшой бонус, если хотите войти без лишнего барьера.",
+        featuredSummary: "Перед уходом для вас открыт пакет на лучших условиях. Можно забрать его сейчас и получить больше энергии.",
+        secondarySummary: "Позволит войти выгоднее, пока предложение ещё открыто.",
         featuredCta: "Забрать бонус",
         secondaryBadge: "Спецпредложение"
       };
     case "post_ads":
       return {
         badge: "После рекламного ритуала",
-        featuredSummary: "После задания можно усилить запас на более выгодных условиях и сразу открыть нужный сценарий.",
-        secondarySummary: "Хороший момент добавить энергии, пока бонус уже у вас на руках.",
+        featuredSummary: "После задания можно сразу взять пакет со скидкой и бонусной энергией и открыть больше сценариев.",
+        secondarySummary: "Хороший момент усилить запас, пока бонус уже у вас на руках.",
         featuredCta: "Усилить запас сейчас",
         secondaryBadge: "После ритуала"
       };
     case "vip":
       return {
         badge: "Для активного ритма",
-        featuredSummary: "Крупный запас для тех, кто регулярно открывает глубокие сценарии и хочет реже возвращаться к оплате.",
-        secondarySummary: "Оптимальный пакет для активного и длинного ритма использования.",
+        featuredSummary: "Большой пакет на лучших условиях для тех, кто часто открывает глубокие сценарии.",
+        secondarySummary: "Оптимальный запас для активного и длинного ритма использования.",
         featuredCta: "Открыть VIP-запас",
         secondaryBadge: "VIP"
       };
     case "personal":
       return {
         badge: "Персональное предложение",
-        featuredSummary: "Для вас открыт точечный пакет с более выгодным входом именно под текущий сценарий.",
-        secondarySummary: "Индивидуальное предложение, доступное вам сейчас.",
+        featuredSummary: "Для вас открыт персональный пакет со скидкой и бонусной энергией, доступный именно сейчас.",
+        secondarySummary: "Индивидуальное предложение, открытое только для вас.",
         featuredCta: "Открыть предложение",
         secondaryBadge: "Персонально"
       };
     case "manual":
       return {
         badge: "Особое предложение",
-        featuredSummary: "Сейчас для вас открыт специальный пакет с более выгодным входом в пополнение.",
-        secondarySummary: "Специальное предложение на текущий момент.",
+        featuredSummary: "Сейчас для вас открыт специальный пакет со скидкой и бонусной энергией.",
+        secondarySummary: "Специальное предложение, доступное ограниченное время.",
         featuredCta: "Открыть предложение",
         secondaryBadge: "Особое"
       };
     case "scheduled":
       return {
         badge: "Временная акция",
-        featuredSummary: "Ограниченное по времени предложение: можно усилить запас на более выгодных условиях, пока окно ещё открыто.",
-        secondarySummary: "Ограниченная по времени выгода на текущий период.",
+        featuredSummary: "Сейчас действует акция: можно взять больше энергии на лучших условиях, пока предложение активно.",
+        secondarySummary: "Ограниченная по времени акция на пополнение энергии.",
         featuredCta: "Открыть предложение",
         secondaryBadge: "Акция"
       };
@@ -2065,6 +2065,18 @@ export default function EnergyPage() {
                       <p className="max-w-[32rem] text-sm leading-6 text-[var(--text-secondary)]">
                         {getOfferTriggerPresentation(energyBannerOffer).featuredSummary}
                       </p>
+                      <div className="flex flex-wrap gap-2">
+                        {Number(energyBannerOffer.discount_percent || "0") > 0 ? (
+                          <span className="inline-flex rounded-full border border-[rgba(111,217,183,0.24)] bg-[rgba(111,217,183,0.1)] px-3 py-1 text-[12px] font-semibold text-[#BDF5D8]">
+                            -{Math.round(Number(energyBannerOffer.discount_percent || "0"))}% скидка
+                          </span>
+                        ) : null}
+                        {getOfferBonusPercent(energyBannerOffer) > 0 ? (
+                          <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]">
+                            +{getOfferBonusPercent(energyBannerOffer)}% энергии
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -2565,6 +2577,18 @@ export default function EnergyPage() {
                 <p className="text-sm leading-6 text-[var(--text-secondary)]">
                   {getOfferTriggerPresentation(exitIntentOffer).featuredSummary}
                 </p>
+                <div className="flex flex-wrap gap-2">
+                  {Number(exitIntentOffer.discount_percent || "0") > 0 ? (
+                    <span className="inline-flex rounded-full border border-[rgba(111,217,183,0.24)] bg-[rgba(111,217,183,0.1)] px-3 py-1 text-[12px] font-semibold text-[#BDF5D8]">
+                      -{Math.round(Number(exitIntentOffer.discount_percent || "0"))}% скидка
+                    </span>
+                  ) : null}
+                  {getOfferBonusPercent(exitIntentOffer) > 0 ? (
+                    <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]">
+                      +{getOfferBonusPercent(exitIntentOffer)}% энергии
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex flex-wrap items-end gap-2">
                   {getOfferTotalEnergy(exitIntentOffer) > exitIntentOffer.energy_amount ? (
                     <p className="text-sm text-[var(--text-tertiary)] line-through">{exitIntentOffer.energy_amount} ⚡</p>

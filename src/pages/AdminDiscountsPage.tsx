@@ -675,74 +675,92 @@ function getPreviewCopy(trigger: string) {
     case "personal":
       return {
         badge: "Персональное предложение",
-        title: "Для вас открыто точечное предложение",
-        body: "Этот оффер появляется не у всех. Он собран под ваш текущий ритм, вовлечённость и сценарии внутри приложения.",
+        title: "Для вас открыт особый пакет",
+        body: "Сейчас для пользователя открыт пакет со скидкой и бонусной энергией, доступный не всем и только ограниченное время.",
         cta: "Открыть предложение"
       };
     case "first_purchase":
       return {
         badge: "Акция на первую покупку",
-        title: "Стартовый оффер уже открыт",
-        body: "Более мягкий вход в платный слой: бонусная энергия и лучший старт без лишнего барьера на первом платеже.",
+        title: "Стартовый пакет уже ждёт вас",
+        body: "На первый пакет сейчас действуют лучшие условия: скидка и бонусная энергия уже ждут пользователя.",
         cta: "Открыть энергию"
       };
     case "zero_balance":
       return {
         badge: "Энергия закончилась",
-        title: "Быстро верните доступ к сценариям",
-        body: "Пользователь упёрся в ноль энергии и не может продолжить платные действия. Здесь оффер должен быть прямым и аварийно полезным.",
+        title: "Верните доступ к раскладам прямо сейчас",
+        body: "Энергия на нуле. Здесь пользователь должен сразу видеть, что можно быстро вернуть доступ к сценариям на выгодных условиях.",
         cta: "Пополнить сейчас"
       };
     case "low_energy":
       return {
         badge: "Низкий запас энергии",
         title: "Запас лучше усилить заранее",
-        body: "Это мягкое предупреждение: пользователь ещё может пользоваться продуктом, но скоро упрётся в дефицит.",
+        body: "Здесь нужен короткий и понятный оффер: запас снижается, а пополнить его сейчас можно выгоднее.",
         cta: "Усилить запас"
       };
     case "comeback":
       return {
         badge: "С возвращением",
-        title: "Хороший момент вернуться в ритуал",
-        body: "Такой оффер встречает после паузы и должен ощущаться как мягкое возвращение в продукт, а не как навязчивая распродажа.",
+        title: "Для вас открыт выгодный пакет",
+        body: "После паузы пользователь должен видеть, что для него уже открыт пакет со скидкой и бонусной энергией.",
         cta: "Вернуться в ритм"
       };
     case "exit_intent":
       return {
         badge: "Бонус перед выходом",
-        title: "Небольшой бонус перед уходом",
-        body: "Показывается только при выходе со страницы энергии. Его задача — мягко дожать пользователя, но не раздражать повтором.",
+        title: "Заберите бонус, пока предложение открыто",
+        body: "Перед уходом пользователь должен видеть, что сейчас можно войти выгоднее и получить больше энергии.",
         cta: "Забрать бонус"
       };
     case "post_ads":
       return {
         badge: "После рекламного ритуала",
-        title: "Можно усилить запас сразу после задания",
-        body: "Это тёплый upsell после рекламы: без popup, только спокойный banner с понятным переходом в платный слой.",
+        title: "Можно усилить запас ещё выгоднее",
+        body: "После задания пользователю стоит показать, что сейчас можно взять пакет со скидкой и бонусной энергией.",
         cta: "Усилить запас сейчас"
       };
     case "vip":
       return {
         badge: "VIP-предложение",
-        title: "Открыт усиленный запас энергии",
-        body: "Показывается активным пользователям как объёмный пакет без ощущения дешёвой распродажи.",
+        title: "Большой запас на лучших условиях",
+        body: "Активный пользователь должен видеть крупный пакет, который надолго закрывает вопрос с энергией.",
         cta: "Открыть VIP-запас"
       };
     case "scheduled":
       return {
         badge: "Временная акция",
-        title: "Ограниченное по времени предложение",
-        body: "Общая маркетинговая акция. Обычно живёт на странице энергии и иногда может поддерживаться мягким баннером.",
+        title: "Сейчас действуют лучшие условия",
+        body: "Пользователь должен видеть, что акция ограничена по времени и даёт более выгодный вход прямо сейчас.",
         cta: "Открыть предложение"
       };
     case "manual":
     default:
       return {
         badge: "Особое предложение",
-        title: "Ручной оффер",
-        body: "Служебный формат для точечных кампаний, который можно отдельно запустить и проверить в админке.",
+        title: "Для вас доступен выгодный пакет",
+        body: "Это специальное предложение со скидкой и бонусной энергией, включённое отдельно под текущий момент.",
         cta: "Открыть предложение"
       };
+  }
+}
+
+function getPreviewBenefits(trigger: string): string[] {
+  switch (trigger) {
+    case "vip":
+      return ["+25% энергии"];
+    case "scheduled":
+    case "manual":
+    case "personal":
+    case "first_purchase":
+    case "zero_balance":
+    case "low_energy":
+    case "comeback":
+    case "exit_intent":
+    case "post_ads":
+    default:
+      return ["-25% скидка", "+25% энергии"];
   }
 }
 
@@ -1058,6 +1076,10 @@ export default function AdminDiscountsPage() {
   );
   const previewCopy = useMemo(
     () => getPreviewCopy(previewTriggerType),
+    [previewTriggerType]
+  );
+  const previewBenefits = useMemo(
+    () => getPreviewBenefits(previewTriggerType),
     [previewTriggerType]
   );
 
@@ -1682,6 +1704,16 @@ export default function AdminDiscountsPage() {
                               {previewCopy.title}
                             </h3>
                             <p className="text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {previewBenefits.map((benefit) => (
+                                <span
+                                  key={benefit}
+                                  className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]"
+                                >
+                                  {benefit}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                           <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--text-secondary)]">
                             ×
@@ -1713,6 +1745,16 @@ export default function AdminDiscountsPage() {
                               Премиальный запас
                             </h3>
                             <p className="text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {previewBenefits.map((benefit) => (
+                                <span
+                                  key={benefit}
+                                  className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]"
+                                >
+                                  {benefit}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                           <div className="min-w-[112px] text-left sm:text-right">
                             <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">75 ⚡</p>
@@ -1740,6 +1782,16 @@ export default function AdminDiscountsPage() {
                             <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Предложение</p>
                             <h3 className="text-[1.05rem] font-semibold text-[var(--text-primary)]">{previewCopy.title}</h3>
                             <p className="max-w-[34rem] text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {previewBenefits.map((benefit) => (
+                                <span
+                                  key={benefit}
+                                  className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]"
+                                >
+                                  {benefit}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                           <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--text-secondary)]">
                             ×

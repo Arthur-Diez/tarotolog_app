@@ -43,19 +43,33 @@ function getProfileOfferContent(triggerType?: string) {
     case "vip":
       return {
         eyebrow: "VIP-предложение",
-        title: "Открыт усиленный запас энергии",
-        body: "Для вашего ритма доступен более сильный пакет, чтобы реже возвращаться к оплате и свободнее пользоваться глубокими сценариями.",
+        title: "Для вас открыт крупный пакет",
+        body: "Сейчас можно взять большой запас энергии на более выгодных условиях и надолго закрыть вопрос с пополнением.",
         cta: "Открыть энергию"
       };
     case "first_purchase":
     default:
       return {
         eyebrow: "Акция на первую покупку",
-        title: "Стартовый оффер уже открыт",
-        body: "Для первой покупки уже доступен более мягкий вход в платный слой. Можно перейти к энергии и выбрать лучший стартовый пакет.",
+        title: "Стартовый пакет уже ждёт вас",
+        body: "Для первой покупки уже открыты лучшие условия: скидка и бонусная энергия доступны прямо сейчас.",
         cta: "Открыть энергию"
       };
   }
+}
+
+function getProfileOfferDiscountPercent(offer: PaymentOfferResponse): number {
+  const raw = Number(offer.discount_percent || "0");
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+}
+
+function getProfileOfferBonusPercent(offer: PaymentOfferResponse): number {
+  const explicit = Number(offer.bonus_percent || "0");
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return Math.round(explicit);
+  }
+  if (offer.energy_amount <= 0 || offer.bonus_energy <= 0) return 0;
+  return Math.round((offer.bonus_energy / offer.energy_amount) * 100);
 }
 
 interface PersonalFormState {
@@ -1007,6 +1021,18 @@ export default function ProfilePage() {
                     <p className="text-sm leading-6 text-[var(--text-secondary)]">
                       {offerCopy.body}
                     </p>
+                    <div className="flex flex-wrap gap-2">
+                      {getProfileOfferDiscountPercent(firstPurchaseBannerOffer) > 0 ? (
+                        <span className="inline-flex rounded-full border border-[rgba(111,217,183,0.24)] bg-[rgba(111,217,183,0.1)] px-3 py-1 text-[12px] font-semibold text-[#BDF5D8]">
+                          -{getProfileOfferDiscountPercent(firstPurchaseBannerOffer)}% скидка
+                        </span>
+                      ) : null}
+                      {getProfileOfferBonusPercent(firstPurchaseBannerOffer) > 0 ? (
+                        <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]">
+                          +{getProfileOfferBonusPercent(firstPurchaseBannerOffer)}% энергии
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <button
                     type="button"
