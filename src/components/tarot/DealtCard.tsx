@@ -128,49 +128,51 @@ export default function DealtCard({
             transform: "translateZ(0px)"
           }}
         />
-        <div
-          className="absolute inset-0 [backface-visibility:hidden]"
-          style={{
-            transform: "rotateY(180deg) translateZ(0px)",
-            transformStyle: "preserve-3d",
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden"
-          }}
-        >
-          <motion.div
-            className="absolute inset-0"
-            animate={faceAnimate}
-            transition={{
-              ...faceTransition,
-              delay: isOpen ? 0.08 : 0
+        {isOpen ? (
+          <div
+            className="absolute inset-0 [backface-visibility:hidden]"
+            style={{
+              transform: "rotateY(180deg) translateZ(0px)",
+              transformStyle: "preserve-3d",
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden"
             }}
-            style={{ willChange: "transform, filter" }}
           >
             <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-[6%] rounded-[22px] bg-[radial-gradient(circle_at_50%_38%,rgba(245,216,154,0.44),rgba(245,216,154,0)_68%)] mix-blend-screen"
-              animate={faceGlowAnimate}
+              className="absolute inset-0"
+              animate={faceAnimate}
               transition={{
                 ...faceTransition,
-                delay: isOpen ? 0.1 : 0
+                delay: 0.08
               }}
-              style={{ willChange: "transform, opacity, filter" }}
-            />
-            <CardFaceImage
-              deckId={deckId}
-              cardName={faceName}
-              alt=""
-              className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl"
-              draggable={false}
-              style={{
-                backfaceVisibility: "hidden",
-                WebkitBackfaceVisibility: "hidden",
-                transform: "translateZ(0px)",
-                willChange: "transform"
-              }}
-            />
-          </motion.div>
-        </div>
+              style={{ willChange: "transform, filter" }}
+            >
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-[6%] rounded-[22px] bg-[radial-gradient(circle_at_50%_38%,rgba(245,216,154,0.44),rgba(245,216,154,0)_68%)] mix-blend-screen"
+                animate={faceGlowAnimate}
+                transition={{
+                  ...faceTransition,
+                  delay: 0.1
+                }}
+                style={{ willChange: "transform, opacity, filter" }}
+              />
+              <CardFaceImage
+                deckId={deckId}
+                cardName={faceName}
+                alt=""
+                className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl"
+                draggable={false}
+                style={{
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "translateZ(0px)",
+                  willChange: "transform"
+                }}
+              />
+            </motion.div>
+          </div>
+        ) : null}
       </motion.div>
     </div>
   );
