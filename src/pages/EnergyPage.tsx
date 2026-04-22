@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Copy, Loader2, RefreshCw, Share2, Sparkles, Users, X, Zap } from "lucide-react";
+import { useBlocker } from "react-router-dom";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
   createTelegramStarsPayment,
   createRobokassaPayment,
   getEnergyAdsState,
+  getOfferPlacements,
   recordOfferEvent,
   getPaymentOffers,
   getReferralProgram,
@@ -27,7 +29,13 @@ import {
   type TelegramStarsPaymentStatusResponse,
   type WalletHistoryItemResponse
 } from "@/lib/api";
-import { getOfferSessionKey, hasOfferBeenShownInSession, markOfferShownInSession } from "@/lib/offerSessionState";
+import {
+  getOfferSessionKey,
+  hasOfferBeenDismissedInSession,
+  hasOfferBeenShownInSession,
+  markOfferDismissedInSession,
+  markOfferShownInSession
+} from "@/lib/offerSessionState";
 import { detectCountryBySignals } from "@/lib/pricingRegion";
 import {
   openExternalLink,
@@ -697,6 +705,10 @@ export default function EnergyPage() {
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => readStoredCurrency() || "RUB");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("telegram_stars");
   const [paymentOffers, setPaymentOffers] = useState<PaymentOfferResponse[]>([]);
+  const [energyBannerOffer, setEnergyBannerOffer] = useState<PaymentOfferResponse | null>(null);
+  const [postAdsBannerActive, setPostAdsBannerActive] = useState(false);
+  const [exitIntentOffer, setExitIntentOffer] = useState<PaymentOfferResponse | null>(null);
+  const [showExitIntentModal, setShowExitIntentModal] = useState(false);
   const [offersLoading, setOffersLoading] = useState(false);
   const [offersError, setOffersError] = useState<string | null>(null);
   const [offerUsageMap, setOfferUsageMap] = useState<Record<string, string | null>>({});
@@ -736,6 +748,8 @@ export default function EnergyPage() {
   const handledDismissedUsageRef = useRef<Set<string>>(new Set());
   const offerExpiryInFlightRef = useRef(false);
   const activeOfferUsageIdsRef = useRef<Set<string>>(new Set());
+  const exitIntentPlacementsInFlightRef = useRef(false);
+  const allowBlockedNavigationRef = useRef(false);
 
   const telegramLanguage = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -754,6 +768,7 @@ export default function EnergyPage() {
       }),
     [deviceLanguage, ipCountry, telegramLanguage]
   );
+  const offersCurrency = selectedPaymentMethod === "telegram_stars" ? "XTR" : "RUB";
 
   const referralShareCopy = useMemo(
     () => REFERRAL_SHARE_COPY[referralShareLanguage],
@@ -955,7 +970,6 @@ export default function EnergyPage() {
   );
 
   const loadPaymentOffers = useCallback(async () => {
-    const offersCurrency = selectedPaymentMethod === "telegram_stars" ? "XTR" : "RUB";
     try {
       setOffersLoading(true);
       const response = await getPaymentOffers({
@@ -999,7 +1013,7 @@ export default function EnergyPage() {
     } finally {
       setOffersLoading(false);
     }
-  }, [detectedCountry, deviceLanguage, selectedCurrency, selectedPaymentMethod, telegramLanguage]);
+  }, [detectedCountry, deviceLanguage, offersCurrency, selectedCurrency, selectedPaymentMethod, telegramLanguage]);
 
   useEffect(() => {
     void loadPaymentOffers();
@@ -1148,6 +1162,7 @@ export default function EnergyPage() {
 
       await refresh();
       await loadAdsState();
+      setPostAdsBannerActive(true);
       void loadReferralProgram();
       if (historyOpen) {
         void loadWalletHistory({ reset: true });
@@ -1595,6 +1610,20 @@ export default function EnergyPage() {
     [offerSessionKey, selectedPaymentMethod]
   );
 
+  const loadOfferPlacements = useCallback(
+    async (source: string) => {
+      return getOfferPlacements({
+        provider: selectedPaymentMethod,
+        currency: offersCurrency,
+        source,
+        detected_country: detectedCountry !== "Unknown" ? detectedCountry : undefined,
+        telegram_lang: telegramLanguage ?? undefined,
+        device_lang: deviceLanguage ?? undefined
+      });
+    },
+    [detectedCountry, deviceLanguage, offersCurrency, selectedPaymentMethod, telegramLanguage]
+  );
+
   useEffect(() => {
     if (!featuredOffer) return;
     if (hasOfferBeenShownInSession(featuredOffer.trigger_type, "energy_featured", featuredOffer.offer_id)) return;
@@ -1610,6 +1639,158 @@ export default function EnergyPage() {
       emitOfferEvent(offer, "shown", "energy_list");
     });
   }, [emitOfferEvent, secondaryOffers]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncEnergyBanner = async () => {
+      if (!postAdsBannerActive) {
+        if (!cancelled) {
+          setEnergyBannerOffer(null);
+        }
+        return;
+      }
+
+      try {
+        const placements = await loadOfferPlacements("post_ads_reward");
+        const nextOffer = placements.energy_banner?.offer ?? null;
+        if (!nextOffer) {
+          if (!cancelled) {
+            setEnergyBannerOffer(null);
+          }
+          return;
+        }
+
+        if (
+          hasOfferBeenDismissedInSession(nextOffer.trigger_type, "energy_banner", nextOffer.offer_id)
+        ) {
+          if (!cancelled) {
+            setEnergyBannerOffer(null);
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setEnergyBannerOffer(nextOffer);
+        }
+      } catch {
+        if (!cancelled) {
+          setEnergyBannerOffer(null);
+        }
+      }
+    };
+
+    void syncEnergyBanner();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadOfferPlacements, postAdsBannerActive]);
+
+  useEffect(() => {
+    if (!energyBannerOffer) return;
+    if (hasOfferBeenShownInSession(energyBannerOffer.trigger_type, "energy_banner", energyBannerOffer.offer_id)) {
+      return;
+    }
+    markOfferShownInSession(energyBannerOffer.trigger_type, "energy_banner", energyBannerOffer.offer_id);
+    emitOfferEvent(energyBannerOffer, "shown", "energy_banner");
+  }, [emitOfferEvent, energyBannerOffer]);
+
+  const handleDismissEnergyBanner = useCallback(() => {
+    if (!energyBannerOffer) return;
+    markOfferDismissedInSession(energyBannerOffer.trigger_type, "energy_banner", energyBannerOffer.offer_id);
+    emitOfferEvent(energyBannerOffer, "dismissed", "energy_banner");
+    setEnergyBannerOffer(null);
+    setPostAdsBannerActive(false);
+  }, [emitOfferEvent, energyBannerOffer]);
+
+  async function handleOpenBannerOffer(
+    offer: PaymentOfferResponse,
+    surface: "energy_banner" | "exit_intent_modal"
+  ) {
+    emitOfferEvent(offer, "clicked_primary", surface);
+    if (surface === "exit_intent_modal") {
+      setShowExitIntentModal(false);
+      setExitIntentOffer(null);
+      if (exitIntentBlocker.state === "blocked") {
+        exitIntentBlocker.reset();
+      }
+    }
+    if (offer.provider === "telegram_stars") {
+      await handleBuyStarsOffer(offer);
+    } else {
+      await handleBuyRobokassaOffer(offer);
+    }
+  }
+
+  const shouldBlockExitIntent = useCallback(
+    ({ currentLocation, nextLocation }: { currentLocation: { pathname: string }; nextLocation: { pathname: string } }) => {
+      if (allowBlockedNavigationRef.current) return false;
+      if (!nextLocation || currentLocation.pathname === nextLocation.pathname) return false;
+      if (creatingProductCode || checkingStatus || offersLoading) return false;
+      if (paymentOffers.length === 0) return false;
+      if (showExitIntentModal) return false;
+      return true;
+    },
+    [checkingStatus, creatingProductCode, offersLoading, paymentOffers.length, showExitIntentModal]
+  );
+
+  const exitIntentBlocker = useBlocker(shouldBlockExitIntent);
+
+  useEffect(() => {
+    if (exitIntentBlocker.state !== "blocked") return;
+    if (exitIntentPlacementsInFlightRef.current) return;
+    exitIntentPlacementsInFlightRef.current = true;
+
+    void (async () => {
+      try {
+        const placements = await loadOfferPlacements("energy_exit_intent");
+        const nextOffer = placements.exit_intent_modal?.offer ?? null;
+        if (
+          !nextOffer ||
+          hasOfferBeenDismissedInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)
+        ) {
+          allowBlockedNavigationRef.current = true;
+          exitIntentBlocker.proceed();
+          return;
+        }
+
+        setExitIntentOffer(nextOffer);
+        setShowExitIntentModal(true);
+        if (!hasOfferBeenShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)) {
+          markOfferShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id);
+          emitOfferEvent(nextOffer, "shown", "exit_intent_modal");
+        }
+      } catch {
+        allowBlockedNavigationRef.current = true;
+        exitIntentBlocker.proceed();
+      } finally {
+        exitIntentPlacementsInFlightRef.current = false;
+      }
+    })();
+  }, [emitOfferEvent, exitIntentBlocker, loadOfferPlacements]);
+
+  const handleDismissExitIntent = useCallback(() => {
+    if (exitIntentOffer) {
+      markOfferDismissedInSession("exit_intent", "exit_intent_modal", exitIntentOffer.offer_id);
+      void recordOfferEvent({
+        trigger_type: "exit_intent",
+        surface: "exit_intent_modal",
+        offer_id: exitIntentOffer.offer_id,
+        rule_id: exitIntentOffer.rule_id,
+        event_type: "dismissed",
+        session_key: offerSessionKey,
+        dismissed_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        context: { source: "energy_exit_intent" }
+      }).catch(() => {});
+    }
+    setShowExitIntentModal(false);
+    setExitIntentOffer(null);
+    allowBlockedNavigationRef.current = true;
+    if (exitIntentBlocker.state === "blocked") {
+      exitIntentBlocker.proceed();
+    }
+  }, [exitIntentBlocker, exitIntentOffer, offerSessionKey]);
 
   return (
     <>
@@ -1837,6 +2018,61 @@ export default function EnergyPage() {
                   Для пользователей из России
                 </button>
               </div>
+
+              {energyBannerOffer ? (
+                <div className="rounded-[24px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(45,36,54,0.96),rgba(24,18,30,0.98))] p-4 shadow-[0_16px_36px_rgba(0,0,0,0.24)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.22)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
+                        {getOfferTriggerPresentation(energyBannerOffer).badge || "Предложение"}
+                      </span>
+                      <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                        {getOfferPositioning(energyBannerOffer).displayName}
+                      </h3>
+                      <p className="max-w-[32rem] text-sm leading-6 text-[var(--text-secondary)]">
+                        {getOfferTriggerPresentation(energyBannerOffer).featuredSummary}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+                      onClick={handleDismissEnergyBanner}
+                      aria-label="Закрыть предложение"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-end gap-2">
+                        {getOfferTotalEnergy(energyBannerOffer) > energyBannerOffer.energy_amount ? (
+                          <p className="text-sm text-[var(--text-tertiary)] line-through">
+                            {energyBannerOffer.energy_amount} ⚡
+                          </p>
+                        ) : null}
+                        <p className="text-2xl font-semibold text-[var(--text-primary)]">
+                          {getOfferTotalEnergy(energyBannerOffer)} ⚡
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold text-[var(--accent-gold)]">
+                        {formatOfferPrice(energyBannerOffer, selectedCurrency)}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      className="h-11 rounded-full border-[rgba(215,185,139,0.22)] bg-[rgba(255,255,255,0.04)] px-5 text-[var(--text-primary)]"
+                      disabled={Boolean(creatingProductCode) || checkingStatus}
+                      onClick={() => {
+                        void handleOpenBannerOffer(energyBannerOffer, "energy_banner");
+                      }}
+                    >
+                      {getOfferTriggerPresentation(energyBannerOffer).featuredCta || paymentMethodPresentation.secondaryButton}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               {offersLoading ? <div className="h-28 animate-pulse rounded-[24px] bg-white/10" /> : null}
               {offersError ? (
@@ -2276,6 +2512,59 @@ export default function EnergyPage() {
               </Button>
               <Button className="flex-1" onClick={handleReferralShareConfirm}>
                 {referralShareCopy.confirmText}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showExitIntentModal && exitIntentOffer ? (
+        <div className="fixed inset-0 z-[85] flex items-end justify-center bg-[rgba(7,6,10,0.8)] px-4 pb-24 pt-12 backdrop-blur-sm sm:items-center sm:pb-6">
+          <div className="w-full max-w-md rounded-[30px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(42,34,49,0.98),rgba(19,14,24,0.98))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-3">
+                <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
+                  {getOfferTriggerPresentation(exitIntentOffer).badge || "Предложение"}
+                </span>
+                <h3 className="text-[1.4rem] font-semibold leading-tight text-[var(--text-primary)]">
+                  {getOfferPositioning(exitIntentOffer).displayName}
+                </h3>
+                <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                  {getOfferTriggerPresentation(exitIntentOffer).featuredSummary}
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  {getOfferTotalEnergy(exitIntentOffer) > exitIntentOffer.energy_amount ? (
+                    <p className="text-sm text-[var(--text-tertiary)] line-through">{exitIntentOffer.energy_amount} ⚡</p>
+                  ) : null}
+                  <p className="text-2xl font-semibold text-[var(--text-primary)]">
+                    {getOfferTotalEnergy(exitIntentOffer)} ⚡
+                  </p>
+                  <p className="text-xl font-semibold text-[var(--accent-gold)]">
+                    {formatOfferPrice(exitIntentOffer, selectedCurrency)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+                onClick={handleDismissExitIntent}
+                aria-label="Закрыть предложение"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  void handleOpenBannerOffer(exitIntentOffer, "exit_intent_modal");
+                }}
+              >
+                {getOfferTriggerPresentation(exitIntentOffer).featuredCta || "Забрать бонус"}
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={handleDismissExitIntent}>
+                Уйти
               </Button>
             </div>
           </div>

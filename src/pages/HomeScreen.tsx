@@ -210,6 +210,12 @@ function clearStoredDailyCardUnlock() {
 
 function getHomeOfferContent(triggerType: string): { title: string; body: string; accent: string } {
   switch (triggerType) {
+    case "personal":
+      return {
+        title: "Для вас открыто персональное предложение",
+        body: "Сейчас доступен точечный оффер под ваш ритм и текущие сценарии. Его лучше открыть, пока предложение активно.",
+        accent: "from-[#D7B98B] to-[#B78A57]"
+      };
     case "zero_balance":
       return {
         title: "Энергия закончилась",
@@ -221,6 +227,12 @@ function getHomeOfferContent(triggerType: string): { title: string; body: string
         title: "Запас лучше усилить заранее",
         body: "Энергии осталось немного. Сейчас удобнее пополнить баланс, чем упереться в дефицит на следующем сценарии.",
         accent: "from-[#E4BE7A] to-[#CFA974]"
+      };
+    case "comeback":
+      return {
+        title: "С возвращением",
+        body: "Хороший момент вернуться в личный ритм. Для вас уже открыт более мягкий оффер на пополнение запаса.",
+        accent: "from-[#B8A3D2] to-[#E7C9E8]"
       };
     case "first_purchase":
     default:
@@ -601,10 +613,18 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
 
   const handleHomeOfferDismiss = useCallback(async (banner: HomeOfferBanner) => {
     markOfferDismissedInSession(banner.offer.trigger_type, banner.surface, banner.offer.offer_id);
-    const dismissedUntil =
-      banner.surface === "home_popup"
-        ? new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
-        : null;
+    let dismissedUntil: string | null = null;
+    if (banner.surface === "home_popup") {
+      if (banner.offer.trigger_type === "personal") {
+        dismissedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      } else if (banner.offer.trigger_type === "comeback") {
+        dismissedUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      } else if (banner.offer.trigger_type === "zero_balance") {
+        dismissedUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+      }
+    } else if (banner.surface === "home_banner" && banner.offer.trigger_type === "low_energy") {
+      dismissedUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+    }
     void recordOfferEvent({
       trigger_type: banner.offer.trigger_type,
       surface: banner.surface,

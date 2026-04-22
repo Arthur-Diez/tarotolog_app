@@ -52,7 +52,7 @@ import {
 
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 
-type AdminTab = "dashboard" | "rules" | "pricing" | "personal" | "tests" | "logs";
+type AdminTab = "dashboard" | "rules" | "preview" | "pricing" | "personal" | "tests" | "logs";
 
 type RuleDraft = {
   id?: string;
@@ -112,6 +112,7 @@ const DEFAULT_RULE_DRAFT: RuleDraft = {
 const TAB_ITEMS: Array<{ id: AdminTab; label: string; icon: typeof LayoutDashboard }> = [
   { id: "dashboard", label: "Обзор", icon: LayoutDashboard },
   { id: "rules", label: "Акции", icon: BadgePercent },
+  { id: "preview", label: "Превью", icon: Eye },
   { id: "pricing", label: "Тиры цен", icon: Globe2 },
   { id: "personal", label: "Персональные", icon: Users },
   { id: "tests", label: "Тесты", icon: FlaskConical },
@@ -638,6 +639,131 @@ function previewCta(draft: RuleDraft): string {
   return "Открыть предложение";
 }
 
+type OfferPreviewSurface = "home_popup" | "home_banner" | "profile_banner" | "energy_banner" | "exit_intent_modal" | "energy_featured";
+
+function triggerPreviewLabel(trigger: string): string {
+  return TRIGGER_OPTIONS.find((item) => item.value === trigger)?.label ?? trigger;
+}
+
+function getPreviewSurfacesForTrigger(trigger: string): OfferPreviewSurface[] {
+  switch (trigger) {
+    case "personal":
+      return ["home_popup", "energy_featured"];
+    case "first_purchase":
+      return ["home_banner", "profile_banner", "energy_featured"];
+    case "zero_balance":
+      return ["home_popup", "energy_featured"];
+    case "low_energy":
+      return ["home_banner", "energy_featured"];
+    case "comeback":
+      return ["home_popup", "energy_featured"];
+    case "exit_intent":
+      return ["exit_intent_modal", "energy_featured"];
+    case "post_ads":
+      return ["energy_banner", "energy_featured"];
+    case "vip":
+      return ["profile_banner", "energy_featured"];
+    case "scheduled":
+    case "manual":
+    default:
+      return ["energy_featured"];
+  }
+}
+
+function getPreviewCopy(trigger: string) {
+  switch (trigger) {
+    case "personal":
+      return {
+        badge: "Персональное предложение",
+        title: "Для вас открыто точечное предложение",
+        body: "Этот оффер появляется не у всех. Он собран под ваш текущий ритм, вовлечённость и сценарии внутри приложения.",
+        cta: "Открыть предложение"
+      };
+    case "first_purchase":
+      return {
+        badge: "Акция на первую покупку",
+        title: "Стартовый оффер уже открыт",
+        body: "Более мягкий вход в платный слой: бонусная энергия и лучший старт без лишнего барьера на первом платеже.",
+        cta: "Открыть энергию"
+      };
+    case "zero_balance":
+      return {
+        badge: "Энергия закончилась",
+        title: "Быстро верните доступ к сценариям",
+        body: "Пользователь упёрся в ноль энергии и не может продолжить платные действия. Здесь оффер должен быть прямым и аварийно полезным.",
+        cta: "Пополнить сейчас"
+      };
+    case "low_energy":
+      return {
+        badge: "Низкий запас энергии",
+        title: "Запас лучше усилить заранее",
+        body: "Это мягкое предупреждение: пользователь ещё может пользоваться продуктом, но скоро упрётся в дефицит.",
+        cta: "Усилить запас"
+      };
+    case "comeback":
+      return {
+        badge: "С возвращением",
+        title: "Хороший момент вернуться в ритуал",
+        body: "Такой оффер встречает после паузы и должен ощущаться как мягкое возвращение в продукт, а не как навязчивая распродажа.",
+        cta: "Вернуться в ритм"
+      };
+    case "exit_intent":
+      return {
+        badge: "Бонус перед выходом",
+        title: "Небольшой бонус перед уходом",
+        body: "Показывается только при выходе со страницы энергии. Его задача — мягко дожать пользователя, но не раздражать повтором.",
+        cta: "Забрать бонус"
+      };
+    case "post_ads":
+      return {
+        badge: "После рекламного ритуала",
+        title: "Можно усилить запас сразу после задания",
+        body: "Это тёплый upsell после рекламы: без popup, только спокойный banner с понятным переходом в платный слой.",
+        cta: "Усилить запас сейчас"
+      };
+    case "vip":
+      return {
+        badge: "VIP-предложение",
+        title: "Открыт усиленный запас энергии",
+        body: "Показывается активным пользователям как объёмный пакет без ощущения дешёвой распродажи.",
+        cta: "Открыть VIP-запас"
+      };
+    case "scheduled":
+      return {
+        badge: "Временная акция",
+        title: "Ограниченное по времени предложение",
+        body: "Общая маркетинговая акция. Обычно живёт на странице энергии и иногда может поддерживаться мягким баннером.",
+        cta: "Открыть предложение"
+      };
+    case "manual":
+    default:
+      return {
+        badge: "Особое предложение",
+        title: "Ручной оффер",
+        body: "Служебный формат для точечных кампаний, который можно отдельно запустить и проверить в админке.",
+        cta: "Открыть предложение"
+      };
+  }
+}
+
+function surfacePreviewLabel(surface: OfferPreviewSurface): string {
+  switch (surface) {
+    case "home_popup":
+      return "Главная · Popup";
+    case "home_banner":
+      return "Главная · Banner";
+    case "profile_banner":
+      return "Профиль · Banner";
+    case "energy_banner":
+      return "Энергия · Banner";
+    case "exit_intent_modal":
+      return "Энергия · Exit intent modal";
+    case "energy_featured":
+    default:
+      return "Энергия · Featured offer";
+  }
+}
+
 function pricingTierTone(tier: "A" | "B" | "C"): string {
   if (tier === "A") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
   if (tier === "B") return "border-sky-300/25 bg-sky-400/10 text-sky-100";
@@ -715,6 +841,7 @@ export default function AdminDiscountsPage() {
   const [debugData, setDebugData] = useState<AdminUserOfferDebugResponse | null>(null);
   const [resolveData, setResolveData] = useState<DiscountResolveDebugResponse | null>(null);
   const [debugUsages, setDebugUsages] = useState<Record<string, unknown>[]>([]);
+  const [previewTriggerType, setPreviewTriggerType] = useState<string>("first_purchase");
 
   const strictAdminByProfile = Boolean(profile?.user?.is_admin) || profile?.user?.id === ADMIN_USER_ID;
 
@@ -925,6 +1052,14 @@ export default function AdminDiscountsPage() {
   }, [pricingMatrix?.items]);
 
   const previewDraft = useMemo(() => normalizeDraft(ruleDraft), [ruleDraft]);
+  const previewSurfaces = useMemo(
+    () => getPreviewSurfacesForTrigger(previewTriggerType),
+    [previewTriggerType]
+  );
+  const previewCopy = useMemo(
+    () => getPreviewCopy(previewTriggerType),
+    [previewTriggerType]
+  );
 
   const applyQuickCampaign = useCallback(
     async (patch: Partial<RuleDraft>, mode: "prepare" | "launch") => {
@@ -1472,6 +1607,157 @@ export default function AdminDiscountsPage() {
               >
                 Обновить порядок
               </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === "preview" ? (
+        <div className="space-y-4">
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Предпросмотр popup и баннеров</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Здесь можно посмотреть, как разные trigger-сценарии выглядят для пользователя на главной, в профиле и на странице энергии.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--text-secondary)]">
+                <Eye className="h-3.5 w-3.5" />
+                Preview без реального показа пользователям
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Выберите trigger</p>
+                <div className="grid gap-2">
+                  {TRIGGER_OPTIONS.map((option) => {
+                    const active = previewTriggerType === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPreviewTriggerType(option.value)}
+                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                          active
+                            ? "border-[var(--accent-pink)]/45 bg-[var(--accent-pink)]/12 text-[var(--text-primary)]"
+                            : "border-white/10 bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Что увидит пользователь</p>
+                  <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{triggerPreviewLabel(previewTriggerType)}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {previewSurfaces.map((surface) => (
+                  <div
+                    key={`${previewTriggerType}:${surface}`}
+                    className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(34,27,41,0.92),rgba(17,13,22,0.96))] p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{surfacePreviewLabel(surface)}</p>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-[var(--text-secondary)]">
+                        {surface.includes("popup") || surface.includes("modal") ? "Overlay" : "Inline"}
+                      </span>
+                    </div>
+
+                    {surface === "home_popup" || surface === "exit_intent_modal" ? (
+                      <div className="rounded-[28px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(42,34,49,0.98),rgba(19,14,24,0.98))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-3">
+                            <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
+                              {previewCopy.badge}
+                            </span>
+                            <h3 className="text-[1.35rem] font-semibold leading-tight text-[var(--text-primary)]">
+                              {previewCopy.title}
+                            </h3>
+                            <p className="text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                          </div>
+                          <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--text-secondary)]">
+                            ×
+                          </div>
+                        </div>
+                        <div className="mt-5 flex gap-3">
+                          <button
+                            type="button"
+                            className="flex-1 rounded-full bg-[linear-gradient(180deg,#E4C48C,#CFA463)] px-4 py-3 text-sm font-semibold text-[#24170F]"
+                          >
+                            {previewCopy.cta}
+                          </button>
+                          <button
+                            type="button"
+                            className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-[var(--text-primary)]"
+                          >
+                            Позже
+                          </button>
+                        </div>
+                      </div>
+                    ) : surface === "energy_featured" ? (
+                      <div className="rounded-[28px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(27,21,33,0.98))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div className="space-y-3">
+                            <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
+                              {previewCopy.badge}
+                            </span>
+                            <h3 className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">
+                              Премиальный запас
+                            </h3>
+                            <p className="text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                          </div>
+                          <div className="min-w-[112px] text-left sm:text-right">
+                            <p className="text-[2rem] font-semibold leading-none text-[var(--text-primary)]">75 ⚡</p>
+                            <p className="text-2xl font-semibold text-[var(--accent-gold)]">
+                              {previewTriggerType === "first_purchase" ? "524 ₽" : "759 ⭐"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--text-tertiary)] line-through">
+                              {previewTriggerType === "first_purchase" ? "699 ₽" : "949 ⭐"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-5">
+                          <button
+                            type="button"
+                            className="w-full rounded-full bg-[linear-gradient(180deg,#E4C48C,#CFA463)] px-4 py-3 text-sm font-semibold text-[#24170F]"
+                          >
+                            {previewCopy.cta}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-[24px] border border-[rgba(215,185,139,0.16)] bg-[linear-gradient(180deg,rgba(36,28,43,0.96),rgba(18,14,23,0.98))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.2)]">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2">
+                            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Предложение</p>
+                            <h3 className="text-[1.05rem] font-semibold text-[var(--text-primary)]">{previewCopy.title}</h3>
+                            <p className="max-w-[34rem] text-sm leading-6 text-[var(--text-secondary)]">{previewCopy.body}</p>
+                          </div>
+                          <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[var(--text-secondary)]">
+                            ×
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <button
+                            type="button"
+                            className="rounded-full border border-[rgba(215,185,139,0.22)] bg-[rgba(255,255,255,0.04)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)]"
+                          >
+                            {previewCopy.cta}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </Card>
         </div>

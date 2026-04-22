@@ -38,6 +38,26 @@ import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
 
 type GenderOption = "male" | "female" | "other" | "";
 
+function getProfileOfferContent(triggerType?: string) {
+  switch (String(triggerType || "").trim().toLowerCase()) {
+    case "vip":
+      return {
+        eyebrow: "VIP-предложение",
+        title: "Открыт усиленный запас энергии",
+        body: "Для вашего ритма доступен более сильный пакет, чтобы реже возвращаться к оплате и свободнее пользоваться глубокими сценариями.",
+        cta: "Открыть энергию"
+      };
+    case "first_purchase":
+    default:
+      return {
+        eyebrow: "Акция на первую покупку",
+        title: "Стартовый оффер уже открыт",
+        body: "Для первой покупки уже доступен более мягкий вход в платный слой. Можно перейти к энергии и выбрать лучший стартовый пакет.",
+        cta: "Открыть энергию"
+      };
+  }
+}
+
 interface PersonalFormState {
   lang: string;
   fullName: string;
@@ -533,7 +553,11 @@ export default function ProfilePage() {
         }
 
         if (
-          hasOfferBeenDismissedInSession("first_purchase", "profile_banner", firstPurchaseOffer.offer_id)
+          hasOfferBeenDismissedInSession(
+            firstPurchaseOffer.trigger_type,
+            "profile_banner",
+            firstPurchaseOffer.offer_id
+          )
         ) {
           if (!cancelled) {
             setFirstPurchaseBannerOffer(null);
@@ -566,13 +590,21 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!firstPurchaseBannerOffer) return;
     if (
-      hasOfferBeenShownInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id)
+      hasOfferBeenShownInSession(
+        firstPurchaseBannerOffer.trigger_type,
+        "profile_banner",
+        firstPurchaseBannerOffer.offer_id
+      )
     ) {
       return;
     }
-    markOfferShownInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id);
+    markOfferShownInSession(
+      firstPurchaseBannerOffer.trigger_type,
+      "profile_banner",
+      firstPurchaseBannerOffer.offer_id
+    );
     void recordOfferEvent({
-      trigger_type: "first_purchase",
+      trigger_type: firstPurchaseBannerOffer.trigger_type,
       surface: "profile_banner",
       offer_id: firstPurchaseBannerOffer.offer_id,
       rule_id: firstPurchaseBannerOffer.rule_id,
@@ -726,15 +758,20 @@ export default function ProfilePage() {
 
   const handleDismissFirstPurchaseBanner = async () => {
     if (!firstPurchaseBannerOffer) return;
-    markOfferDismissedInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id);
+    markOfferDismissedInSession(firstPurchaseBannerOffer.trigger_type, "profile_banner", firstPurchaseBannerOffer.offer_id);
+    const dismissedUntil =
+      firstPurchaseBannerOffer.trigger_type === "vip"
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        : null;
     setFirstPurchaseBannerOffer(null);
     void recordOfferEvent({
-      trigger_type: "first_purchase",
+      trigger_type: firstPurchaseBannerOffer.trigger_type,
       surface: "profile_banner",
       offer_id: firstPurchaseBannerOffer.offer_id,
       rule_id: firstPurchaseBannerOffer.rule_id,
       event_type: "dismissed",
       session_key: offerSessionKey,
+      dismissed_until: dismissedUntil,
       context: { source: "profile_page" }
     }).catch(() => {});
   };
@@ -959,12 +996,16 @@ export default function ProfilePage() {
           <form className="space-y-6" onSubmit={handlePersonalSubmit}>
             {firstPurchaseBannerOffer ? (
               <div className="rounded-[22px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(27,21,33,0.98))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                {(() => {
+                  const offerCopy = getProfileOfferContent(firstPurchaseBannerOffer.trigger_type);
+                  return (
+                    <>
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(231,204,158,0.8)]">Акция на первую покупку</p>
-                    <h3 className="text-lg font-semibold text-[var(--text-primary)]">Стартовый оффер уже открыт</h3>
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(231,204,158,0.8)]">{offerCopy.eyebrow}</p>
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)]">{offerCopy.title}</h3>
                     <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                      Для первой покупки уже доступен более мягкий вход в платный слой. Можно перейти к энергии и выбрать лучший стартовый пакет.
+                      {offerCopy.body}
                     </p>
                   </div>
                   <button
@@ -982,7 +1023,7 @@ export default function ProfilePage() {
                     className="border-[rgba(215,185,139,0.22)] bg-[rgba(255,255,255,0.04)] text-[var(--text-primary)]"
                     onClick={() => {
                       void recordOfferEvent({
-                        trigger_type: "first_purchase",
+                        trigger_type: firstPurchaseBannerOffer.trigger_type,
                         surface: "profile_banner",
                         offer_id: firstPurchaseBannerOffer.offer_id,
                         rule_id: firstPurchaseBannerOffer.rule_id,
@@ -993,9 +1034,12 @@ export default function ProfilePage() {
                       navigate("/energy");
                     }}
                   >
-                    Открыть энергию
+                    {offerCopy.cta}
                   </Button>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : null}
             <div className="space-y-4">

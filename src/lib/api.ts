@@ -655,6 +655,8 @@ export interface OfferPlacementsResponse {
   home_popup: OfferPlacementResponse | null;
   home_banner: OfferPlacementResponse | null;
   profile_banner: OfferPlacementResponse | null;
+  energy_banner: OfferPlacementResponse | null;
+  exit_intent_modal: OfferPlacementResponse | null;
   energy_featured_trigger: string | null;
 }
 
@@ -1362,11 +1364,17 @@ export async function getOfferSurfaceState(params?: {
 }
 
 export async function getOfferPlacements(params?: {
+  provider?: "robokassa" | "telegram_stars";
+  currency?: "RUB" | "USD" | "EUR" | "XTR";
+  source?: string;
   detected_country?: string;
   telegram_lang?: string;
   device_lang?: string;
 }): Promise<OfferPlacementsResponse> {
   const searchParams = new URLSearchParams();
+  if (params?.provider) searchParams.set("provider", params.provider);
+  if (params?.currency) searchParams.set("currency", params.currency);
+  if (params?.source) searchParams.set("source", params.source);
   if (params?.detected_country) searchParams.set("detected_country", params.detected_country);
   if (params?.telegram_lang) searchParams.set("telegram_lang", params.telegram_lang);
   if (params?.device_lang) searchParams.set("device_lang", params.device_lang);
