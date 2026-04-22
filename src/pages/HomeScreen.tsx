@@ -64,6 +64,20 @@ interface HomeOfferBanner {
   surface: "home_banner" | "home_popup";
 }
 
+function getOfferDiscountPercent(offer: PaymentOfferResponse): number {
+  const raw = Number(offer.discount_percent || "0");
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+}
+
+function getOfferBonusPercent(offer: PaymentOfferResponse): number {
+  const explicit = Number(offer.bonus_percent || "0");
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return Math.round(explicit);
+  }
+  if (offer.energy_amount <= 0 || offer.bonus_energy <= 0) return 0;
+  return Math.round((offer.bonus_energy / offer.energy_amount) * 100);
+}
+
 const DAILY_CARD_PENDING_STATUSES = new Set(["pending", "queued", "processing"]);
 const DAILY_CARD_UNLOCK_STORAGE_KEY = "tarotolog_daily_card_unlock";
 
@@ -231,7 +245,7 @@ function getHomeOfferContent(triggerType: string): { title: string; body: string
     case "comeback":
       return {
         title: "С возвращением",
-        body: "Хороший момент вернуться в личный ритм. Для вас уже открыт более мягкий оффер на пополнение запаса.",
+        body: "Хороший момент вернуться в личный ритм. Для вас уже открыт более выгодный пакет на пополнение запаса.",
         accent: "from-[#B8A3D2] to-[#E7C9E8]"
       };
     case "first_purchase":
@@ -662,9 +676,21 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           <div className="w-full max-w-md rounded-[30px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(42,34,49,0.98),rgba(19,14,24,0.98))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
             <div className={`h-1.5 w-20 rounded-full bg-gradient-to-r ${homePopupOffer.accent}`} />
             <div className="mt-4 space-y-3">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Предложение</p>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Специальное предложение</p>
               <h3 className="text-[1.45rem] font-semibold leading-tight text-[var(--text-primary)]">{homePopupOffer.title}</h3>
               <p className="text-sm leading-6 text-[var(--text-secondary)]">{homePopupOffer.body}</p>
+              <div className="flex flex-wrap gap-2">
+                {getOfferDiscountPercent(homePopupOffer.offer) > 0 ? (
+                  <span className="inline-flex rounded-full border border-[rgba(111,217,183,0.24)] bg-[rgba(111,217,183,0.1)] px-3 py-1 text-[12px] font-semibold text-[#BDF5D8]">
+                    -{getOfferDiscountPercent(homePopupOffer.offer)}%
+                  </span>
+                ) : null}
+                {getOfferBonusPercent(homePopupOffer.offer) > 0 ? (
+                  <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]">
+                    +{getOfferBonusPercent(homePopupOffer.offer)}% энергии
+                  </span>
+                ) : null}
+              </div>
             </div>
             <div className="mt-5 flex gap-3">
               <Button className="flex-1" onClick={() => handleHomeOfferOpenEnergy(homePopupOffer)}>
@@ -694,9 +720,21 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           <div className={`pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-gradient-to-br ${homeBannerOffer.accent} opacity-20 blur-3xl`} />
           <div className="relative flex items-start justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Предложение дня</p>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Специальное предложение</p>
               <h3 className="text-[1.1rem] font-semibold text-[var(--text-primary)]">{homeBannerOffer.title}</h3>
               <p className="max-w-[34rem] text-sm leading-6 text-[var(--text-secondary)]">{homeBannerOffer.body}</p>
+              <div className="flex flex-wrap gap-2">
+                {getOfferDiscountPercent(homeBannerOffer.offer) > 0 ? (
+                  <span className="inline-flex rounded-full border border-[rgba(111,217,183,0.24)] bg-[rgba(111,217,183,0.1)] px-3 py-1 text-[12px] font-semibold text-[#BDF5D8]">
+                    -{getOfferDiscountPercent(homeBannerOffer.offer)}%
+                  </span>
+                ) : null}
+                {getOfferBonusPercent(homeBannerOffer.offer) > 0 ? (
+                  <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1 text-[12px] font-semibold text-[var(--accent-gold)]">
+                    +{getOfferBonusPercent(homeBannerOffer.offer)}% энергии
+                  </span>
+                ) : null}
+              </div>
             </div>
             <button
               type="button"

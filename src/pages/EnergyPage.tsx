@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Copy, Loader2, RefreshCw, Share2, Sparkles, Users, X, Zap } from "lucide-react";
-import { useBlocker } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { AdsgramTaskBanner } from "@/components/ads/AdsgramTaskBanner";
 import { Button } from "@/components/ui/button";
@@ -488,7 +488,7 @@ function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerP
     case "first_purchase":
       return {
         badge: "Акция на первую покупку",
-        featuredSummary: "Лучший момент войти в платный слой: бонусная энергия и более сильный стартовый запас.",
+        featuredSummary: "Лучший момент начать: сейчас первый пакет открывается выгоднее и даёт больше энергии на старт.",
         secondarySummary: "",
         featuredCta: "Забрать стартовый пакет",
         secondaryBadge: "Первая покупка"
@@ -504,16 +504,16 @@ function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerP
     case "low_energy":
       return {
         badge: "Низкий запас энергии",
-        featuredSummary: "Запас уже просел: сейчас выгоднее мягко усилить баланс, чем упираться в дефицит на следующем сценарии.",
-        secondarySummary: "Поможет не выпадать из ритма и не ждать срочного пополнения.",
+        featuredSummary: "Сейчас хороший момент усилить запас, чтобы спокойно продолжать расклады и личные сценарии без паузы.",
+        secondarySummary: "Поможет сохранить ритм и не прерываться на самом интересном месте.",
         featuredCta: "Усилить запас",
         secondaryBadge: "Мало энергии"
       };
     case "comeback":
       return {
         badge: "С возвращением",
-        featuredSummary: "Хороший момент вернуться в личный ритм и открыть новые сценарии с усиленным запасом энергии.",
-        secondarySummary: "Комфортный пакет для мягкого возвращения в продукт.",
+        featuredSummary: "Хороший момент вернуться и взять пакет на более выгодных условиях, пока предложение открыто для вас.",
+        secondarySummary: "Поможет быстро вернуться к раскладам, трактовкам и прогнозам.",
         featuredCta: "Вернуться в ритм",
         secondaryBadge: "Возвращение"
       };
@@ -528,32 +528,32 @@ function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerP
     case "post_ads":
       return {
         badge: "После рекламного ритуала",
-        featuredSummary: "Можно усилить запас сразу после задания и не ждать следующего открытия энергии, пока вовлечённость уже на вашей стороне.",
-        secondarySummary: "Можно усилить запас сразу после рекламного задания.",
+        featuredSummary: "После задания можно усилить запас на более выгодных условиях и сразу открыть нужный сценарий.",
+        secondarySummary: "Хороший момент добавить энергии, пока бонус уже у вас на руках.",
         featuredCta: "Усилить запас сейчас",
         secondaryBadge: "После ритуала"
       };
     case "vip":
       return {
         badge: "Для активного ритма",
-        featuredSummary: "Крупный запас для пользователей, которые регулярно открывают дорогие сценарии и не хотят возвращаться к оплате слишком часто.",
-        secondarySummary: "Крупный запас для частых глубоких раскладов и прогнозов.",
+        featuredSummary: "Крупный запас для тех, кто регулярно открывает глубокие сценарии и хочет реже возвращаться к оплате.",
+        secondarySummary: "Оптимальный пакет для активного и длинного ритма использования.",
         featuredCta: "Открыть VIP-запас",
         secondaryBadge: "VIP"
       };
     case "personal":
       return {
         badge: "Персональное предложение",
-        featuredSummary: "Это предложение настроено под ваш текущий сценарий и показывается как точечный оффер, а не как общий каталог.",
-        secondarySummary: "Оффер настроен под ваш текущий сценарий.",
+        featuredSummary: "Для вас открыт точечный пакет с более выгодным входом именно под текущий сценарий.",
+        secondarySummary: "Индивидуальное предложение, доступное вам сейчас.",
         featuredCta: "Открыть предложение",
         secondaryBadge: "Персонально"
       };
     case "manual":
       return {
         badge: "Особое предложение",
-        featuredSummary: "Точечный оффер, который включён отдельно для текущего сценария и даёт более выгодный вход в оплату.",
-        secondarySummary: "Точечный оффер для текущего сценария.",
+        featuredSummary: "Сейчас для вас открыт специальный пакет с более выгодным входом в пополнение.",
+        secondarySummary: "Специальное предложение на текущий момент.",
         featuredCta: "Открыть предложение",
         secondaryBadge: "Особое"
       };
@@ -687,6 +687,7 @@ function toPaymentStatusViewFromStarsPayment(payment: TelegramStarsPaymentStatus
 }
 
 export default function EnergyPage() {
+  const navigate = useNavigate();
   const { profile, loading, refresh } = useProfile();
   const user = profile?.user;
   const energyBalance = user?.energy_balance ?? 0;
@@ -749,7 +750,7 @@ export default function EnergyPage() {
   const offerExpiryInFlightRef = useRef(false);
   const activeOfferUsageIdsRef = useRef<Set<string>>(new Set());
   const exitIntentPlacementsInFlightRef = useRef(false);
-  const allowBlockedNavigationRef = useRef(false);
+  const pendingExitIntentPathRef = useRef<string | null>(null);
 
   const telegramLanguage = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -1712,9 +1713,7 @@ export default function EnergyPage() {
     if (surface === "exit_intent_modal") {
       setShowExitIntentModal(false);
       setExitIntentOffer(null);
-      if (exitIntentBlocker.state === "blocked") {
-        exitIntentBlocker.reset();
-      }
+      pendingExitIntentPathRef.current = null;
     }
     if (offer.provider === "telegram_stars") {
       await handleBuyStarsOffer(offer);
@@ -1723,52 +1722,85 @@ export default function EnergyPage() {
     }
   }
 
-  const shouldBlockExitIntent = useCallback(
-    ({ currentLocation, nextLocation }: { currentLocation: { pathname: string }; nextLocation: { pathname: string } }) => {
-      if (allowBlockedNavigationRef.current) return false;
-      if (!nextLocation || currentLocation.pathname === nextLocation.pathname) return false;
-      if (creatingProductCode || checkingStatus || offersLoading) return false;
-      if (paymentOffers.length === 0) return false;
-      if (showExitIntentModal) return false;
-      return true;
-    },
-    [checkingStatus, creatingProductCode, offersLoading, paymentOffers.length, showExitIntentModal]
-  );
-
-  const exitIntentBlocker = useBlocker(shouldBlockExitIntent);
-
   useEffect(() => {
-    if (exitIntentBlocker.state !== "blocked") return;
-    if (exitIntentPlacementsInFlightRef.current) return;
-    exitIntentPlacementsInFlightRef.current = true;
-
-    void (async () => {
-      try {
-        const placements = await loadOfferPlacements("energy_exit_intent");
-        const nextOffer = placements.exit_intent_modal?.offer ?? null;
-        if (
-          !nextOffer ||
-          hasOfferBeenDismissedInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)
-        ) {
-          allowBlockedNavigationRef.current = true;
-          exitIntentBlocker.proceed();
-          return;
-        }
-
-        setExitIntentOffer(nextOffer);
-        setShowExitIntentModal(true);
-        if (!hasOfferBeenShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)) {
-          markOfferShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id);
-          emitOfferEvent(nextOffer, "shown", "exit_intent_modal");
-        }
-      } catch {
-        allowBlockedNavigationRef.current = true;
-        exitIntentBlocker.proceed();
-      } finally {
-        exitIntentPlacementsInFlightRef.current = false;
+    const normalizeHrefToPath = (href: string): string | null => {
+      if (!href) return null;
+      if (href.startsWith("#")) {
+        return href.slice(1) || "/";
       }
-    })();
-  }, [emitOfferEvent, exitIntentBlocker, loadOfferPlacements]);
+      const hashIndex = href.indexOf("#");
+      if (hashIndex >= 0) {
+        return href.slice(hashIndex + 1) || "/";
+      }
+      return null;
+    };
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (creatingProductCode || checkingStatus || offersLoading) return;
+      if (paymentOffers.length === 0) return;
+      if (showExitIntentModal) return;
+
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+
+      const nextPath = normalizeHrefToPath(anchor.getAttribute("href") || "");
+      if (!nextPath || nextPath === "/energy") return;
+
+      event.preventDefault();
+      pendingExitIntentPathRef.current = nextPath;
+      if (exitIntentPlacementsInFlightRef.current) return;
+      exitIntentPlacementsInFlightRef.current = true;
+
+      void (async () => {
+        try {
+          const placements = await loadOfferPlacements("energy_exit_intent");
+          const nextOffer = placements.exit_intent_modal?.offer ?? null;
+          if (
+            !nextOffer ||
+            hasOfferBeenDismissedInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)
+          ) {
+            const pathToOpen = pendingExitIntentPathRef.current;
+            pendingExitIntentPathRef.current = null;
+            if (pathToOpen) navigate(pathToOpen);
+            return;
+          }
+
+          setExitIntentOffer(nextOffer);
+          setShowExitIntentModal(true);
+          if (!hasOfferBeenShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id)) {
+            markOfferShownInSession("exit_intent", "exit_intent_modal", nextOffer.offer_id);
+            emitOfferEvent(nextOffer, "shown", "exit_intent_modal");
+          }
+        } catch {
+          const pathToOpen = pendingExitIntentPathRef.current;
+          pendingExitIntentPathRef.current = null;
+          if (pathToOpen) navigate(pathToOpen);
+        } finally {
+          exitIntentPlacementsInFlightRef.current = false;
+        }
+      })();
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [
+    checkingStatus,
+    creatingProductCode,
+    emitOfferEvent,
+    loadOfferPlacements,
+    navigate,
+    offersLoading,
+    paymentOffers.length,
+    showExitIntentModal
+  ]);
 
   const handleDismissExitIntent = useCallback(() => {
     if (exitIntentOffer) {
@@ -1786,11 +1818,12 @@ export default function EnergyPage() {
     }
     setShowExitIntentModal(false);
     setExitIntentOffer(null);
-    allowBlockedNavigationRef.current = true;
-    if (exitIntentBlocker.state === "blocked") {
-      exitIntentBlocker.proceed();
+    const pathToOpen = pendingExitIntentPathRef.current;
+    pendingExitIntentPathRef.current = null;
+    if (pathToOpen) {
+      navigate(pathToOpen);
     }
-  }, [exitIntentBlocker, exitIntentOffer, offerSessionKey]);
+  }, [exitIntentOffer, navigate, offerSessionKey]);
 
   return (
     <>
