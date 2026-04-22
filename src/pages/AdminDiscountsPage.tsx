@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, Globe2, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Users } from "lucide-react";
+import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, Globe2, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -183,6 +183,25 @@ const RULE_PRESETS: Array<{
     }
   },
   {
+    id: "zero_balance",
+    label: "Нулевой баланс",
+    description: "Оффер для пользователей, у которых энергия закончилась",
+    patch: {
+      trigger_type: "zero_balance",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "25",
+      priority: "45",
+      display_order: "45",
+      title: "Энергия закончилась",
+      description: "Оффер при нулевом балансе",
+      code: "zero_balance_rescue"
+    }
+  },
+  {
     id: "low_energy",
     label: "Низкий баланс",
     description: "Подталкивает к пополнению, когда энергии почти не осталось",
@@ -221,6 +240,44 @@ const RULE_PRESETS: Array<{
     }
   },
   {
+    id: "exit_intent",
+    label: "Перед выходом",
+    description: "Мягкий оффер, когда пользователь не купил и собирается уйти",
+    patch: {
+      trigger_type: "exit_intent",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "0",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "70",
+      display_order: "70",
+      title: "Спецпредложение",
+      description: "Оффер перед выходом из paywall",
+      code: "exit_intent_offer"
+    }
+  },
+  {
+    id: "post_ads",
+    label: "После рекламы",
+    description: "Мягкий апсейл сразу после рекламного ритуала",
+    patch: {
+      trigger_type: "post_ads",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "0",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "80",
+      display_order: "80",
+      title: "Бонус после ритуала",
+      description: "Оффер после рекламы",
+      code: "post_ads_offer"
+    }
+  },
+  {
     id: "scheduled",
     label: "Плановая акция",
     description: "Ограниченная акция на период или событие",
@@ -249,6 +306,28 @@ const QUICK_CAMPAIGNS: Array<{
   patch: () => Partial<RuleDraft>;
 }> = [
   {
+    id: "zero_balance",
+    label: "Нулевой баланс",
+    description: "Сценарий для пользователя, у которого энергия закончилась",
+    icon: ShieldAlert,
+    patch: () => ({
+      code: "zero_balance_offer",
+      title: "Энергия закончилась",
+      description: "Оффер при нулевом балансе",
+      trigger_type: "zero_balance",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "15",
+      bonus_energy: "0",
+      bonus_percent: "25",
+      priority: "45",
+      display_order: "45",
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
     id: "welcome",
     label: "Welcome offer",
     description: "Первое пополнение с мягкой выгодой для снятия страха первой оплаты",
@@ -266,6 +345,50 @@ const QUICK_CAMPAIGNS: Array<{
       bonus_percent: "20",
       priority: "40",
       display_order: "40",
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
+    id: "exit_intent",
+    label: "Exit intent",
+    description: "Дожимающий оффер, если пользователь не купил и собирается уйти",
+    icon: Eye,
+    patch: () => ({
+      code: "exit_intent_offer",
+      title: "Спецпредложение",
+      description: "Оффер перед выходом из paywall",
+      trigger_type: "exit_intent",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "0",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "70",
+      display_order: "70",
+      target_offer_code: "",
+      is_active: true
+    })
+  },
+  {
+    id: "post_ads",
+    label: "Post-ads offer",
+    description: "Апсейл после рекламного ритуала с мягким бонусом к энергии",
+    icon: Sparkles,
+    patch: () => ({
+      code: "post_ads_offer",
+      title: "Бонус после ритуала",
+      description: "Оффер после рекламы",
+      trigger_type: "post_ads",
+      target_provider: "",
+      target_currency: "",
+      discount_type: "percent",
+      discount_value: "0",
+      bonus_energy: "0",
+      bonus_percent: "20",
+      priority: "80",
+      display_order: "80",
       target_offer_code: "",
       is_active: true
     })
@@ -454,6 +577,12 @@ function normalizeDraft(draft: RuleDraft): RuleDraft {
 }
 
 function buildRulePayload(ruleDraft: RuleDraft) {
+  const audienceFilter =
+    ruleDraft.trigger_type === "zero_balance"
+      ? { require_zero_balance: true }
+      : ruleDraft.trigger_type === "comeback"
+        ? { min_days_inactive: 3 }
+        : {};
   return {
     code: ruleDraft.code.trim().toLowerCase(),
     title: ruleDraft.title.trim(),
@@ -479,7 +608,7 @@ function buildRulePayload(ruleDraft: RuleDraft) {
     source: ruleDraft.source || "admin",
     is_active: ruleDraft.is_active,
     is_test: ruleDraft.is_test,
-    audience_filter: {},
+    audience_filter: audienceFilter,
     meta: {}
   };
 }

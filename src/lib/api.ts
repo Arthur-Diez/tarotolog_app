@@ -623,6 +623,41 @@ export interface DiscountUsageResponse {
   resolved_at: string | null;
 }
 
+export interface OfferSurfaceStateResponse {
+  state_id: string;
+  trigger_type: string;
+  surface: string;
+  offer_id: string | null;
+  rule_id: string | null;
+  status: string;
+  shown_at: string | null;
+  dismissed_at: string | null;
+  dismissed_until: string | null;
+  cooldown_until: string | null;
+  updated_at: string | null;
+}
+
+export interface OfferSurfaceStateListResponse {
+  items: OfferSurfaceStateResponse[];
+}
+
+export interface OfferPlacementResponse {
+  trigger_type: string;
+  surface: string;
+  offer: PaymentOfferResponse | null;
+}
+
+export interface OfferPlacementsResponse {
+  preferred_provider: "robokassa" | "telegram_stars";
+  preferred_currency: string;
+  pricing_tier: string | null;
+  resolved_triggers: string[];
+  home_popup: OfferPlacementResponse | null;
+  home_banner: OfferPlacementResponse | null;
+  profile_banner: OfferPlacementResponse | null;
+  energy_featured_trigger: string | null;
+}
+
 export interface TelegramStarsCreatePaymentResponse {
   payment_id: string;
   purchase_id: string;
@@ -1290,6 +1325,57 @@ export async function markPaymentOfferExpired(usage_id: string): Promise<void> {
     body: JSON.stringify({ usage_id })
   });
   await handleResponse<Record<string, unknown>>(res);
+}
+
+export async function recordOfferEvent(payload: {
+  trigger_type: string;
+  surface: string;
+  offer_id?: string;
+  rule_id?: string | null;
+  event_type: string;
+  session_key?: string;
+  dismissed_until?: string | null;
+  cooldown_until?: string | null;
+  context?: Record<string, unknown>;
+}): Promise<OfferSurfaceStateResponse> {
+  const res = await fetch(`${API_BASE}/offers/events`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<OfferSurfaceStateResponse>(res);
+}
+
+export async function getOfferSurfaceState(params?: {
+  surface?: string;
+  trigger_type?: string;
+}): Promise<OfferSurfaceStateListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.surface) searchParams.set("surface", params.surface);
+  if (params?.trigger_type) searchParams.set("trigger_type", params.trigger_type);
+  const suffix = searchParams.toString();
+  const res = await fetch(`${API_BASE}/offers/surface-state${suffix ? `?${suffix}` : ""}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<OfferSurfaceStateListResponse>(res);
+}
+
+export async function getOfferPlacements(params?: {
+  detected_country?: string;
+  telegram_lang?: string;
+  device_lang?: string;
+}): Promise<OfferPlacementsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.detected_country) searchParams.set("detected_country", params.detected_country);
+  if (params?.telegram_lang) searchParams.set("telegram_lang", params.telegram_lang);
+  if (params?.device_lang) searchParams.set("device_lang", params.device_lang);
+  const suffix = searchParams.toString();
+  const res = await fetch(`${API_BASE}/offers/placements${suffix ? `?${suffix}` : ""}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<OfferPlacementsResponse>(res);
 }
 
 export async function getTelegramStarsOffers(source = "energy_page"): Promise<TelegramStarsOffersResponse> {

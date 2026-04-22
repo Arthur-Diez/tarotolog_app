@@ -11,6 +11,7 @@ import {
   createTelegramStarsPayment,
   createRobokassaPayment,
   getEnergyAdsState,
+  recordOfferEvent,
   getPaymentOffers,
   getReferralProgram,
   getTelegramStarsPaymentStatus,
@@ -26,6 +27,7 @@ import {
   type TelegramStarsPaymentStatusResponse,
   type WalletHistoryItemResponse
 } from "@/lib/api";
+import { getOfferSessionKey, hasOfferBeenShownInSession, markOfferShownInSession } from "@/lib/offerSessionState";
 import { detectCountryBySignals } from "@/lib/pricingRegion";
 import {
   openExternalLink,
@@ -55,6 +57,18 @@ const DISCOUNT_TRIGGER_LABELS: Record<string, string> = {
   manual: "Персональное предложение",
   vip: "VIP-предложение",
   personal: "Персональная акция"
+};
+const PAYWALL_TRIGGER_PRIORITY: Record<string, number> = {
+  personal: 10,
+  first_purchase: 20,
+  zero_balance: 30,
+  low_energy: 40,
+  comeback: 50,
+  exit_intent: 60,
+  post_ads: 70,
+  vip: 80,
+  scheduled: 90,
+  manual: 100
 };
 const TASK_ADSGRAM_BLOCK_ID =
   (import.meta as { env?: Record<string, string> }).env?.VITE_ADSGRAM_TASK_ID ?? "task-26361";
@@ -106,6 +120,14 @@ interface OfferPositioning {
   usageHint: string;
   outcome: string;
   cta: string;
+}
+
+interface OfferTriggerPresentation {
+  badge: string | null;
+  featuredSummary: string;
+  secondarySummary: string;
+  featuredCta: string | null;
+  secondaryBadge: string | null;
 }
 
 interface PaymentMethodPresentation {
@@ -396,6 +418,156 @@ function getOfferBonusPercent(offer: PaymentOfferResponse): number {
   return Math.floor((offer.bonus_energy / offer.energy_amount) * 100);
 }
 
+function normalizeTriggerType(triggerType: string | null | undefined): string {
+  return String(triggerType || "")
+    .trim()
+    .toLowerCase();
+}
+
+function getTriggerPriority(triggerType: string | null | undefined): number {
+  const normalized = normalizeTriggerType(triggerType);
+  return PAYWALL_TRIGGER_PRIORITY[normalized] ?? 999;
+}
+
+function getTriggerOfferPreferenceRank(offer: PaymentOfferResponse): number {
+  const normalized = normalizeTriggerType(offer.trigger_type);
+  const amount = offer.energy_amount;
+
+  const priorityByTrigger: Record<string, number[]> = {
+    first_purchase: [25, 60, 10, 100, 200],
+    zero_balance: [25, 10, 60, 100, 200],
+    low_energy: [25, 10, 60, 100, 200],
+    comeback: [60, 25, 100, 10, 200],
+    exit_intent: [25, 10, 60, 100, 200],
+    post_ads: [25, 10, 60, 100, 200],
+    vip: [200, 100, 60, 25, 10],
+    scheduled: [60, 25, 100, 200, 10],
+    manual: [60, 25, 100, 200, 10],
+    personal: [60, 25, 100, 200, 10]
+  };
+
+  const order = priorityByTrigger[normalized] ?? [60, 25, 100, 200, 10];
+  const index = order.indexOf(amount);
+  return index >= 0 ? index : order.length;
+}
+
+function compareOffersForPaywall(left: PaymentOfferResponse, right: PaymentOfferResponse): number {
+  const triggerPriorityDelta = getTriggerPriority(left.trigger_type) - getTriggerPriority(right.trigger_type);
+  if (triggerPriorityDelta !== 0) return triggerPriorityDelta;
+
+  const triggerOfferRankDelta = getTriggerOfferPreferenceRank(left) - getTriggerOfferPreferenceRank(right);
+  if (triggerOfferRankDelta !== 0) return triggerOfferRankDelta;
+
+  const backendPriorityDelta = Number(left.priority || 999) - Number(right.priority || 999);
+  if (backendPriorityDelta !== 0) return backendPriorityDelta;
+
+  const discountDelta = Number(right.discount_percent || "0") - Number(left.discount_percent || "0");
+  if (discountDelta !== 0) return discountDelta;
+
+  const bonusDelta = getOfferBonusPercent(right) - getOfferBonusPercent(left);
+  if (bonusDelta !== 0) return bonusDelta;
+
+  const totalEnergyDelta = getOfferTotalEnergy(right) - getOfferTotalEnergy(left);
+  if (totalEnergyDelta !== 0) return totalEnergyDelta;
+
+  return Number(left.final_amount || "0") - Number(right.final_amount || "0");
+}
+
+function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerPresentation {
+  const normalized = normalizeTriggerType(offer.trigger_type);
+
+  switch (normalized) {
+    case "first_purchase":
+      return {
+        badge: "Акция на первую покупку",
+        featuredSummary: "Лучший момент войти в платный слой: бонусная энергия и более сильный стартовый запас.",
+        secondarySummary: "Стартовый оффер с бонусной энергией для первого платежа.",
+        featuredCta: "Забрать стартовый пакет",
+        secondaryBadge: "Первая покупка"
+      };
+    case "zero_balance":
+      return {
+        badge: "Энергия закончилась",
+        featuredSummary: "Быстро верните доступ к раскладам, трактовкам и персональным сценариям без лишней паузы.",
+        secondarySummary: "Быстро вернёт доступ к платным сценариям.",
+        featuredCta: "Вернуть энергию",
+        secondaryBadge: "Нулевой баланс"
+      };
+    case "low_energy":
+      return {
+        badge: "Низкий запас энергии",
+        featuredSummary: "Запас уже просел: сейчас выгоднее мягко усилить баланс, чем упираться в дефицит на следующем сценарии.",
+        secondarySummary: "Поможет не выпадать из ритма и не ждать срочного пополнения.",
+        featuredCta: "Усилить запас",
+        secondaryBadge: "Мало энергии"
+      };
+    case "comeback":
+      return {
+        badge: "С возвращением",
+        featuredSummary: "Хороший момент вернуться в личный ритм и открыть новые сценарии с усиленным запасом энергии.",
+        secondarySummary: "Комфортный пакет для мягкого возвращения в продукт.",
+        featuredCta: "Вернуться в ритм",
+        secondaryBadge: "Возвращение"
+      };
+    case "exit_intent":
+      return {
+        badge: "Бонус перед выходом",
+        featuredSummary: "Небольшой бонус, чтобы войти в платный слой без лишнего барьера именно сейчас, пока интерес уже разогрет.",
+        secondarySummary: "Небольшой бонус, если хотите войти без лишнего барьера.",
+        featuredCta: "Забрать бонус",
+        secondaryBadge: "Спецпредложение"
+      };
+    case "post_ads":
+      return {
+        badge: "После рекламного ритуала",
+        featuredSummary: "Можно усилить запас сразу после задания и не ждать следующего открытия энергии, пока вовлечённость уже на вашей стороне.",
+        secondarySummary: "Можно усилить запас сразу после рекламного задания.",
+        featuredCta: "Усилить запас сейчас",
+        secondaryBadge: "После ритуала"
+      };
+    case "vip":
+      return {
+        badge: "Для активного ритма",
+        featuredSummary: "Крупный запас для пользователей, которые регулярно открывают дорогие сценарии и не хотят возвращаться к оплате слишком часто.",
+        secondarySummary: "Крупный запас для частых глубоких раскладов и прогнозов.",
+        featuredCta: "Открыть VIP-запас",
+        secondaryBadge: "VIP"
+      };
+    case "personal":
+      return {
+        badge: "Персональное предложение",
+        featuredSummary: "Это предложение настроено под ваш текущий сценарий и показывается как точечный оффер, а не как общий каталог.",
+        secondarySummary: "Оффер настроен под ваш текущий сценарий.",
+        featuredCta: "Открыть предложение",
+        secondaryBadge: "Персонально"
+      };
+    case "manual":
+      return {
+        badge: "Особое предложение",
+        featuredSummary: "Точечный оффер, который включён отдельно для текущего сценария и даёт более выгодный вход в оплату.",
+        secondarySummary: "Точечный оффер для текущего сценария.",
+        featuredCta: "Открыть предложение",
+        secondaryBadge: "Особое"
+      };
+    case "scheduled":
+      return {
+        badge: "Временная акция",
+        featuredSummary: "Ограниченное по времени предложение: можно усилить запас на более выгодных условиях, пока окно ещё открыто.",
+        secondarySummary: "Ограниченная по времени выгода на текущий период.",
+        featuredCta: "Открыть предложение",
+        secondaryBadge: "Акция"
+      };
+    default:
+      return {
+        badge: null,
+        featuredSummary: "Подберите пакет под свой текущий ритм: быстрый добор, рабочий запас или глубокий premium-режим.",
+        secondarySummary: "Пакет для текущего сценария использования.",
+        featuredCta: null,
+        secondaryBadge: null
+      };
+  }
+}
+
 function getOfferPositioning(offer: PaymentOfferResponse): OfferPositioning {
   const totalEnergy = getOfferTotalEnergy(offer);
   const personalDailyCount = Math.max(1, Math.floor(totalEnergy / 10));
@@ -478,15 +650,7 @@ function getPaymentMethodPresentation(method: PaymentMethod): PaymentMethodPrese
 function pickFeaturedOffer(offers: PaymentOfferResponse[]): PaymentOfferResponse | null {
   if (offers.length === 0) return null;
 
-  return [...offers].sort((left, right) => {
-    const discountDelta = Number(right.discount_percent || "0") - Number(left.discount_percent || "0");
-    if (discountDelta !== 0) return discountDelta;
-
-    const bonusDelta = getOfferBonusPercent(right) - getOfferBonusPercent(left);
-    if (bonusDelta !== 0) return bonusDelta;
-
-    return getOfferTotalEnergy(right) - getOfferTotalEnergy(left);
-  })[0];
+  return [...offers].sort(compareOffersForPaywall)[0];
 }
 
 function toPaymentStatusViewFromPurchase(purchase: PurchaseStatusResponse): PaymentStatusView {
@@ -1367,8 +1531,15 @@ export default function EnergyPage() {
     () => (featuredOffer ? getOfferPositioning(featuredOffer) : null),
     [featuredOffer]
   );
+  const featuredOfferTriggerPresentation = useMemo(
+    () => (featuredOffer ? getOfferTriggerPresentation(featuredOffer) : null),
+    [featuredOffer]
+  );
   const secondaryOffers = useMemo(
-    () => paymentOffers.filter((offer) => offer.offer_id !== featuredOffer?.offer_id),
+    () =>
+      paymentOffers
+        .filter((offer) => offer.offer_id !== featuredOffer?.offer_id)
+        .sort(compareOffersForPaywall),
     [featuredOffer?.offer_id, paymentOffers]
   );
   const accountModeLabel = energyBalance <= 10 ? "Нужна подпитка" : energyBalance <= 35 ? "Рабочий запас" : "Сильный ресурс";
@@ -1398,6 +1569,47 @@ export default function EnergyPage() {
   const paymentMethodPresentation = getPaymentMethodPresentation(selectedPaymentMethod);
   const paymentSectionTitle = paymentMethodPresentation.title;
   const paymentSectionBody = paymentMethodPresentation.body;
+  const offerSessionKey = useMemo(() => getOfferSessionKey(), []);
+
+  const emitOfferEvent = useCallback(
+    (offer: PaymentOfferResponse, eventType: string, surface: string) => {
+      void recordOfferEvent({
+        trigger_type: offer.trigger_type,
+        surface,
+        offer_id: offer.offer_id,
+        rule_id: offer.rule_id,
+        event_type: eventType,
+        session_key: offerSessionKey,
+        context: {
+          source: "energy_page",
+          provider: offer.provider,
+          currency: offer.currency,
+          offer_code: offer.offer_code,
+          purchase_type: offer.purchase_type,
+          selected_payment_method: selectedPaymentMethod
+        }
+      }).catch(() => {
+        // Intentionally non-blocking: paywall UX should not depend on analytics delivery.
+      });
+    },
+    [offerSessionKey, selectedPaymentMethod]
+  );
+
+  useEffect(() => {
+    if (!featuredOffer) return;
+    if (hasOfferBeenShownInSession(featuredOffer.trigger_type, "energy_featured", featuredOffer.offer_id)) return;
+    markOfferShownInSession(featuredOffer.trigger_type, "energy_featured", featuredOffer.offer_id);
+    emitOfferEvent(featuredOffer, "shown", "energy_featured");
+  }, [emitOfferEvent, featuredOffer]);
+
+  useEffect(() => {
+    if (secondaryOffers.length === 0) return;
+    secondaryOffers.forEach((offer) => {
+      if (hasOfferBeenShownInSession(offer.trigger_type, "energy_list", offer.offer_id)) return;
+      markOfferShownInSession(offer.trigger_type, "energy_list", offer.offer_id);
+      emitOfferEvent(offer, "shown", "energy_list");
+    });
+  }, [emitOfferEvent, secondaryOffers]);
 
   return (
     <>
@@ -1653,17 +1865,18 @@ export default function EnergyPage() {
                         ? `+${featuredOffer.bonus_energy} ⚡`
                         : null;
                     const featuredValueBadge = [featuredDiscountBadge, featuredBonusBadge].filter(Boolean).join(" • ");
-                    const isFirstPurchaseOffer =
-                      featuredOffer.trigger_type === "first_purchase" &&
-                      (Boolean(featuredOffer.rule_id) || hasOfferDiscount(featuredOffer) || getOfferBonusPercent(featuredOffer) > 0);
+                    const featuredTriggerBadge = featuredOfferTriggerPresentation?.badge;
+                    const featuredSummary = featuredOfferTriggerPresentation?.featuredSummary;
+                    const featuredCta =
+                      featuredOfferTriggerPresentation?.featuredCta || paymentMethodPresentation.featuredButton;
 
                     return (
                       <>
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="space-y-3">
-                            {isFirstPurchaseOffer ? (
+                            {featuredTriggerBadge ? (
                               <span className="inline-flex rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent-gold)]">
-                                Акция на первую покупку
+                                {featuredTriggerBadge}
                               </span>
                             ) : null}
                             {featuredValueBadge ? (
@@ -1679,6 +1892,11 @@ export default function EnergyPage() {
                                 {featuredOfferPositioning?.displayName || `${getOfferTotalEnergy(featuredOffer)} ⚡`}
                               </p>
                             </div>
+                            {featuredSummary ? (
+                              <p className="max-w-[34rem] text-sm leading-6 text-[var(--text-secondary)]">
+                                {featuredSummary}
+                              </p>
+                            ) : null}
                           </div>
 
                           <div className="min-w-[112px] text-left sm:text-right">
@@ -1704,6 +1922,7 @@ export default function EnergyPage() {
                           className="mt-5 h-12 w-full justify-between rounded-full border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,#E2C79D_0%,#CFA974_100%)] px-5 text-[var(--text-on-gold)] shadow-[0_8px_22px_rgba(183,138,87,0.24)]"
                           disabled={Boolean(creatingProductCode) || checkingStatus}
                           onClick={() => {
+                            emitOfferEvent(featuredOffer, "clicked_primary", "energy_featured");
                             void (selectedPaymentMethod === "telegram_stars"
                               ? handleBuyStarsOffer(featuredOffer)
                               : handleBuyRobokassaOffer(featuredOffer));
@@ -1716,7 +1935,7 @@ export default function EnergyPage() {
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-2">
-                              {paymentMethodPresentation.featuredButton}
+                              {featuredCta}
                               <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
                             </span>
                           )}
@@ -1745,9 +1964,8 @@ export default function EnergyPage() {
                         ? `+${offer.bonus_energy} бонус`
                         : null;
                     const positioning = getOfferPositioning(offer);
-                    const isFirstPurchaseOffer =
-                      offer.trigger_type === "first_purchase" &&
-                      (Boolean(offer.rule_id) || hasOfferDiscount(offer) || getOfferBonusPercent(offer) > 0);
+                    const triggerPresentation = getOfferTriggerPresentation(offer);
+                    const triggerBadge = triggerPresentation.secondaryBadge;
 
                     return (
                       <div
@@ -1758,9 +1976,9 @@ export default function EnergyPage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-medium text-[var(--text-primary)]">{positioning.displayName}</p>
-                              {isFirstPurchaseOffer ? (
+                              {triggerBadge ? (
                                 <span className="rounded-full border border-[rgba(215,185,139,0.24)] bg-[rgba(215,185,139,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent-gold)]">
-                                  Первая покупка
+                                  {triggerBadge}
                                 </span>
                               ) : null}
                               {discountBadge ? (
@@ -1775,6 +1993,7 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
+                            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{triggerPresentation.secondarySummary}</p>
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
@@ -1792,6 +2011,7 @@ export default function EnergyPage() {
                           variant="outline"
                           disabled={Boolean(creatingProductCode) || checkingStatus}
                           onClick={() => {
+                            emitOfferEvent(offer, "clicked_secondary", "energy_list");
                             void (selectedPaymentMethod === "telegram_stars"
                               ? handleBuyStarsOffer(offer)
                               : handleBuyRobokassaOffer(offer));

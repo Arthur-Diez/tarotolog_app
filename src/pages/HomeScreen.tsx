@@ -23,7 +23,23 @@ import { useDailyCard } from "@/hooks/useDailyCard";
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { ApiError, DEFAULT_WIDGET_KEYS, createReading, getReading, viewReading, type WidgetKey } from "@/lib/api";
+import {
+  ApiError,
+  DEFAULT_WIDGET_KEYS,
+  createReading,
+  getOfferPlacements,
+  getReading,
+  recordOfferEvent,
+  viewReading,
+  type PaymentOfferResponse,
+  type WidgetKey
+} from "@/lib/api";
+import {
+  getOfferSessionKey,
+  hasOfferBeenShownInSession,
+  markOfferDismissedInSession,
+  markOfferShownInSession
+} from "@/lib/offerSessionState";
 import type { TelegramUser } from "@/lib/telegram";
 
 interface HomeScreenProps {
@@ -38,6 +54,14 @@ interface ServiceItem {
   accentClassName: string;
   available: boolean;
   onClick?: () => void;
+}
+
+interface HomeOfferBanner {
+  offer: PaymentOfferResponse;
+  title: string;
+  body: string;
+  accent: string;
+  surface: "home_banner" | "home_popup";
 }
 
 const DAILY_CARD_PENDING_STATUSES = new Set(["pending", "queued", "processing"]);
@@ -184,6 +208,30 @@ function clearStoredDailyCardUnlock() {
   window.sessionStorage.removeItem(DAILY_CARD_UNLOCK_STORAGE_KEY);
 }
 
+function getHomeOfferContent(triggerType: string): { title: string; body: string; accent: string } {
+  switch (triggerType) {
+    case "zero_balance":
+      return {
+        title: "Энергия закончилась",
+        body: "Баланс остановил платные сценарии. Откройте энергию и быстро верните доступ к трактовкам и прогнозам.",
+        accent: "from-[#F08A62] to-[#D8604B]"
+      };
+    case "low_energy":
+      return {
+        title: "Запас лучше усилить заранее",
+        body: "Энергии осталось немного. Сейчас удобнее пополнить баланс, чем упереться в дефицит на следующем сценарии.",
+        accent: "from-[#E4BE7A] to-[#CFA974]"
+      };
+    case "first_purchase":
+    default:
+      return {
+        title: "Акция на первую покупку",
+        body: "Для первого входа в платный слой уже открыт бонусный оффер. Можно начать с меньшим барьером и усилить запас энергии.",
+        accent: "from-[#D7B98B] to-[#B78A57]"
+      };
+  }
+}
+
 export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
@@ -196,14 +244,18 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const [storedDailyCardUnlock, setStoredDailyCardUnlock] = useState<StoredDailyCardUnlock | null>(() =>
     readStoredDailyCardUnlock()
   );
+  const [homeBannerOffer, setHomeBannerOffer] = useState<HomeOfferBanner | null>(null);
+  const [homePopupOffer, setHomePopupOffer] = useState<HomeOfferBanner | null>(null);
 
   const profileData = profile?.user;
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
   const energyBalance = profileData?.energy_balance ?? 0;
   const zodiacLabel = getZodiacLabel(profile?.birth_profile?.zodiac_sign, profile?.birth_profile?.birth_date);
   const interfaceLocale = resolvePreferredLanguage(profile?.birth_profile?.interface_language ?? profile?.user?.lang);
+  const detectedCountry = profile?.birth_profile?.detected_country ?? null;
   const focusTheme = useMemo(() => getFocusTheme(energyBalance), [energyBalance]);
   const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energyBalance)));
+  const offerSessionKey = useMemo(() => getOfferSessionKey(), []);
   const homeWidgets = useMemo<WidgetKey[]>(
     () => (profile ? profile.preferences.widgets : DEFAULT_WIDGET_KEYS),
     [profile]
@@ -466,8 +518,146 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     </button>
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!profileData?.id) return;
+      const telegramLang = profile?.user?.lang ?? undefined;
+      const deviceLang = typeof navigator !== "undefined" ? navigator.language : undefined;
+
+      try {
+        const placements = await getOfferPlacements({
+          detected_country: detectedCountry ?? undefined,
+          telegram_lang: telegramLang,
+          device_lang: deviceLang
+        });
+
+        if (cancelled) return;
+        const nextBannerOffer = placements.home_banner?.offer ?? null;
+        const nextPopupOffer = placements.home_popup?.offer ?? null;
+
+        setHomeBannerOffer(
+          nextBannerOffer
+            ? {
+                offer: nextBannerOffer,
+                surface: "home_banner",
+                ...getHomeOfferContent(nextBannerOffer.trigger_type)
+              }
+            : null
+        );
+        setHomePopupOffer(
+          nextPopupOffer
+            ? {
+                offer: nextPopupOffer,
+                surface: "home_popup",
+                ...getHomeOfferContent(nextPopupOffer.trigger_type)
+              }
+            : null
+        );
+      } catch {
+        if (cancelled) return;
+        setHomeBannerOffer(null);
+        setHomePopupOffer(null);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [detectedCountry, energyBalance, offerSessionKey, profile, profileData?.id]);
+
+  useEffect(() => {
+    if (!homeBannerOffer) return;
+    const { offer, surface } = homeBannerOffer;
+    if (hasOfferBeenShownInSession(offer.trigger_type, surface, offer.offer_id)) return;
+    markOfferShownInSession(offer.trigger_type, surface, offer.offer_id);
+    void recordOfferEvent({
+      trigger_type: offer.trigger_type,
+      surface,
+      offer_id: offer.offer_id,
+      rule_id: offer.rule_id,
+      event_type: "shown",
+      session_key: offerSessionKey,
+      context: { source: "home_screen" }
+    }).catch(() => {});
+  }, [homeBannerOffer, offerSessionKey]);
+
+  useEffect(() => {
+    if (!homePopupOffer) return;
+    const { offer, surface } = homePopupOffer;
+    if (hasOfferBeenShownInSession(offer.trigger_type, surface, offer.offer_id)) return;
+    markOfferShownInSession(offer.trigger_type, surface, offer.offer_id);
+    void recordOfferEvent({
+      trigger_type: offer.trigger_type,
+      surface,
+      offer_id: offer.offer_id,
+      rule_id: offer.rule_id,
+      event_type: "shown",
+      session_key: offerSessionKey,
+      context: { source: "home_screen" }
+    }).catch(() => {});
+  }, [homePopupOffer, offerSessionKey]);
+
+  const handleHomeOfferDismiss = useCallback(async (banner: HomeOfferBanner) => {
+    markOfferDismissedInSession(banner.offer.trigger_type, banner.surface, banner.offer.offer_id);
+    const dismissedUntil =
+      banner.surface === "home_popup"
+        ? new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+        : null;
+    void recordOfferEvent({
+      trigger_type: banner.offer.trigger_type,
+      surface: banner.surface,
+      offer_id: banner.offer.offer_id,
+      rule_id: banner.offer.rule_id,
+      event_type: "dismissed",
+      session_key: offerSessionKey,
+      dismissed_until: dismissedUntil,
+      context: { source: "home_screen" }
+    }).catch(() => {});
+    if (banner.surface === "home_popup") {
+      setHomePopupOffer(null);
+    } else {
+      setHomeBannerOffer(null);
+    }
+  }, [offerSessionKey]);
+
+  const handleHomeOfferOpenEnergy = useCallback((banner: HomeOfferBanner) => {
+    void recordOfferEvent({
+      trigger_type: banner.offer.trigger_type,
+      surface: banner.surface,
+      offer_id: banner.offer.offer_id,
+      rule_id: banner.offer.rule_id,
+      event_type: "clicked_primary",
+      session_key: offerSessionKey,
+      context: { source: "home_screen" }
+    }).catch(() => {});
+    navigate("/energy");
+  }, [navigate, offerSessionKey]);
+
   return (
     <div className="space-y-5 pb-6">
+      {homePopupOffer ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(7,6,10,0.74)] px-4 pb-24 pt-12 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[30px] border border-[rgba(215,185,139,0.2)] bg-[linear-gradient(180deg,rgba(42,34,49,0.98),rgba(19,14,24,0.98))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
+            <div className={`h-1.5 w-20 rounded-full bg-gradient-to-r ${homePopupOffer.accent}`} />
+            <div className="mt-4 space-y-3">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Предложение</p>
+              <h3 className="text-[1.45rem] font-semibold leading-tight text-[var(--text-primary)]">{homePopupOffer.title}</h3>
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">{homePopupOffer.body}</p>
+            </div>
+            <div className="mt-5 flex gap-3">
+              <Button className="flex-1" onClick={() => handleHomeOfferOpenEnergy(homePopupOffer)}>
+                Пополнить сейчас
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => void handleHomeOfferDismiss(homePopupOffer)}>
+                Позже
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="flex items-center justify-between px-1">
         <div>
           <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--text-tertiary)]">TarotologAI</p>
@@ -478,6 +668,31 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           Ранний доступ
         </div>
       </section>
+
+      {homeBannerOffer ? (
+        <section className="relative overflow-hidden rounded-[28px] border border-[rgba(215,185,139,0.16)] bg-[linear-gradient(180deg,rgba(36,28,43,0.96),rgba(18,14,23,0.98))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+          <div className={`pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-gradient-to-br ${homeBannerOffer.accent} opacity-20 blur-3xl`} />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">Предложение дня</p>
+              <h3 className="text-[1.1rem] font-semibold text-[var(--text-primary)]">{homeBannerOffer.title}</h3>
+              <p className="max-w-[34rem] text-sm leading-6 text-[var(--text-secondary)]">{homeBannerOffer.body}</p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+              onClick={() => void handleHomeOfferDismiss(homeBannerOffer)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="relative mt-4">
+            <Button variant="outline" className="h-11 rounded-full border-[rgba(215,185,139,0.22)] bg-[rgba(255,255,255,0.04)] px-5 text-[var(--text-primary)]" onClick={() => handleHomeOfferOpenEnergy(homeBannerOffer)}>
+              Открыть энергию
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="relative overflow-hidden rounded-[32px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(42,34,49,0.96),rgba(24,19,29,0.94))] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.34),0_0_40px_rgba(183,138,87,0.1)]">
         <div className="pointer-events-none absolute -right-10 top-4 h-32 w-32 rounded-full bg-[rgba(215,185,139,0.16)] blur-3xl" />

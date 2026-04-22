@@ -10,11 +10,21 @@ import {
   DEFAULT_WIDGET_KEYS,
   WIDGET_KEYS,
   adminProbeDiscountAccess,
+  getOfferPlacements,
+  recordOfferEvent,
+  type PaymentOfferResponse,
   type UpdateProfilePayload,
   type WidgetKey
 } from "@/lib/api";
 import { useProfile } from "@/hooks/useProfile";
 import { useSaveProfile } from "@/hooks/useSaveProfile";
+import {
+  getOfferSessionKey,
+  hasOfferBeenDismissedInSession,
+  hasOfferBeenShownInSession,
+  markOfferDismissedInSession,
+  markOfferShownInSession
+} from "@/lib/offerSessionState";
 import { normalizeWidgets } from "@/stores/profileState";
 import { TimezoneSelectorUnified } from "@/components/TimezoneSelectorUnified";
 import {
@@ -181,6 +191,7 @@ export default function ProfilePage() {
   const { profile, loading, error, refresh } = useProfile();
   const { saveProfile, saving, error: saveError, clearError } = useSaveProfile();
   const [isDiscountAdminByBackend, setIsDiscountAdminByBackend] = useState(false);
+  const [firstPurchaseBannerOffer, setFirstPurchaseBannerOffer] = useState<PaymentOfferResponse | null>(null);
 
   const birthProfile = profile?.birth_profile ?? null;
   const user = profile?.user;
@@ -218,6 +229,7 @@ export default function ProfilePage() {
   }, []);
 
   const isDiscountAdmin = isAdminByIdentity || isDiscountAdminByBackend;
+  const offerSessionKey = useMemo(() => getOfferSessionKey(), []);
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
@@ -501,6 +513,76 @@ export default function ProfilePage() {
     : diag.effectiveLang;
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadFirstPurchaseBannerOffer = async () => {
+      try {
+        const placements = await getOfferPlacements({
+          detected_country: suggestedCountry,
+          telegram_lang: diag.tgLangCodeRaw ?? undefined,
+          device_lang: diag.navLangRaw ?? deviceLanguageFallback ?? undefined
+        });
+
+        const firstPurchaseOffer = placements.profile_banner?.offer ?? null;
+
+        if (!firstPurchaseOffer) {
+          if (!cancelled) {
+            setFirstPurchaseBannerOffer(null);
+          }
+          return;
+        }
+
+        if (
+          hasOfferBeenDismissedInSession("first_purchase", "profile_banner", firstPurchaseOffer.offer_id)
+        ) {
+          if (!cancelled) {
+            setFirstPurchaseBannerOffer(null);
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setFirstPurchaseBannerOffer(firstPurchaseOffer);
+        }
+      } catch {
+        if (!cancelled) {
+          setFirstPurchaseBannerOffer(null);
+        }
+      }
+    };
+
+    void loadFirstPurchaseBannerOffer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    deviceLanguageFallback,
+    diag.navLangRaw,
+    diag.tgLangCodeRaw,
+    suggestedCountry
+  ]);
+
+  useEffect(() => {
+    if (!firstPurchaseBannerOffer) return;
+    if (
+      hasOfferBeenShownInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id)
+    ) {
+      return;
+    }
+    markOfferShownInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id);
+    void recordOfferEvent({
+      trigger_type: "first_purchase",
+      surface: "profile_banner",
+      offer_id: firstPurchaseBannerOffer.offer_id,
+      rule_id: firstPurchaseBannerOffer.rule_id,
+      event_type: "shown",
+      session_key: offerSessionKey,
+      context: { source: "profile_page" }
+    }).catch(() => {});
+  }, [firstPurchaseBannerOffer, offerSessionKey]);
+
+  useEffect(() => {
     if (saveError && activeSave) {
       const message = saveError || "Не удалось сохранить данные";
       if (activeSave === "personal") {
@@ -640,6 +722,21 @@ export default function ProfilePage() {
       void refresh();
     }
     setActiveSave(null);
+  };
+
+  const handleDismissFirstPurchaseBanner = async () => {
+    if (!firstPurchaseBannerOffer) return;
+    markOfferDismissedInSession("first_purchase", "profile_banner", firstPurchaseBannerOffer.offer_id);
+    setFirstPurchaseBannerOffer(null);
+    void recordOfferEvent({
+      trigger_type: "first_purchase",
+      surface: "profile_banner",
+      offer_id: firstPurchaseBannerOffer.offer_id,
+      rule_id: firstPurchaseBannerOffer.rule_id,
+      event_type: "dismissed",
+      session_key: offerSessionKey,
+      context: { source: "profile_page" }
+    }).catch(() => {});
   };
 
   const normalizedBirthTime = normalizeTimeValue(personal.birthTime);
@@ -860,6 +957,47 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handlePersonalSubmit}>
+            {firstPurchaseBannerOffer ? (
+              <div className="rounded-[22px] border border-[rgba(215,185,139,0.18)] bg-[linear-gradient(180deg,rgba(48,39,56,0.96),rgba(27,21,33,0.98))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-[rgba(231,204,158,0.8)]">Акция на первую покупку</p>
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)]">Стартовый оффер уже открыт</h3>
+                    <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                      Для первой покупки уже доступен более мягкий вход в платный слой. Можно перейти к энергии и выбрать лучший стартовый пакет.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+                    onClick={() => void handleDismissFirstPurchaseBanner()}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-[rgba(215,185,139,0.22)] bg-[rgba(255,255,255,0.04)] text-[var(--text-primary)]"
+                    onClick={() => {
+                      void recordOfferEvent({
+                        trigger_type: "first_purchase",
+                        surface: "profile_banner",
+                        offer_id: firstPurchaseBannerOffer.offer_id,
+                        rule_id: firstPurchaseBannerOffer.rule_id,
+                        event_type: "clicked_primary",
+                        session_key: offerSessionKey,
+                        context: { source: "profile_page" }
+                      }).catch(() => {});
+                      navigate("/energy");
+                    }}
+                  >
+                    Открыть энергию
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             <div className="space-y-4">
               <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
                 <p className="text-sm font-medium text-[var(--text-primary)]">Ваш часовой пояс</p>
