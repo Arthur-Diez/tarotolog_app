@@ -80,6 +80,7 @@ export default function DealtCard({
           rotateZ: [144, 194, 180],
           scale: [0.94, 1.03, 1],
           y: [-3, 1, 0],
+          opacity: [0, 0.9, 1],
           filter: [
             "brightness(0.86) saturate(0.92)",
             "brightness(1.12) saturate(1.06)",
@@ -90,6 +91,7 @@ export default function DealtCard({
           rotateZ: [-14, 3, 0],
           scale: [0.96, 1.024, 1],
           y: [-6, 1, 0],
+          opacity: [0, 0.9, 1],
           filter: [
             "brightness(0.9) saturate(0.96)",
             "brightness(1.08) saturate(1.04)",
@@ -100,6 +102,7 @@ export default function DealtCard({
         rotateZ: 0,
         scale: 1,
         y: 0,
+        opacity: 0,
         filter: "brightness(1) saturate(1)"
       };
 
@@ -148,7 +151,12 @@ export default function DealtCard({
         draggable={false}
         animate={backAnimate}
         transition={faceTransition}
-        style={{ willChange: "transform" }}
+        style={{
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          transform: "translateZ(0.2px)",
+          willChange: "transform, opacity, filter"
+        }}
       />
       <motion.div
         className="absolute inset-0 [backface-visibility:hidden]"
@@ -157,6 +165,8 @@ export default function DealtCard({
         style={{
           transform: "rotateY(180deg)",
           transformStyle: "preserve-3d",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
           willChange: "transform, filter"
         }}
       >

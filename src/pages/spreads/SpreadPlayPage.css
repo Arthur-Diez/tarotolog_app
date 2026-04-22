@@ -161,6 +161,8 @@
 }
 
 .ritual-scene {
+  --ritual-parallax-x: 0px;
+  --ritual-parallax-y: 0px;
   transition:
     transform 380ms var(--ritual-ease),
     filter 380ms var(--ritual-ease);
@@ -178,7 +180,10 @@
   top: 46%;
   width: min(560px, 92vw);
   height: min(420px, 68vh);
-  transform: translate(-50%, -50%);
+  transform: translate(
+    calc(-50% + (var(--ritual-parallax-x, 0px) * 0.52)),
+    calc(-50% + (var(--ritual-parallax-y, 0px) * 0.52))
+  );
   pointer-events: none;
   border-radius: 50%;
   background: radial-gradient(circle, var(--deck-glow, rgba(214, 176, 118, 0.16)) 0%, rgba(255, 255, 255, 0) 68%);
@@ -193,6 +198,59 @@
 .ritual-deck-shell {
   filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.32));
   transition: filter 340ms var(--ritual-ease);
+}
+
+.ritual-deck-parallax {
+  transform:
+    translate3d(
+      calc(var(--ritual-parallax-x, 0px) * 0.9),
+      calc(var(--ritual-parallax-y, 0px) * 0.9),
+      0
+    );
+  transition: transform 520ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  will-change: transform;
+}
+
+.deck-stack-breath {
+  position: relative;
+  isolation: isolate;
+  animation: ritual-deck-breathe 8.6s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.deck-stack-breath::before {
+  content: "";
+  position: absolute;
+  inset: 8px 10px 14px;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 22px;
+  background: radial-gradient(circle at 50% 26%, rgba(245, 216, 154, 0.14), rgba(245, 216, 154, 0) 66%);
+  opacity: 0.3;
+}
+
+.deck-stack-breath::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: 28px;
+  background:
+    linear-gradient(
+      112deg,
+      rgba(255, 255, 255, 0) 22%,
+      rgba(245, 222, 164, 0.06) 42%,
+      rgba(255, 247, 224, 0.14) 50%,
+      rgba(245, 222, 164, 0.06) 58%,
+      rgba(255, 255, 255, 0) 76%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.34;
+  transform: translateX(-58%) rotate(-7deg);
+  filter: blur(8px);
+  animation: ritual-deck-shimmer 9.8s ease-in-out infinite;
 }
 
 .ritual-burst-layer {
@@ -290,6 +348,19 @@
     drop-shadow(0 0 14px var(--deck-glow, rgba(214, 176, 118, 0.12)));
 }
 
+.ritual-screen.focusMode .deck-stack-breath,
+.ritual-screen.performanceMode .deck-stack-breath,
+.ritual-screen.questionStageSimplified .deck-stack-breath {
+  animation: none !important;
+}
+
+.ritual-screen.focusMode .deck-stack-breath::after,
+.ritual-screen.performanceMode .deck-stack-breath::after,
+.ritual-screen.questionStageSimplified .deck-stack-breath::after {
+  opacity: 0.14;
+  animation-duration: 14s;
+}
+
 .ritual-screen.focusMode .ritual-vignette {
   opacity: 1;
 }
@@ -366,6 +437,7 @@
 .ritual-screen.performanceMode .ritual-bottom-panel,
 .ritual-screen.performanceMode .ritual-scene,
 .ritual-screen.performanceMode .ritual-scene-frame,
+.ritual-screen.performanceMode .ritual-deck-parallax,
 .ritual-screen.performanceMode .ritual-deck-shell,
 .ritual-screen.performanceMode .ritual-vignette {
   transition: none !important;
@@ -388,6 +460,7 @@
 }
 
 .ritual-screen.questionStageSimplified .ritual-scene-frame,
+.ritual-screen.questionStageSimplified .ritual-deck-parallax,
 .ritual-screen.questionStageSimplified .ritual-deck-shell,
 .ritual-screen.questionStageSimplified .ritual-bottom-panel {
   transition: none !important;
@@ -450,7 +523,9 @@
 @media (prefers-reduced-motion: reduce) {
   .ritual-haze,
   .ritual-stardust-dot,
-  .ritual-burst {
+  .ritual-burst,
+  .deck-stack-breath,
+  .deck-stack-breath::after {
     animation: none !important;
   }
 
@@ -468,6 +543,7 @@
   .ritual-scene,
   .ritual-scene-frame,
   .ritual-scene-halo,
+  .ritual-deck-parallax,
   .ritual-vignette,
   .ritual-deck-shell {
     transition: none !important;
@@ -511,6 +587,31 @@
   100% {
     opacity: 0;
     transform: scale(1.06);
+  }
+}
+
+@keyframes ritual-deck-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0) scale(1.012);
+  }
+}
+
+@keyframes ritual-deck-shimmer {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateX(-58%) rotate(-7deg);
+  }
+  46% {
+    opacity: 0.3;
+  }
+  55% {
+    opacity: 0.36;
+    transform: translateX(56%) rotate(-4deg);
   }
 }
 

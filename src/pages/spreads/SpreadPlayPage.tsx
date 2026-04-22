@@ -208,6 +208,9 @@ export default function SpreadPlayPage() {
   const questionFormRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
   const fanCenterRef = useRef<HTMLDivElement | null>(null);
+  const pointerParallaxRef = useRef({ x: 0, y: 0 });
+  const scrollParallaxRef = useRef({ x: 0, y: 0 });
+  const parallaxFrameRef = useRef<number | null>(null);
   const timelineTokenRef = useRef(0);
   const activeAnimationRef = useRef<AnimationPlaybackControls | null>(null);
   const pauseTimerRef = useRef<number | null>(null);
@@ -303,6 +306,9 @@ export default function SpreadPlayPage() {
 
   useEffect(() => {
     return () => {
+      if (parallaxFrameRef.current !== null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(parallaxFrameRef.current);
+      }
       if (pauseTimerRef.current !== null) {
         window.clearTimeout(pauseTimerRef.current);
       }
@@ -530,6 +536,46 @@ export default function SpreadPlayPage() {
     }, prefersReducedMotion ? 140 : DEAL_GLOW_PULSE_DURATION);
   }, [prefersReducedMotion]);
 
+  const applySceneParallax = useCallback(() => {
+    const node = spreadAreaRef.current;
+    if (!node) return;
+    const x = pointerParallaxRef.current.x + scrollParallaxRef.current.x;
+    const y = pointerParallaxRef.current.y + scrollParallaxRef.current.y;
+    node.style.setProperty("--ritual-parallax-x", `${x.toFixed(2)}px`);
+    node.style.setProperty("--ritual-parallax-y", `${y.toFixed(2)}px`);
+  }, []);
+
+  const scheduleSceneParallax = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (parallaxFrameRef.current !== null) return;
+    parallaxFrameRef.current = window.requestAnimationFrame(() => {
+      parallaxFrameRef.current = null;
+      applySceneParallax();
+    });
+  }, [applySceneParallax]);
+
+  const resetPointerParallax = useCallback(() => {
+    pointerParallaxRef.current = { x: 0, y: 0 };
+    scheduleSceneParallax();
+  }, [scheduleSceneParallax]);
+
+  const updatePointerParallax = useCallback(
+    (clientX: number, clientY: number) => {
+      const node = spreadAreaRef.current;
+      if (!node || prefersReducedMotion) return;
+      const rect = node.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const ratioX = clamp((clientX - rect.left) / rect.width, 0, 1) - 0.5;
+      const ratioY = clamp((clientY - rect.top) / rect.height, 0, 1) - 0.5;
+      pointerParallaxRef.current = {
+        x: ratioX * 10,
+        y: ratioY * 7
+      };
+      scheduleSceneParallax();
+    },
+    [prefersReducedMotion, scheduleSceneParallax]
+  );
+
   const stopActiveAnimation = useCallback(() => {
     if (!activeAnimationRef.current) return;
     activeAnimationRef.current.stop();
@@ -602,6 +648,40 @@ export default function SpreadPlayPage() {
     if (!spreadRect) return;
     setSpreadCenterPx({ x: spreadRect.width / 2, y: spreadRect.height / 2 });
   }, [scale, viewportHeight, viewportWidth, deckKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    if (prefersReducedMotion) {
+      scrollParallaxRef.current = { x: 0, y: 0 };
+      pointerParallaxRef.current = { x: 0, y: 0 };
+      scheduleSceneParallax();
+      return undefined;
+    }
+
+    const updateScrollParallax = () => {
+      const node = spreadAreaRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const viewportHeightValue = window.innerHeight || 1;
+      const centerOffset = rect.top + rect.height / 2 - viewportHeightValue / 2;
+      const normalized = clamp(centerOffset / viewportHeightValue, -1, 1);
+      scrollParallaxRef.current = {
+        x: 0,
+        y: normalized * -5
+      };
+      scheduleSceneParallax();
+    };
+
+    updateScrollParallax();
+    window.addEventListener("scroll", updateScrollParallax, { passive: true });
+    window.addEventListener("resize", updateScrollParallax);
+
+    return () => {
+      window.removeEventListener("scroll", updateScrollParallax);
+      window.removeEventListener("resize", updateScrollParallax);
+    };
+  }, [prefersReducedMotion, scheduleSceneParallax]);
 
   useLayoutEffect(() => {
     const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
@@ -1329,6 +1409,13 @@ export default function SpreadPlayPage() {
             marginTop: showForm ? `${6 / scale}px` : `${16 / scale}px`,
             pointerEvents: shouldBlockInteractions ? "none" : "auto"
           }}
+          onPointerMove={(event) => updatePointerParallax(event.clientX, event.clientY)}
+          onPointerLeave={resetPointerParallax}
+          onTouchMove={(event) => {
+            const touch = event.touches[0];
+            if (touch) updatePointerParallax(touch.clientX, touch.clientY);
+          }}
+          onTouchEnd={resetPointerParallax}
         >
           <div
             className="ritual-scene-frame relative flex w-full flex-col items-center"
@@ -1340,16 +1427,18 @@ export default function SpreadPlayPage() {
           >
             <div className="ritual-scene-halo" aria-hidden />
             <div className="relative" style={{ transform: `translateY(${DECK_RISE_OFFSET}px)` }}>
-              <div
-                className="deck-outer ritual-deck-shell"
-                style={{ transform: `scale(${effectiveDeckScale})`, transformOrigin: "center top" }}
-              >
-                <DeckStack
-                  key={deckKey}
-                  backSrc={backSrc}
-                  mode={useSimplifiedQuestionStage ? "fan" : stage}
-                  fanCenterRef={fanCenterRef}
-                />
+              <div className="ritual-deck-parallax" style={{ transformOrigin: "center top" }}>
+                <div
+                  className="deck-outer ritual-deck-shell"
+                  style={{ transform: `scale(${effectiveDeckScale})`, transformOrigin: "center top" }}
+                >
+                  <DeckStack
+                    key={deckKey}
+                    backSrc={backSrc}
+                    mode={useSimplifiedQuestionStage ? "fan" : stage}
+                    fanCenterRef={fanCenterRef}
+                  />
+                </div>
               </div>
             </div>
             <div className="dealt-layer pointer-events-none absolute left-1/2 top-1/2 z-[1100]">

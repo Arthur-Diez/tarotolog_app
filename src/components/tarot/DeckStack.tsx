@@ -150,52 +150,54 @@ export const DeckStack = memo(function DeckStack({
         ref={fanCenterRef}
         className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 opacity-0"
       />
-      <motion.div
-        className="deck deck-stack-shell relative z-10 h-56 w-36 overflow-visible"
-        style={{ willChange: "transform" }}
-      >
-        {cards.map((_, index) => {
-          const fanTarget = fanLayout[index];
-          const stackTarget = stackOffsets[index];
-          const target = isStackPhase ? stackTarget : fanTarget;
-          const transition =
-            mode === "collecting"
-              ? {
-                  duration: 0.9,
-                  delay: gatherDelay(index, centerIndex),
-                  ease: "easeInOut"
-                }
-              : { duration: 0.5, ease: "easeOut" };
-          const opacity = isStackPhase ? stackTarget.opacity : 1;
+      <div className="deck-stack-breath relative z-10 h-56 w-36 overflow-visible">
+        <motion.div
+          className="deck deck-stack-shell relative h-56 w-36 overflow-visible"
+          style={{ willChange: "transform" }}
+        >
+          {cards.map((_, index) => {
+            const fanTarget = fanLayout[index];
+            const stackTarget = stackOffsets[index];
+            const target = isStackPhase ? stackTarget : fanTarget;
+            const transition =
+              mode === "collecting"
+                ? {
+                    duration: 0.9,
+                    delay: gatherDelay(index, centerIndex),
+                    ease: "easeInOut"
+                  }
+                : { duration: 0.5, ease: "easeOut" };
+            const opacity = isStackPhase ? stackTarget.opacity : 1;
 
-          return (
-            <motion.img
-              key={`card-${index}`}
-              src={backSrc}
-              alt=""
-              initial={{
-                x: fanTarget.x,
-                y: fanTarget.y,
-                rotateZ: fanTarget.rotate
-              }}
-              className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
-              style={{
-                zIndex: Math.min(zLayers[index], 50),
-                imageRendering: "auto",
-                backfaceVisibility: "hidden",
-                willChange: "transform"
-              }}
-              animate={{
-                x: target.x,
-                y: target.y,
-                rotateZ: target.rotate,
-                opacity
-              }}
-              transition={transition}
-            />
-          );
-        })}
-      </motion.div>
+            return (
+              <motion.img
+                key={`card-${index}`}
+                src={backSrc}
+                alt=""
+                initial={{
+                  x: fanTarget.x,
+                  y: fanTarget.y,
+                  rotateZ: fanTarget.rotate
+                }}
+                className={`deck-card card-${index} absolute h-56 w-36 rounded-xl object-cover tarot-card-shadow`}
+                style={{
+                  zIndex: Math.min(zLayers[index], 50),
+                  imageRendering: "auto",
+                  backfaceVisibility: "hidden",
+                  willChange: "transform"
+                }}
+                animate={{
+                  x: target.x,
+                  y: target.y,
+                  rotateZ: target.rotate,
+                  opacity
+                }}
+                transition={transition}
+              />
+            );
+          })}
+        </motion.div>
+      </div>
     </div>
   );
 });
