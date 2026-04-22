@@ -481,7 +481,7 @@ function getOfferTriggerPresentation(offer: PaymentOfferResponse): OfferTriggerP
       return {
         badge: "Акция на первую покупку",
         featuredSummary: "Лучший момент войти в платный слой: бонусная энергия и более сильный стартовый запас.",
-        secondarySummary: "Стартовый оффер с бонусной энергией для первого платежа.",
+        secondarySummary: "",
         featuredCta: "Забрать стартовый пакет",
         secondaryBadge: "Первая покупка"
       };
@@ -1993,7 +1993,9 @@ export default function EnergyPage() {
                               ) : null}
                               <p className="text-xl font-semibold text-[var(--text-primary)]">{totalEnergy} ⚡</p>
                             </div>
-                            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{triggerPresentation.secondarySummary}</p>
+                            {triggerPresentation.secondarySummary ? (
+                              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{triggerPresentation.secondarySummary}</p>
+                            ) : null}
                             {bonusLabel ? <p className="mt-1 text-xs text-emerald-100/90">{bonusLabel}</p> : null}
                             {remaining ? <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">До конца оффера: {remaining}</p> : null}
                           </div>
