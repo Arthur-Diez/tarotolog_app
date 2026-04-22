@@ -304,6 +304,18 @@
   transform: translate(-50%, -50%) scale(1.24);
 }
 
+.ritual-screen.dealGlowPulse .ritual-scene-halo {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.28);
+  filter: blur(14px);
+}
+
+.ritual-screen.dealGlowPulse .ritual-deck-shell {
+  filter:
+    drop-shadow(0 14px 26px rgba(0, 0, 0, 0.38))
+    drop-shadow(0 0 18px var(--deck-glow, rgba(214, 176, 118, 0.2)));
+}
+
 /* Mobile/WebView keyboard mode: disable expensive compositing effects while typing. */
 .ritual-screen.performanceMode::after {
   opacity: 0 !important;

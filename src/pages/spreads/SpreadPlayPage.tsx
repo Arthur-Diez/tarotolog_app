@@ -97,6 +97,8 @@ const FAN_STAGE_MAX_SCALE = 3;
 const DEAL_STAGE_MAX_SCALE = 1.15;
 const SCALE_EPSILON = 0.01;
 const ENERGY_DELTA_BADGE_DURATION = 1200;
+const DEAL_ORIGIN_FALLBACK_Y = -118;
+const DEAL_GLOW_PULSE_DURATION = 420;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = () =>
@@ -183,6 +185,7 @@ export default function SpreadPlayPage() {
   const [scope, animate] = useAnimate();
   const [isRunning, setIsRunning] = useState(false);
   const [isCinematicPause, setIsCinematicPause] = useState(false);
+  const [isDealGlowPulse, setIsDealGlowPulse] = useState(false);
   const [burstVisible, setBurstVisible] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
   const [energyFlash, setEnergyFlash] = useState(false);
@@ -200,6 +203,7 @@ export default function SpreadPlayPage() {
   const [actionButtonsOffsetPx, setActionButtonsOffsetPx] = useState(0);
   const [bubbleTopInSpread, setBubbleTopInSpread] = useState(0);
   const [spreadCenterPx, setSpreadCenterPx] = useState<{ x: number; y: number } | null>(null);
+  const [dealOriginPx, setDealOriginPx] = useState<{ x: number; y: number }>({ x: 0, y: DEAL_ORIGIN_FALLBACK_Y });
   const questionBubbleRef = useRef<HTMLDivElement | null>(null);
   const questionFormRef = useRef<HTMLDivElement | null>(null);
   const spreadAreaRef = useRef<HTMLDivElement | null>(null);
@@ -209,6 +213,7 @@ export default function SpreadPlayPage() {
   const pauseTimerRef = useRef<number | null>(null);
   const burstTimerRef = useRef<number | null>(null);
   const energyFlashTimerRef = useRef<number | null>(null);
+  const dealGlowPulseTimerRef = useRef<number | null>(null);
   const energyDeltaTimerRef = useRef<number | null>(null);
   const energyDeltaKeyRef = useRef(0);
   const energyCountRafRef = useRef<number | null>(null);
@@ -306,6 +311,9 @@ export default function SpreadPlayPage() {
       }
       if (energyFlashTimerRef.current !== null) {
         window.clearTimeout(energyFlashTimerRef.current);
+      }
+      if (dealGlowPulseTimerRef.current !== null) {
+        window.clearTimeout(dealGlowPulseTimerRef.current);
       }
       if (energyDeltaTimerRef.current !== null) {
         window.clearTimeout(energyDeltaTimerRef.current);
@@ -511,6 +519,17 @@ export default function SpreadPlayPage() {
     }, prefersReducedMotion ? 120 : 380);
   }, [prefersReducedMotion]);
 
+  const triggerDealGlowPulse = useCallback(() => {
+    setIsDealGlowPulse(true);
+    if (dealGlowPulseTimerRef.current !== null) {
+      window.clearTimeout(dealGlowPulseTimerRef.current);
+    }
+    dealGlowPulseTimerRef.current = window.setTimeout(() => {
+      setIsDealGlowPulse(false);
+      dealGlowPulseTimerRef.current = null;
+    }, prefersReducedMotion ? 140 : DEAL_GLOW_PULSE_DURATION);
+  }, [prefersReducedMotion]);
+
   const stopActiveAnimation = useCallback(() => {
     if (!activeAnimationRef.current) return;
     activeAnimationRef.current.stop();
@@ -583,6 +602,21 @@ export default function SpreadPlayPage() {
     if (!spreadRect) return;
     setSpreadCenterPx({ x: spreadRect.width / 2, y: spreadRect.height / 2 });
   }, [scale, viewportHeight, viewportWidth, deckKey]);
+
+  useLayoutEffect(() => {
+    const spreadRect = spreadAreaRef.current?.getBoundingClientRect();
+    const fanRect = fanCenterRef.current?.getBoundingClientRect();
+    if (!spreadRect || !fanRect) return;
+    const frameScale = useSimplifiedQuestionStage ? 1 : sceneScale;
+    const spreadCenterX = spreadRect.left + spreadRect.width / 2;
+    const spreadCenterY = spreadRect.top + spreadRect.height / 2;
+    const deckCenterX = fanRect.left + fanRect.width / 2;
+    const deckCenterY = fanRect.top + fanRect.height / 2;
+    setDealOriginPx({
+      x: (deckCenterX - spreadCenterX) / Math.max(frameScale, SCALE_EPSILON),
+      y: (deckCenterY - spreadCenterY) / Math.max(frameScale, SCALE_EPSILON)
+    });
+  }, [deckKey, sceneScale, useSimplifiedQuestionStage, viewportHeight, viewportWidth, stage]);
 
   useLayoutEffect(() => {
     if (isInputActive && !isRunning) {
@@ -682,6 +716,7 @@ export default function SpreadPlayPage() {
       setStage("dealing");
       await runDealSequence();
       if (!isActive()) return;
+      triggerDealGlowPulse();
 
       await wait(WAIT_AFTER_DEAL);
       if (!isActive()) return;
@@ -915,6 +950,78 @@ export default function SpreadPlayPage() {
     card: cards[index],
     orderNumber: orderMap.get(position.id)
   }));
+
+  const getDealMotion = useCallback(
+    (position: { x: number; y: number }, index: number, total: number) => {
+      const originOffsetX = dealOriginPx.x - position.x;
+      const originOffsetY = dealOriginPx.y - position.y;
+      const isCelticCross = schema.id === "celtic_cross";
+      const isWheelOfYear = schema.id === "wheel_of_year" || schema.id === "lenormand_wheel_of_year";
+      const isGrandTableau = schema.id === "lenormand_grand_tableau";
+      const isLargeSpread = total >= 8;
+      const isMediumSpread = total >= 4 && total < 8;
+      const delayStep = isGrandTableau ? 0.028 : isCelticCross ? 0.072 : total <= 3 ? 0.16 : isMediumSpread ? 0.1 : 0.06;
+      const arcLift = isGrandTableau ? 6 : isWheelOfYear ? 10 : isCelticCross ? (index < 6 ? 24 : 10) : total <= 3 ? 42 : isMediumSpread ? 28 : 16;
+      const sideBias = index % 2 === 0 ? -1 : 1;
+      const startRotate = isGrandTableau ? sideBias * 2 : isWheelOfYear ? sideBias * 4 : sideBias * (6 + (index % 3) * 2);
+      const midRotate = isGrandTableau ? startRotate * 0.25 : startRotate * 0.35;
+      const arcPullX = isGrandTableau ? sideBias * 4 : isWheelOfYear ? sideBias * 6 : sideBias * (isLargeSpread ? 8 : 14);
+      const midXBase = isGrandTableau ? 0.2 : isWheelOfYear ? 0.26 : 0.34;
+      const midX = originOffsetX * midXBase + arcPullX;
+      const midYBase = isGrandTableau ? 0.18 : isWheelOfYear ? 0.24 : 0.34;
+      const midY = originOffsetY * midYBase - arcLift;
+      const duration = isGrandTableau ? 0.28 : isWheelOfYear ? 0.42 : total <= 3 ? 0.72 : isMediumSpread ? 0.62 : 0.5;
+      const isDealtStage = stage === "dealing";
+      const isPlacedStage = stage === "await_open" || stage === "done";
+      const hiddenState = {
+        x: originOffsetX,
+        y: originOffsetY,
+        rotate: startRotate,
+        scale: 0.92,
+        opacity: 0,
+        filter: "blur(6px)"
+      };
+
+      if (prefersReducedMotion) {
+        return {
+          animate: isDealtStage || isPlacedStage ? { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1, filter: "blur(0px)" } : hiddenState,
+          transition: { duration: isDealtStage ? 0.15 : 0 }
+        };
+      }
+
+      if (isDealtStage) {
+        return {
+          animate: {
+            x: [originOffsetX, midX, 0],
+            y: [originOffsetY, midY, 0],
+            rotate: [startRotate, midRotate, 0],
+            scale: [0.92, 1.03, 1],
+            opacity: [0, 1, 1],
+            filter: ["blur(6px)", "blur(1px)", "blur(0px)"]
+          },
+          transition: {
+            duration,
+            delay: index * delayStep,
+            times: [0, 0.72, 1],
+            ease: ["easeOut", "easeInOut"]
+          }
+        };
+      }
+
+      if (isPlacedStage) {
+        return {
+          animate: { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1, filter: "blur(0px)" },
+          transition: { duration: 0.18, ease: "easeOut" }
+        };
+      }
+
+      return {
+        animate: hiddenState,
+        transition: { duration: 0 }
+      };
+    },
+    [dealOriginPx.x, dealOriginPx.y, prefersReducedMotion, schema.id, stage]
+  );
 
   const spreadLayoutHeight = useMemo(() => {
     if (!schema.positions.length) return DEALT_CARD_HEIGHT;
@@ -1165,7 +1272,7 @@ export default function SpreadPlayPage() {
 
   return (
     <div
-      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""} ${useHardMobileInputMode ? "hardInputMode" : ""}`}
+      className={`ritual-screen relative min-h-screen w-full overflow-hidden text-white ${isFocusMode ? "focusMode" : ""} ${isCinematicPause ? "cinematicPause" : ""} ${isDealGlowPulse ? "dealGlowPulse" : ""} ${isInputPerformanceMode ? "performanceMode" : ""} ${useSimplifiedQuestionStage ? "questionStageSimplified" : ""} ${useHardMobileInputMode ? "hardInputMode" : ""}`}
     >
       <div className="ritual-environment pointer-events-none absolute inset-0" aria-hidden>
         <div className="ritual-haze" />
@@ -1251,7 +1358,7 @@ export default function SpreadPlayPage() {
                 initial={{ y: -16, opacity: 0 }}
                 style={{ willChange: "transform" }}
               >
-                {cardsWithPosition.map(({ position, card, orderNumber }) => {
+                {cardsWithPosition.map(({ position, card, orderNumber }, index) => {
                     const isCelticCrossObstacle = schema.id === "celtic_cross" && position.id === 2;
                     const isWheelOfYear = schema.id === "wheel_of_year" || schema.id === "lenormand_wheel_of_year";
                     const isLenormandSquare = schema.id === "lenormand_square_9";
@@ -1299,26 +1406,32 @@ export default function SpreadPlayPage() {
                               №{orderNumber}
                             </motion.div>
                           )}
-                          <div style={isCelticCrossObstacle ? { transform: "rotate(90deg)", transformOrigin: "center center" } : undefined}>
-                            <DealtCard
-                              backSrc={backSrc}
-                              deckId={schema.deckType}
-                              faceName={card.name}
-                              isOpen={card.isOpen}
-                              reversed={card.reversed}
-                              className={
-                                [
-                                  shouldHighlight
-                                    ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
-                                    : "",
-                                  isWheelOfYear ? "h-36 w-22" : "",
-                                  isLenormandSquare ? "h-52 w-31" : "",
-                                  isLenormandGrandTableau ? "h-[116px] w-[72px]" : ""
-                                ].join(" ")
-                              }
-                              onClick={() => handleCardClick(position.id)}
-                            />
-                          </div>
+                          <motion.div
+                            initial={false}
+                            {...getDealMotion(position, index, cardsWithPosition.length)}
+                            style={{ willChange: "transform, opacity, filter" }}
+                          >
+                            <div style={isCelticCrossObstacle ? { transform: "rotate(90deg)", transformOrigin: "center center" } : undefined}>
+                              <DealtCard
+                                backSrc={backSrc}
+                                deckId={schema.deckType}
+                                faceName={card.name}
+                                isOpen={card.isOpen}
+                                reversed={card.reversed}
+                                className={
+                                  [
+                                    shouldHighlight
+                                      ? "ring-2 ring-emerald-400/90 shadow-[0_0_26px_rgba(52,211,153,0.65)]"
+                                      : "",
+                                    isWheelOfYear ? "h-36 w-22" : "",
+                                    isLenormandSquare ? "h-52 w-31" : "",
+                                    isLenormandGrandTableau ? "h-[116px] w-[72px]" : ""
+                                  ].join(" ")
+                                }
+                                onClick={() => handleCardClick(position.id)}
+                              />
+                            </div>
+                          </motion.div>
                         </div>
                       )}
                       {card?.isOpen && position.label.trim() ? (
