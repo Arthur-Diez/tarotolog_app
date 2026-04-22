@@ -21,7 +21,7 @@ export default function DealtCard({
   className = "",
   onClick
 }: DealtCardProps) {
-  const wrapperTransition = {
+  const flipTransition = {
     duration: isOpen ? 0.88 : 0.36,
     ease: [0.22, 1, 0.36, 1]
   } as const;
@@ -31,7 +31,7 @@ export default function DealtCard({
     ease: [0.2, 0.95, 0.3, 1]
   } as const;
 
-  const wrapperAnimate = isOpen
+  const cardAnimate = isOpen
     ? reversed
       ? {
           rotateY: [0, 188, 180],
@@ -105,63 +105,73 @@ export default function DealtCard({
       };
 
   return (
-    <motion.div
+    <div
       role="button"
       tabIndex={0}
       onClick={onClick}
-      className={`dealt-card relative z-[1000] h-60 w-36 cursor-pointer touch-manipulation [perspective:1200px] [transform-style:preserve-3d] ${className}`}
-      animate={wrapperAnimate}
-      transition={wrapperTransition}
-      style={{ willChange: "transform" }}
+      className={`dealt-card relative z-[1000] h-60 w-36 cursor-pointer touch-manipulation [perspective:1200px] ${className}`}
     >
-      <motion.img
-        src={backSrc}
-        alt=""
-        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl [backface-visibility:hidden]"
-        draggable={false}
-        style={{
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          transform: "translateZ(0.2px)",
-          willChange: "transform"
-        }}
-      />
       <motion.div
-        className="absolute inset-0 [backface-visibility:hidden]"
-        animate={faceAnimate}
-        transition={{
-          ...faceTransition,
-          delay: isOpen ? 0.12 : 0
-        }}
-        style={{
-          transform: "rotateY(180deg)",
-          transformStyle: "preserve-3d",
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          willChange: "transform, filter"
-        }}
+        className="relative h-full w-full [transform-style:preserve-3d]"
+        animate={cardAnimate}
+        transition={flipTransition}
+        style={{ willChange: "transform" }}
       >
-        <motion.div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-[6%] rounded-[22px] bg-[radial-gradient(circle_at_50%_38%,rgba(245,216,154,0.44),rgba(245,216,154,0)_68%)] mix-blend-screen"
-          animate={faceGlowAnimate}
-          transition={{
-            ...faceTransition,
-            delay: isOpen ? 0.14 : 0
-          }}
-          style={{ willChange: "transform, opacity, filter" }}
-        />
-        <CardFaceImage
-          deckId={deckId}
-          cardName={faceName}
+        <img
+          src={backSrc}
           alt=""
-          className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl"
+          className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl [backface-visibility:hidden]"
           draggable={false}
           style={{
-            willChange: "transform"
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "translateZ(0px)"
           }}
         />
+        <div
+          className="absolute inset-0 [backface-visibility:hidden]"
+          style={{
+            transform: "rotateY(180deg) translateZ(0px)",
+            transformStyle: "preserve-3d",
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden"
+          }}
+        >
+          <motion.div
+            className="absolute inset-0"
+            animate={faceAnimate}
+            transition={{
+              ...faceTransition,
+              delay: isOpen ? 0.08 : 0
+            }}
+            style={{ willChange: "transform, filter" }}
+          >
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-[6%] rounded-[22px] bg-[radial-gradient(circle_at_50%_38%,rgba(245,216,154,0.44),rgba(245,216,154,0)_68%)] mix-blend-screen"
+              animate={faceGlowAnimate}
+              transition={{
+                ...faceTransition,
+                delay: isOpen ? 0.1 : 0
+              }}
+              style={{ willChange: "transform, opacity, filter" }}
+            />
+            <CardFaceImage
+              deckId={deckId}
+              cardName={faceName}
+              alt=""
+              className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl"
+              draggable={false}
+              style={{
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
+                transform: "translateZ(0px)",
+                willChange: "transform"
+              }}
+            />
+          </motion.div>
+        </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
