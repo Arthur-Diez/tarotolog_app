@@ -16,6 +16,7 @@ import { MANARA_SPREADS_MAP } from "@/data/manara_spreads";
 import { MANARA_SPREAD_ENERGY_COSTS } from "@/data/manaraEnergyCosts";
 import { METAPHORIC_SPREAD_ENERGY_COSTS } from "@/data/metaphoricEnergyCosts";
 import { METAPHORIC_SPREADS_MAP } from "@/data/metaphoric_spreads";
+import { RWS_SPREAD_UI_COPY } from "@/data/rwsSpreadUiCopy";
 import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { LENORMAND_SPREAD_ENERGY_COSTS } from "@/data/lenormandEnergyCosts";
 import { RWS_SPREAD_ENERGY_COSTS } from "@/data/rwsEnergyCosts";
@@ -1212,376 +1213,34 @@ interface SpreadCardProps {
 
 interface SpreadDetailsContent {
   subtitle: string;
+  collapsedSubtitle?: string;
   metaLine: string;
   header: string;
-  purpose: string[];
-  howItWorks: string[];
-  forWhom: string[];
+  badge?: string;
+  shortTags?: string[];
+  purpose?: string[];
+  howItWorks?: string[];
+  forWhom?: string[];
+  expandedSections?: Array<{ title: string; lines: string[] }>;
 }
 
-const RWS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
-  one_card: {
-    subtitle: "Послание дня и энергия момента",
-    metaLine: "1 карта · энергия · фокус · совет",
-    header: "Одна карта",
-    purpose: [
-      "🔮 Понять энергию дня",
-      "⚡ Получить совет или предупреждение",
-      "🌙 Увидеть шанс или урок"
-    ],
-    howItWorks: ["🃏 1 карта = 1 ключевое послание", "Фокус на теме дня и внимании"],
-    forWhom: ["✓ Новичкам", "✓ Когда нужен быстрый ответ"]
-  },
-  yes_no: {
-    subtitle: "Быстрый ориентир по вопросу",
-    metaLine: "3 карты · баланс факторов · итог",
-    header: "Да или Нет",
-    purpose: [
-      "⚖️ Взвесить аргументы «за» и «против»",
-      "🧭 Понять текущее направление ситуации",
-      "🔎 Получить ясный итог по запросу"
-    ],
-    howItWorks: ["🃏 3 карты: фактор ДА, фактор НЕТ, итог", "Сначала анализ причин, затем вывод"],
-    forWhom: ["✓ Когда нужен четкий ориентир", "✓ Для решений с ограниченным сроком"]
-  },
-  three_cards: {
-    subtitle: "Прошлое, настоящее, будущее",
-    metaLine: "3 карты · динамика событий · развитие",
-    header: "Три карты",
-    purpose: [
-      "🕰️ Увидеть связь прошлого с текущим моментом",
-      "🎯 Понять, куда ведет текущая линия",
-      "✨ Найти ключевую точку влияния на будущее"
-    ],
-    howItWorks: ["🃏 3 позиции: прошлое, настоящее, будущее", "Фокус на причинно-следственной цепочке"],
-    forWhom: ["✓ Для регулярной самодиагностики", "✓ Когда важно понять контекст ситуации"]
-  },
-  cross: {
-    subtitle: "Ситуация, препятствие, поддержка, итог",
-    metaLine: "4 карты · структура проблемы · решение",
-    header: "Крест",
-    purpose: [
-      "🧩 Разложить ситуацию на ключевые блоки",
-      "🛡️ Выявить, что мешает и что поддерживает",
-      "🏁 Оценить реалистичный результат"
-    ],
-    howItWorks: ["🃏 4 позиции: суть, против, поддержка, результат", "Позволяет увидеть точку разворота"],
-    forWhom: ["✓ Когда есть внутренний конфликт", "✓ Для выбора стратегии действий"]
-  },
-  five_cards: {
-    subtitle: "Глубже о ситуации и векторе",
-    metaLine: "5 карт · слои влияния · рекомендация",
-    header: "Пятикарточный расклад",
-    purpose: [
-      "🔍 Уточнить скрытые факторы и фон",
-      "📌 Получить практичный совет",
-      "🚦Понять, к чему ведут текущие шаги"
-    ],
-    howItWorks: ["🃏 5 позиций: прошлое, настоящее, скрытые влияния, совет, итог", "Баланс анализа и прогноза"],
-    forWhom: ["✓ Когда «трех карт» уже мало", "✓ Для решений со средней сложностью"]
-  },
-  horseshoe: {
-    subtitle: "Последовательность от прошлого к итогу",
-    metaLine: "7 карт · путь ситуации · стратегический обзор",
-    header: "Подкова",
-    purpose: [
-      "🛤️ Проследить ход событий по этапам",
-      "⚠️ Отдельно увидеть риски и окружение",
-      "🗝️ Найти лучший следующий шаг"
-    ],
-    howItWorks: ["🃏 7 позиций: от прошлого к результату", "Показывает траекторию и точки коррекции"],
-    forWhom: ["✓ Для длительных и запутанных тем", "✓ Когда важно видеть картину целиком"]
-  },
-  star: {
-    subtitle: "Энергетическая диагностика по чакрам",
-    metaLine: "7 карт · ресурс и блоки · гармонизация",
-    header: "Звезда",
-    purpose: [
-      "🌈 Понять, где ресурсы, а где перегруз",
-      "🧘 Определить зону внутреннего дисбаланса",
-      "💡 Получить мягкий фокус на восстановление"
-    ],
-    howItWorks: ["🃏 7 позиций: каждая карта связана с чакрой", "Формирует карту внутреннего состояния"],
-    forWhom: ["✓ Для тем самочувствия и состояния", "✓ Для глубокой внутренней работы"]
-  },
-  pyramid: {
-    subtitle: "От основания к вершине",
-    metaLine: "6 карт · последовательный рост · итог",
-    header: "Пирамида",
-    purpose: [
-      "🏗️ Структурировать тему по уровням",
-      "🧠 Разделить внешнее и внутреннее влияние",
-      "🎯 Увидеть логичный выход в результат"
-    ],
-    howItWorks: ["🃏 6 позиций, разложенных ступенчато", "Каждый уровень уточняет следующий"],
-    forWhom: ["✓ Для комплексных вопросов развития", "✓ Когда нужен системный взгляд"]
-  },
-  celtic_cross: {
-    subtitle: "Классический глубокий расклад",
-    metaLine: "10 карт · многослойный анализ · сильный прогноз",
-    header: "Кельтский крест",
-    purpose: [
-      "🧭 Получить объемную картину ситуации",
-      "🧱 Понять внутренние и внешние причины",
-      "📈 Увидеть вероятный исход и роль человека"
-    ],
-    howItWorks: ["🃏 Центральный крест + правая колонна из 4 карт", "Сочетает анализ настоящего и вектора будущего"],
-    forWhom: ["✓ Для серьезных жизненных вопросов", "✓ Когда нужен глубокий разбор, а не быстрый ответ"]
-  },
-  wheel_of_year: {
-    subtitle: "Годовой обзор по 12 сферам",
-    metaLine: "12 карт · цикл года · возможности и риски",
-    header: "Колесо года",
-    purpose: [
-      "📅 Составить карту года по главным темам",
-      "💼 Оценить работу, финансы, отношения, ресурсы",
-      "🔭 Выделить риск, поддержку и главный итог"
-    ],
-    howItWorks: [
-      "🃏 12 позиций: от общей темы до итоговой точки года",
-      "Расклад дает стратегический ориентир на длительный период"
-    ],
-    forWhom: ["✓ Для планирования года", "✓ Для приоритизации целей и решений"]
-  },
-  we_and_perspective: {
-    subtitle: "Вы, партнёр и вектор связи",
-    metaLine: "3 карты · баланс · динамика · прогноз",
-    header: "Мы и перспектива",
-    purpose: [
-      "💞 Быстро увидеть баланс между вами",
-      "🧭 Понять текущее состояние партнёра",
-      "🔮 Оценить ближайшую перспективу отношений"
-    ],
-    howItWorks: ["🃏 3 позиции: вы, партнёр, перспектива", "Расклад даёт короткий и ясный срез динамики связи"],
-    forWhom: ["✓ Для стартовой проверки отношений", "✓ Когда нужен ответ без перегруза"]
-  },
-  relationship_analysis: {
-    subtitle: "Глубокий разбор пары",
-    metaLine: "5 карт · чувства · проблема · итог",
-    header: "Анализ отношений",
-    purpose: [
-      "💗 Понять взаимные чувства",
-      "⚖️ Выявить ключевую проблему",
-      "🔮 Оценить потенциал и развитие"
-    ],
-    howItWorks: [
-      "🃏 5 позиций: ваши чувства, чувства партнёра, проблема, потенциал, итог",
-      "Расклад раскрывает скрытую динамику и перспективу союза"
-    ],
-    forWhom: ["✓ Для серьёзного анализа пары", "✓ Когда отношения требуют ясности"]
-  },
-  new_person: {
-    subtitle: "Кто он и что принесёт",
-    metaLine: "5 карт · намерения · риски · перспектива",
-    header: "Новый человек",
-    purpose: [
-      "✨ Понять намерения нового партнёра",
-      "🧭 Оценить влияние на вашу жизнь",
-      "⚠️ Увидеть возможные риски"
-    ],
-    howItWorks: ["🃏 5 позиций: личность, намерения, влияние, риски, итог", "Расклад показывает реальный потенциал новой связи"],
-    forWhom: ["✓ При начале общения", "✓ Когда важно понять серьёзность намерений"]
-  },
-  love_triangle: {
-    subtitle: "Три стороны ситуации",
-    metaLine: "7 карт · чувства · скрытая динамика · итог",
-    header: "Любовный треугольник",
-    purpose: [
-      "💔 Понять расстановку чувств",
-      "🔍 Выявить скрытые мотивы",
-      "⚖️ Увидеть реальный итог ситуации"
-    ],
-    howItWorks: ["🃏 7 позиций: участники, чувства, скрытая динамика, итог", "Расклад раскрывает баланс сил и перспективу выбора"],
-    forWhom: ["✓ В сложных эмоциональных ситуациях", "✓ Когда важно увидеть всю картину"]
-  },
-  future_relationships: {
-    subtitle: "Прогноз развития союза",
-    metaLine: "5 карт · динамика · урок · итог",
-    header: "Будущее отношений",
-    purpose: [
-      "🔮 Оценить перспективу пары",
-      "🧭 Понять ключевой урок связи",
-      "🌿 Увидеть направление развития"
-    ],
-    howItWorks: [
-      "🃏 5 позиций: текущее состояние, ближайшее будущее, урок, укрепляющий фактор, итог",
-      "Расклад показывает вектор развития отношений"
-    ],
-    forWhom: ["✓ Для планирования будущего", "✓ Когда важно понять серьёзность связи"]
-  },
-  conflict_reason: {
-    subtitle: "Корень проблемы в паре",
-    metaLine: "5 карт · роли · блок · решение",
-    header: "Причина конфликта",
-    purpose: [
-      "⚡ Выявить источник напряжения",
-      "🧠 Понять свою и партнёрскую роль",
-      "🌿 Найти путь к решению"
-    ],
-    howItWorks: ["🃏 5 позиций: корень, ваша роль, роль партнёра, блок, решение", "Расклад помогает структурировать конфликт и увидеть выход"],
-    forWhom: ["✓ В период недопонимания", "✓ Когда нужен честный анализ ситуации"]
-  },
-  will_he_return: {
-    subtitle: "Шанс на восстановление связи",
-    metaLine: "5 карт · чувства · намерения · итог",
-    header: "Вернётся ли человек?",
-    purpose: [
-      "💔 Понять чувства партнёра",
-      "🔮 Оценить вероятность возврата",
-      "🧭 Увидеть факторы влияния"
-    ],
-    howItWorks: ["🃏 5 позиций: чувства, намерения, шанс, влияние, итог", "Расклад показывает реальную перспективу восстановления"],
-    forWhom: ["✓ После расставания", "✓ Когда есть неопределённость"]
-  },
-  karmic_connection: {
-    subtitle: "Глубинная природа отношений",
-    metaLine: "7 карт · уроки · риски · предназначение",
-    header: "Кармическая связь",
-    purpose: [
-      "🌀 Понять смысл и тип связи",
-      "📖 Осознать уроки союза",
-      "⚖️ Оценить потенциал и риски"
-    ],
-    howItWorks: [
-      "🃏 7 позиций: тип связи, уроки для каждого, плюсы, минусы, предназначение",
-      "Расклад раскрывает глубинную энергетику отношений"
-    ],
-    forWhom: ["✓ Для серьёзных и судьбоносных связей", "✓ Когда хочется понять глубинный смысл отношений"]
-  },
-  work_current_situation: {
-    subtitle: "Быстрый срез того, что происходит",
-    metaLine: "3 карты · динамика · фактор · прогноз",
-    header: "Текущая рабочая ситуация",
-    purpose: [
-      "💼 Понять рабочий фон и настроение",
-      "🔍 Увидеть то, что влияет “за кулисами”",
-      "🔮 Оценить ближайшее развитие событий"
-    ],
-    howItWorks: ["🃏 3 позиции: текущее → скрытый фактор → ближайшее развитие", "Расклад даёт ясную картину и направление"],
-    forWhom: ["✓ Когда нужен быстрый ориентир", "✓ Если чувствуете неопределённость на работе"]
-  },
-  change_job: {
-    subtitle: "Рациональное решение без эмоций",
-    metaLine: "5 карт · плюсы/минусы · возможности · итог",
-    header: "Стоит ли менять работу?",
-    purpose: ["⚖️ Взвесить “за” и “против”", "⚠️ Увидеть реальные риски", "🔮 Понять наиболее вероятный итог"],
-    howItWorks: [
-      "🃏 5 позиций: текущая точка, плюсы, минусы, возможности, итог",
-      "Расклад помогает принять решение более уверенно"
-    ],
-    forWhom: ["✓ Перед увольнением/переходом", "✓ Если сомневаетесь и нужен ясный план"]
-  },
-  career_growth: {
-    subtitle: "Путь вверх: блоки и ресурсы",
-    metaLine: "5 карт · потенциал · шаги · результат",
-    header: "Карьерный рост",
-    purpose: ["🚀 Оценить перспективу продвижения", "🔍 Понять, что тормозит рост", "🌿 Найти ресурс и правильный шаг"],
-    howItWorks: ["🃏 5 позиций “ступенями”: потенциал → препятствие → ресурс → шанс → итог", "Расклад показывает стратегию развития"],
-    forWhom: ["✓ Тем, кто хочет повышение", "✓ При выборе направления развития"]
-  },
-  financial_flow: {
-    subtitle: "Диагностика денег и утечек",
-    metaLine: "5 карт · источник · блок · рост · итог",
-    header: "Финансовый поток",
-    purpose: ["💰 Понять, откуда идут деньги", "⚠️ Найти утечки и блоки", "📈 Увидеть точку роста дохода"],
-    howItWorks: ["🃏 5 позиций “потоком”: источник → блок → скрытое → рост → итог", "Расклад даёт понятный план усиления финансов"],
-    forWhom: ["✓ При нестабильном доходе", "✓ Когда хотите увеличить прибыль"]
-  },
-  new_project: {
-    subtitle: "Проверка идеи перед запуском",
-    metaLine: "6 карт · потенциал · риски · перспектива",
-    header: "Новый проект",
-    purpose: ["💡 Оценить жизнеспособность идеи", "⚠️ Увидеть слабые места заранее", "📈 Понять перспективу и стратегию"],
-    howItWorks: [
-      "🃏 6 позиций “строительством”: идея, рынок, ресурсы, риски, конкуренция, итог",
-      "Расклад помогает решить — запускать или доработать"
-    ],
-    forWhom: ["✓ Перед стартом проекта", "✓ Когда выбираете, во что вложиться"]
-  },
-  finances_period: {
-    subtitle: "Куда пойдут деньги в ближайшее время",
-    metaLine: "5 карт · тенденция · риск · совет · итог",
-    header: "Финансы на период",
-    purpose: ["📅 Понять общую финансовую динамику", "⚠️ Предупредить потери", "🧭 Получить практичный совет"],
-    howItWorks: ["🃏 5 позиций “по времени”: тенденция → шанс → риск → совет → итог", "Расклад даёт ориентир на ближайший период"],
-    forWhom: ["✓ Для планирования трат/доходов", "✓ Перед важными финансовыми шагами"]
-  },
-  team_work: {
-    subtitle: "Вы в системе: роли и влияние",
-    metaLine: "5 карт · команда · руководство · итог",
-    header: "Работа в коллективе",
-    purpose: ["👥 Понять своё место в команде", "🔍 Увидеть скрытую динамику", "⚖️ Оценить перспективы взаимодействия"],
-    howItWorks: ["🃏 5 позиций вокруг центра: вы, руководство, коллеги, скрытое, итог", "Расклад помогает выбрать стратегию поведения"],
-    forWhom: ["✓ При напряжении или конфликте", "✓ Перед переговорами/сменой роли"]
-  },
-  vocation_profession: {
-    subtitle: "Глубокий разбор сильных сторон",
-    metaLine: "7 карт · талант · путь · итог",
-    header: "Предназначение и профессия",
-    purpose: ["🌟 Осознать, в чём ваш талант", "🧭 Найти правильный профессиональный вектор", "📈 Понять, куда лучше направить усилия"],
-    howItWorks: [
-      "🃏 7 позиций “звездой”: ядро, талант, ресурс, препятствие, направление, поддержка, итог",
-      "Расклад раскрывает стратегию реализации"
-    ],
-    forWhom: ["✓ При смене профессии", "✓ Когда хочется найти “своё” дело"]
-  },
-  inner_resource: {
-    subtitle: "Где ваша сила и как её восстановить",
-    metaLine: "5 карт · энергия · блок · восстановление",
-    header: "Внутренний ресурс",
-    purpose: ["🌿 Понять, что даёт вам энергию", "⚠️ Увидеть, что истощает", "✨ Найти способ восстановить баланс"],
-    howItWorks: ["🃏 5 позиций вокруг центра силы", "Расклад раскрывает ваши внутренние источники энергии"],
-    forWhom: ["✓ При усталости и выгорании", "✓ Когда нужно восстановиться"]
-  },
-  inner_conflict: {
-    subtitle: "Разобраться в себе и принять решение",
-    metaLine: "5 карт · сознание · страх · выход",
-    header: "Внутренний конфликт",
-    purpose: ["🧠 Понять противоречия", "🔍 Осознать скрытые желания", "⚖️ Найти точку равновесия"],
-    howItWorks: ["🃏 5 позиций раскрывают конфликт между разумом и чувствами", "Помогает увидеть глубинную причину напряжения"],
-    forWhom: ["✓ При сложном выборе", "✓ Когда ощущаете внутреннее напряжение"]
-  },
-  shadow_side: {
-    subtitle: "Скрытые аспекты личности",
-    metaLine: "7 карт · страх · подавление · интеграция",
-    header: "Теневая сторона",
-    purpose: ["🌑 Понять подавленные качества", "🔍 Осознать внутренние страхи", "✨ Интегрировать “тень”"],
-    howItWorks: ["🃏 7 позиций раскрывают уровень сознания и глубинные слои психики", "Расклад помогает принять непризнанные стороны себя"],
-    forWhom: ["✓ Для глубокой психологической работы", "✓ В период внутреннего кризиса"]
-  },
-  hero_path: {
-    subtitle: "Ваш этап трансформации",
-    metaLine: "7 карт · вызов · урок · новый уровень",
-    header: "Путь героя",
-    purpose: ["🧭 Понять свой жизненный этап", "⚡ Осознать вызов", "🌟 Увидеть новый уровень развития"],
-    howItWorks: ["🃏 7 позиций формируют путь от старого к новому", "Расклад показывает этап личной трансформации"],
-    forWhom: ["✓ В переходные периоды", "✓ Когда ощущается важный жизненный этап"]
-  },
-  balance_wheel: {
-    subtitle: "Баланс сфер жизни",
-    metaLine: "8 карт · перекос · гармония · внимание",
-    header: "Колесо баланса",
-    purpose: ["⚖️ Увидеть перекос в жизни", "🔍 Понять, где не хватает энергии", "🌿 Восстановить гармонию"],
-    howItWorks: ["🃏 8 позиций отражают основные сферы жизни", "Расклад показывает баланс и точки роста"],
-    forWhom: ["✓ При ощущении хаоса", "✓ Когда хочется системности"]
-  },
-  reset_reload: {
-    subtitle: "Начало нового этапа",
-    metaLine: "6 карт · завершение · ресурс · итог",
-    header: "Перезагрузка",
-    purpose: ["🔄 Осознать завершение этапа", "🌿 Отпустить лишнее", "🚀 Определить новый фокус"],
-    howItWorks: ["🃏 6 позиций разделяют прошлое и будущее", "Расклад помогает начать новый этап осознанно"],
-    forWhom: ["✓ В период перемен", "✓ При ощущении застоя"]
-  },
-  soul_purpose: {
-    subtitle: "Глубинный вектор жизни",
-    metaLine: "7 карт · талант · урок · путь",
-    header: "Предназначение души",
-    purpose: ["🌟 Осознать свою миссию", "🔍 Увидеть кармический урок", "🧭 Найти направление развития"],
-    howItWorks: ["🃏 7 позиций раскрывают предназначение через сильные и слабые стороны", "Расклад помогает понять стратегию жизни"],
-    forWhom: ["✓ При поиске смысла", "✓ В период духовного роста"]
-  }
-};
+const RWS_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = Object.fromEntries(
+  Object.entries(RWS_SPREAD_UI_COPY).map(([id, copy]) => [
+    id,
+    {
+      subtitle: copy.collapsedSubtitle,
+      collapsedSubtitle: copy.collapsedSubtitle,
+      metaLine: copy.meta,
+      header: copy.title,
+      badge: copy.badge,
+      shortTags: [...copy.shortTags],
+      expandedSections: copy.expandedSections.map((section) => ({
+        title: section.title,
+        lines: [...section.lines]
+      }))
+    }
+  ])
+) as Record<string, SpreadDetailsContent>;
 
 const LENORMAND_SPREAD_DETAILS: Record<string, SpreadDetailsContent> = {
   lenormand_one_card: {
@@ -2270,7 +1929,7 @@ function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect,
   const cardsCount = extractCardsCount(spread);
   const meta = getSpreadMeta(spread.id, cardsCount, deckId);
   const energyText = `⚡ -${meta.energyCost}`;
-  const subtitle = hasDetailedContent ? details.subtitle : spread.description;
+  const subtitle = hasDetailedContent ? details.collapsedSubtitle ?? details.subtitle : spread.description;
   const metaLine = hasDetailedContent
     ? details.metaLine
     : `${cardsCount} карт · ${meta.tags.slice(0, 2).join(" · ")}`;
@@ -2287,6 +1946,11 @@ function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect,
     >
       <div className="space-y-3">
         <div className="space-y-1">
+          {details?.badge ? (
+            <div className="inline-flex h-7 items-center rounded-full border border-[var(--surface-chip-border)] bg-[var(--surface-chip-bg)] px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--accent)]">
+              {details.badge}
+            </div>
+          ) : null}
           <h3 className="truncate text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
           <p className="truncate text-sm text-[var(--text-secondary)]">{subtitle}</p>
           <p className="truncate text-sm text-[var(--text-secondary)]">{metaLine}</p>
@@ -2325,28 +1989,66 @@ function SpreadCard({ spread, deckId, expanded, revealDelay, onToggle, onSelect,
         {hasDetailedContent ? (
           <div className="spread-expanded-panel mt-4 space-y-4 rounded-[22px] border border-[var(--surface-border)] bg-[var(--surface-chip-bg)] p-4 backdrop-blur">
             <SpreadPreviewByLayout spreadId={spread.id} />
-            <div>
-              <h4 className="text-base font-semibold text-[var(--text-primary)]">{details.header}</h4>
-              <p className="text-xs text-[var(--text-secondary)]">{details.subtitle}</p>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-base font-semibold text-[var(--text-primary)]">{details.header}</h4>
+                  {details.badge ? (
+                    <span className="inline-flex h-7 items-center rounded-full border border-[var(--surface-chip-border)] bg-[var(--bg-card-strong)]/80 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
+                      {details.badge}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm text-[var(--text-secondary)]">{details.subtitle}</p>
+              </div>
+              {details.shortTags?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {details.shortTags.map((tag) => (
+                    <span
+                      key={`${spread.id}-tag-${tag}`}
+                      className="inline-flex h-7 items-center rounded-full border border-[var(--surface-chip-border)] bg-[var(--bg-card-strong)]/70 px-3 text-xs text-[var(--text-secondary)]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-              <p>Для чего подходит</p>
-              {details.purpose.map((line) => (
-                <p key={`${spread.id}-purpose-${line}`}>{line}</p>
-              ))}
-            </div>
-            <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-              <p>Как работает</p>
-              {details.howItWorks.map((line) => (
-                <p key={`${spread.id}-how-${line}`}>{line}</p>
-              ))}
-            </div>
-            <div className="space-y-2 text-xs text-[var(--text-secondary)]">
-              <p>Кому подойдёт</p>
-              {details.forWhom.map((line) => (
-                <p key={`${spread.id}-who-${line}`}>{line}</p>
-              ))}
-            </div>
+            {details.expandedSections?.length ? (
+              <div className="space-y-4">
+                {details.expandedSections.map((section) => (
+                  <div key={`${spread.id}-section-${section.title}`} className="space-y-2">
+                    <p className="text-[13px] font-medium text-[var(--text-primary)]">{section.title}</p>
+                    <div className="space-y-1.5 text-sm leading-6 text-[var(--text-secondary)]">
+                      {section.lines.map((line) => (
+                        <p key={`${spread.id}-${section.title}-${line}`}>{line}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2 text-xs text-[var(--text-secondary)]">
+                  <p>Для чего подходит</p>
+                  {details.purpose?.map((line) => (
+                    <p key={`${spread.id}-purpose-${line}`}>{line}</p>
+                  ))}
+                </div>
+                <div className="space-y-2 text-xs text-[var(--text-secondary)]">
+                  <p>Как работает</p>
+                  {details.howItWorks?.map((line) => (
+                    <p key={`${spread.id}-how-${line}`}>{line}</p>
+                  ))}
+                </div>
+                <div className="space-y-2 text-xs text-[var(--text-secondary)]">
+                  <p>Кому подойдёт</p>
+                  {details.forWhom?.map((line) => (
+                    <p key={`${spread.id}-who-${line}`}>{line}</p>
+                  ))}
+                </div>
+              </>
+            )}
             <Button type="button" className="w-full" onClick={onSelect} disabled={!canSelect}>
               ✨ Сделать расклад
             </Button>
