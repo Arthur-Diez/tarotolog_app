@@ -265,6 +265,10 @@ export default function HoroscopePage() {
   const navigate = useNavigate();
   const { profile, refresh } = useProfile();
 
+  useEffect(() => {
+    markOfferScreenVisit("horoscope");
+  }, []);
+
   const birthProfile = profile?.birth_profile;
   const userLang = useMemo(
     () => resolvePreferredLanguage(birthProfile?.interface_language ?? profile?.user?.lang),
@@ -2451,6 +2455,3 @@ function normalizeIssueText(value: string | null): string | null {
     .trim();
   return normalized || null;
 }
-  useEffect(() => {
-    markOfferScreenVisit("horoscope");
-  }, []);
