@@ -276,6 +276,7 @@ export interface HoroscopeIssueResponse {
   id: string;
   user_id?: string | null;
   product_code: string;
+  layout_type?: string | null;
   kind?: string | null;
   status: HoroscopeIssueStatus;
   lang?: string | null;
@@ -286,6 +287,7 @@ export interface HoroscopeIssueResponse {
   summary_text?: string | null;
   content_md?: string | null;
   content_json?: Record<string, unknown> | null;
+  delivery_slot?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -939,6 +941,34 @@ export interface AdminPricingOfferMatrixResponse {
   items: AdminPricingOfferMatrixItem[];
 }
 
+export interface HoroscopeWorkerHeartbeat {
+  status?: string | null;
+  pid?: number | null;
+  started_at?: string | null;
+  updated_at?: string | null;
+  interval_sec?: number | null;
+  due_limit?: number | null;
+  delivery_limit?: number | null;
+  last_tick_at?: string | null;
+  last_success_at?: string | null;
+  last_error?: string | null;
+  due_processed?: number | null;
+  deliveries_processed?: number | null;
+}
+
+export interface HoroscopeWorkerStatusResponse {
+  success: boolean;
+  worker: HoroscopeWorkerHeartbeat | null;
+  running: boolean;
+}
+
+export interface HoroscopeWorkerRunResponse {
+  success: boolean;
+  processed?: number;
+  results?: Record<string, unknown>[];
+  error?: string;
+}
+
 export interface ShareCreateResponse {
   share_token: string;
   expires_at: string;
@@ -1471,6 +1501,30 @@ export async function adminGetRecentActions(limit = 30): Promise<{ items: Record
     headers: withAuthHeaders()
   });
   return handleResponse<{ items: Record<string, unknown>[] }>(res);
+}
+
+export async function adminGetHoroscopeWorkerStatus(): Promise<HoroscopeWorkerStatusResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/worker/status`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeWorkerStatusResponse>(res);
+}
+
+export async function adminRunDueHoroscopeSubscriptions(limit = 50): Promise<HoroscopeWorkerRunResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/subscription/due/run?limit=${limit}`, {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeWorkerRunResponse>(res);
+}
+
+export async function adminRunQueuedHoroscopeDeliveries(limit = 50): Promise<HoroscopeWorkerRunResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/deliveries/queued/run?limit=${limit}`, {
+    method: "POST",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeWorkerRunResponse>(res);
 }
 
 export async function adminSearchUsers(q: string, limit = 20): Promise<AdminUserSearchResponse> {

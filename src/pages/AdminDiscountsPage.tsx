@@ -16,6 +16,7 @@ import {
   adminGetDashboardSummary,
   adminGetDiscountAnalytics,
   adminGetDiscountStats,
+  adminGetHoroscopeWorkerStatus,
   adminGetPricingOfferMatrix,
   adminGetRecentActions,
   adminGetRecentPurchases,
@@ -29,6 +30,8 @@ import {
   adminProbeDiscountAccess,
   adminReorderDiscountRules,
   adminResolveDiscountDebug,
+  adminRunDueHoroscopeSubscriptions,
+  adminRunQueuedHoroscopeDeliveries,
   adminSearchUsers,
   adminSimulateDiscountDismiss,
   adminSimulateDiscountPurchase,
@@ -47,7 +50,8 @@ import {
   type DiscountAssignmentResponse,
   type DiscountResolveDebugResponse,
   type DiscountRuleResponse,
-  type DiscountStatsResponse
+  type DiscountStatsResponse,
+  type HoroscopeWorkerHeartbeat
 } from "@/lib/api";
 
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
@@ -803,6 +807,22 @@ function regionDisplayName(countryCode: string): string {
   }
 }
 
+function workerStatusTone(status: string | null | undefined): string {
+  if (status === "running") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (status === "starting") return "border-sky-300/25 bg-sky-400/10 text-sky-100";
+  if (status === "error") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  if (status === "stopped") return "border-white/15 bg-white/5 text-[var(--text-secondary)]";
+  return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+}
+
+function workerStatusLabel(status: string | null | undefined): string {
+  if (status === "running") return "Работает";
+  if (status === "starting") return "Запускается";
+  if (status === "error") return "Ошибка";
+  if (status === "stopped") return "Остановлен";
+  return "Нет heartbeat";
+}
+
 export default function AdminDiscountsPage() {
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
@@ -812,6 +832,11 @@ export default function AdminDiscountsPage() {
   const [accessGranted, setAccessGranted] = useState(false);
 
   const [dashboard, setDashboard] = useState<AdminDashboardSummaryResponse | null>(null);
+  const [workerStatus, setWorkerStatus] = useState<HoroscopeWorkerHeartbeat | null>(null);
+  const [workerStatusLoading, setWorkerStatusLoading] = useState(false);
+  const [workerActionLoading, setWorkerActionLoading] = useState<"due" | "deliveries" | null>(null);
+  const [workerActionError, setWorkerActionError] = useState<string | null>(null);
+  const [workerActionMessage, setWorkerActionMessage] = useState<string | null>(null);
   const [recentPurchases, setRecentPurchases] = useState<Record<string, unknown>[]>([]);
   const [recentUsages, setRecentUsages] = useState<Record<string, unknown>[]>([]);
   const [recentActions, setRecentActions] = useState<Record<string, unknown>[]>([]);
@@ -914,6 +939,16 @@ export default function AdminDiscountsPage() {
     setRecentActions(actions.items ?? []);
   }, []);
 
+  const loadWorkerStatus = useCallback(async () => {
+    try {
+      setWorkerStatusLoading(true);
+      const response = await adminGetHoroscopeWorkerStatus();
+      setWorkerStatus(response.worker ?? null);
+    } finally {
+      setWorkerStatusLoading(false);
+    }
+  }, []);
+
   const loadRules = useCallback(async () => {
     try {
       setRulesLoading(true);
@@ -980,10 +1015,39 @@ export default function AdminDiscountsPage() {
   useEffect(() => {
     if (!accessGranted) return;
     void loadDashboard();
+    void loadWorkerStatus();
     void loadRules();
     void loadPricing();
     void loadAssignments();
-  }, [accessGranted, loadAssignments, loadDashboard, loadPricing, loadRules]);
+  }, [accessGranted, loadAssignments, loadDashboard, loadPricing, loadRules, loadWorkerStatus]);
+
+  const runWorkerAction = useCallback(
+    async (action: "due" | "deliveries") => {
+      try {
+        setWorkerActionLoading(action);
+        setWorkerActionError(null);
+        setWorkerActionMessage(null);
+        const result =
+          action === "due"
+            ? await adminRunDueHoroscopeSubscriptions(50)
+            : await adminRunQueuedHoroscopeDeliveries(50);
+        if (!result.success) {
+          throw new Error(result.error || "Не удалось запустить обработку");
+        }
+        setWorkerActionMessage(
+          action === "due"
+            ? `Подписки прогнаны: ${result.processed ?? 0}`
+            : `Доставки прогнаны: ${result.processed ?? 0}`
+        );
+        await Promise.all([loadWorkerStatus(), loadDashboard()]);
+      } catch (error) {
+        setWorkerActionError(error instanceof Error ? error.message : "Не удалось выполнить действие");
+      } finally {
+        setWorkerActionLoading(null);
+      }
+    },
+    [loadDashboard, loadWorkerStatus]
+  );
 
   useEffect(() => {
     const trimmed = userSearch.trim();
@@ -1211,6 +1275,79 @@ export default function AdminDiscountsPage() {
               <MetricCard title="Показов" value={stats?.usages_shown ?? 0} />
               <MetricCard title="Покупок по акциям" value={stats?.usages_purchased ?? 0} />
               <MetricCard title="Конверсия %" value={analytics?.conversion_rate ?? stats?.conversion_rate ?? 0} />
+            </div>
+          </Card>
+
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Horoscope worker</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Отдельный scheduler для подписочных выпусков и Telegram delivery.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`rounded-full border px-3 py-1 text-xs ${workerStatusTone(workerStatus?.status)}`}>
+                  {workerStatusLabel(workerStatus?.status)}
+                </span>
+                <Button
+                  variant="outline"
+                  className="border-white/20"
+                  onClick={() => void loadWorkerStatus()}
+                  disabled={workerStatusLoading || workerActionLoading !== null}
+                >
+                  {workerStatusLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Обновить
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard title="PID" value={workerStatus?.pid ?? "—"} />
+              <MetricCard title="Интервал, сек" value={workerStatus?.interval_sec ?? "—"} />
+              <MetricCard title="Due за тик" value={workerStatus?.due_processed ?? 0} />
+              <MetricCard title="Delivery за тик" value={workerStatus?.deliveries_processed ?? 0} />
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Heartbeat</p>
+                <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
+                  <p>Запущен: <span className="text-[var(--text-primary)]">{prettyDate(workerStatus?.started_at)}</span></p>
+                  <p>Последний тик: <span className="text-[var(--text-primary)]">{prettyDate(workerStatus?.last_tick_at)}</span></p>
+                  <p>Последний успех: <span className="text-[var(--text-primary)]">{prettyDate(workerStatus?.last_success_at)}</span></p>
+                  <p>Обновлён: <span className="text-[var(--text-primary)]">{prettyDate(workerStatus?.updated_at)}</span></p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Управление</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    disabled={workerActionLoading !== null}
+                    onClick={() => void runWorkerAction("due")}
+                  >
+                    {workerActionLoading === "due" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
+                    Прогнать подписки
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/20"
+                    disabled={workerActionLoading !== null}
+                    onClick={() => void runWorkerAction("deliveries")}
+                  >
+                    {workerActionLoading === "deliveries" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarClock className="mr-2 h-4 w-4" />}
+                    Прогнать доставки
+                  </Button>
+                </div>
+                {workerActionMessage ? <p className="mt-3 text-sm text-emerald-200">{workerActionMessage}</p> : null}
+                {workerActionError ? <p className="mt-3 text-sm text-red-200">{workerActionError}</p> : null}
+                {workerStatus?.last_error ? (
+                  <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                    Последняя ошибка: {workerStatus.last_error}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </Card>
 

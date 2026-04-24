@@ -21,6 +21,7 @@ export interface TelegramUser {
 
 export interface TelegramInitDataUnsafe {
   user?: TelegramUser;
+  start_param?: string;
   [key: string]: unknown;
 }
 
@@ -80,6 +81,41 @@ export async function initTelegram(): Promise<TelegramWebApp | null> {
 
 export function getTelegramWebApp(): TelegramWebApp | null {
   return cachedWebApp;
+}
+
+export function getTelegramStartParam(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const unsafe = window.Telegram?.WebApp?.initDataUnsafe;
+  if (typeof unsafe?.start_param === "string" && unsafe.start_param.trim()) {
+    return unsafe.start_param.trim();
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("tgWebAppStartParam") || params.get("startapp") || params.get("start_param");
+  return raw?.trim() || null;
+}
+
+export function clearTelegramStartParam(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  let changed = false;
+  for (const key of ["tgWebAppStartParam", "startapp", "start_param"]) {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }
 }
 
 export function openExternalLink(url: string): void {

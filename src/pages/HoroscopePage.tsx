@@ -31,6 +31,8 @@ import {
   type HoroscopeSubscriptionStatusResponse
 } from "@/lib/api";
 import { markOfferScreenVisit, markPaidActionAttempted } from "@/lib/offerEngagementState";
+import { clearTelegramStartParam, getTelegramStartParam } from "@/lib/telegram";
+import "./HoroscopePage.css";
 
 type OneoffProductCode =
   | "horoscope_oneoff_personal_today"
@@ -87,6 +89,7 @@ interface PremiumIssueArea {
 
 interface PremiumIssueContent {
   version: string;
+  layoutType: string | null;
   dateLabel: string;
   periodLabel: string;
   persona: {
@@ -122,6 +125,8 @@ interface PremiumIssueContent {
     intensity: string | null;
   };
 }
+
+type PremiumLayoutType = "lite" | "plus_morning" | "plus_evening";
 
 interface NormalizedLocalizedContent {
   sections: StructuredSection[];
@@ -165,6 +170,7 @@ const MOCK_FALLBACK = {
 
 const ISSUE_PROCESSING_STATUSES = new Set<HoroscopeIssueStatus>(["queued", "pending", "processing"]);
 const ISSUE_READY_STATUSES = new Set<HoroscopeIssueStatus>(["ready"]);
+const HOROSCOPE_ISSUE_START_PARAM_RE = /^horoscope_issue:([0-9a-f-]{36})$/i;
 const PERSONAL_TODAY_PRODUCT_CODE: OneoffProductCode = "horoscope_oneoff_personal_today";
 const PERSONAL_TODAY_DEFAULT_COST = 10;
 const GENERATION_STEPS = [
@@ -311,6 +317,7 @@ export default function HoroscopePage() {
   const oneoffCarouselRef = useRef<HTMLDivElement | null>(null);
   const [activeOneoffIndex, setActiveOneoffIndex] = useState(0);
   const issueProcessKickRef = useRef<string | null>(null);
+  const handledStartParamRef = useRef<string | null>(null);
 
   const loadFree = useCallback(async () => {
     setFreeLoading(true);
@@ -469,6 +476,16 @@ export default function HoroscopePage() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    const startParam = getTelegramStartParam();
+    if (!startParam || handledStartParamRef.current === startParam) return;
+    const match = startParam.match(HOROSCOPE_ISSUE_START_PARAM_RE);
+    if (!match?.[1]) return;
+    handledStartParamRef.current = startParam;
+    clearTelegramStartParam();
+    void openIssue(match[1]);
+  }, [openIssue]);
 
   const closeGenerationOverlay = useCallback(() => {
     setGenerationOverlay({ open: false, issueId: null, title: "" });
@@ -843,8 +860,8 @@ export default function HoroscopePage() {
       : "Получить персональный прогноз 🔥";
 
   return (
-    <div className="space-y-6 pb-28">
-      <header className="flex items-center gap-3">
+    <div className="horoscope-page space-y-6 pb-28">
+      <header className="horoscope-header flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -920,8 +937,8 @@ export default function HoroscopePage() {
         </Card>
       ) : null}
 
-      <Card className="overflow-hidden border border-white/10 bg-[var(--bg-card)]/90 p-6 shadow-[0_35px_70px_rgba(0,0,0,0.55)]">
-        <div className="relative mb-5 overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-br from-[#282240]/75 via-[#1e2136]/65 to-[#111528]/70 p-4">
+      <Card className="horoscope-surface horoscope-surface--free overflow-hidden border border-white/10 bg-[var(--bg-card)]/90 p-6 shadow-[0_35px_70px_rgba(0,0,0,0.55)]">
+        <div className="horoscope-free-hero relative mb-5 overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-br from-[#282240]/75 via-[#1e2136]/65 to-[#111528]/70 p-4">
           <div className="absolute -left-8 -top-10 h-28 w-28 rounded-full bg-[var(--accent-pink)]/10 blur-2xl" />
           <div className="relative space-y-1">
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Ритуал дня · Free</p>
@@ -929,6 +946,12 @@ export default function HoroscopePage() {
             <p className="text-sm text-[var(--text-secondary)]">
               {zodiacLabel} · {genderLabel} · {periodLabel}
             </p>
+            <div className="horoscope-meta-chips pt-2">
+              <span className="horoscope-meta-chip">{zodiacLabel}</span>
+              <span className="horoscope-meta-chip">{periodLabel}</span>
+              {bestTime ? <span className="horoscope-meta-chip horoscope-meta-chip--accent">Лучшее время: {bestTime}</span> : null}
+              {luckyColor ? <span className="horoscope-meta-chip">Цвет дня: {capitalize(luckyColor)}</span> : null}
+            </div>
           </div>
         </div>
 
@@ -947,13 +970,13 @@ export default function HoroscopePage() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
+          <div className="horoscope-content-panel space-y-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
             {showMarkdown ? <HoroscopeMarkdown text={freeTextMd} /> : null}
 
             {freeSections.length ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {freeSections.map((section) => (
-                  <div key={section.key} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div key={section.key} className="horoscope-free-section rounded-2xl border border-white/10 bg-white/5 p-3">
                     <HoroscopeSection emoji={section.emoji} title={section.title} body={section.body} />
                   </div>
                 ))}
@@ -961,7 +984,7 @@ export default function HoroscopePage() {
             ) : null}
 
             {(bestTime || luckyColor) ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--text-secondary)]">
+              <div className="horoscope-insight-strip rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--text-secondary)]">
                 {bestTime ? <p>🎯 Лучшее время: {bestTime}</p> : null}
                 {luckyColor ? <p>🎨 Цвет дня: {capitalize(luckyColor)}</p> : null}
               </div>
@@ -1039,17 +1062,17 @@ export default function HoroscopePage() {
                 <Card
                   key={product.code}
                   data-oneoff-card="true"
-                  className="min-w-[84%] snap-start border border-white/10 bg-[var(--bg-card)]/90 p-5 shadow-[0_20px_45px_rgba(0,0,0,0.35)] sm:min-w-[400px]"
+                  className="horoscope-oneoff-card min-w-[84%] snap-start border border-white/10 bg-[var(--bg-card)]/90 p-5 shadow-[0_20px_45px_rgba(0,0,0,0.35)] sm:min-w-[400px]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <p className="text-lg font-semibold text-[var(--text-primary)]">{product.title}</p>
                       <p className="text-sm text-[var(--text-secondary)]">{product.subtitle}</p>
                     </div>
-                    <p className="whitespace-nowrap text-lg font-semibold text-[var(--accent-gold)]">{product.energyCost} ⚡</p>
+                    <p className="horoscope-cost-pill whitespace-nowrap text-lg font-semibold text-[var(--accent-gold)]">{product.energyCost} ⚡</p>
                   </div>
 
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+                  <div className="horoscope-status-pill mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
                     {ready ? (
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
                     ) : processing ? (
@@ -1139,8 +1162,8 @@ export default function HoroscopePage() {
                 key={plan.code}
                 className={`border p-5 ${
                   showPlusGlow
-                    ? "border-[var(--accent-pink)]/30 bg-[var(--bg-card)]/90 shadow-[0_24px_54px_rgba(215,154,255,0.16)]"
-                    : "border-white/10 bg-[var(--bg-card)]/88"
+                    ? "horoscope-plan-card horoscope-plan-card--featured border-[var(--accent-pink)]/30 bg-[var(--bg-card)]/90 shadow-[0_24px_54px_rgba(215,154,255,0.16)]"
+                    : "horoscope-plan-card border-white/10 bg-[var(--bg-card)]/88"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -1209,7 +1232,7 @@ export default function HoroscopePage() {
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">Последние выпуски</h3>
           <p className="text-xs uppercase tracking-[0.28em] text-[var(--text-tertiary)]">история</p>
         </div>
-        <Card className="space-y-3 border border-white/10 bg-[var(--bg-card)]/85 p-4">
+        <Card className="horoscope-surface space-y-3 border border-white/10 bg-[var(--bg-card)]/85 p-4">
           {issuesLoading ? (
             <>
               <div className="h-14 animate-pulse rounded-xl bg-white/10" />
@@ -1227,7 +1250,7 @@ export default function HoroscopePage() {
               return (
                 <div
                   key={issue.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
+                  className="horoscope-history-item flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
                 >
                   <div>
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{humanizeIssueTitle(issue.product_code)}</p>
@@ -1773,22 +1796,22 @@ function HoroscopeMarkdown({ text }: { text: string }) {
 function HoroscopeSection({ emoji, title, body }: { emoji?: string | null; title: string; body: string }) {
   if (!body) return null;
   return (
-    <div>
-      <p className="text-sm font-semibold text-[var(--text-primary)]">
-        {emoji ? `${emoji} ` : null}
-        {title}
+    <div className="horoscope-section-item">
+      <p className="horoscope-section-title text-sm font-semibold text-[var(--text-primary)]">
+        {emoji ? <span className="horoscope-section-emoji">{emoji}</span> : null}
+        <span>{title}</span>
       </p>
-      <p className="text-sm text-[var(--text-secondary)]">{body}</p>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{body}</p>
     </div>
   );
 }
 
 function IssueSectionCard({ section }: { section: IssueStructuredSection }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <p className="text-sm font-semibold text-[var(--text-primary)]">
-        {section.emoji ? `${section.emoji} ` : null}
-        {section.title}
+    <div className="horoscope-issue-section rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="horoscope-section-title text-sm font-semibold text-[var(--text-primary)]">
+        {section.emoji ? <span className="horoscope-section-emoji">{section.emoji}</span> : null}
+        <span>{section.title}</span>
       </p>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)] whitespace-pre-line">{section.body}</p>
       {section.advice ? (
@@ -1810,12 +1833,12 @@ function PremiumIssueHero({
 }) {
   const personaParts = [content.persona.zodiacSign, content.persona.gender, content.dateLabel].filter(Boolean);
   return (
-    <div className="space-y-3 rounded-[26px] border border-[var(--accent-gold)]/20 bg-[radial-gradient(circle_at_top,_rgba(231,201,232,0.12),_transparent_48%),linear-gradient(180deg,rgba(55,42,75,0.95),rgba(24,17,34,0.94))] p-5 shadow-[0_20px_48px_rgba(0,0,0,0.32)]">
+    <div className="horoscope-premium-hero space-y-3 rounded-[26px] border border-[var(--accent-gold)]/20 bg-[radial-gradient(circle_at_top,_rgba(231,201,232,0.12),_transparent_48%),linear-gradient(180deg,rgba(55,42,75,0.95),rgba(24,17,34,0.94))] p-5 shadow-[0_20px_48px_rgba(0,0,0,0.32)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">
           {content.hero.eyebrow || "Главный вектор дня"}
         </p>
-        <div className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+        <div className="horoscope-meta-chip inline-flex items-center rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
           {issueStatus === "ready" ? content.periodLabel || "Сегодня" : "Формируется"}
         </div>
       </div>
@@ -1832,7 +1855,7 @@ function PremiumIssueHero({
           {personaParts.map((item, index) => (
             <span
               key={`persona-${index}`}
-              className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]"
+              className="horoscope-meta-chip inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]"
             >
               {item}
             </span>
@@ -1879,8 +1902,8 @@ function PremiumTimingCard({
 }) {
   const toneClass =
     tone === "good"
-      ? "border-[var(--accent-gold)]/22 bg-[var(--accent-gold)]/10"
-      : "border-white/10 bg-white/5";
+      ? "horoscope-timing-card horoscope-timing-card--good border-[var(--accent-gold)]/22 bg-[var(--accent-gold)]/10"
+      : "horoscope-timing-card border-white/10 bg-white/5";
   return (
     <div className={`rounded-2xl border p-4 ${toneClass}`}>
       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</p>
@@ -1892,9 +1915,10 @@ function PremiumTimingCard({
 
 function PremiumIssueAreaCard({ area }: { area: PremiumIssueArea }) {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-      <p className="text-sm font-semibold text-[var(--text-primary)]">
-        {resolveIssueIcon(area.icon)} {area.title}
+    <div className="horoscope-area-card rounded-[24px] border border-white/10 bg-white/5 p-4 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
+      <p className="horoscope-section-title text-sm font-semibold text-[var(--text-primary)]">
+        <span className="horoscope-section-emoji">{resolveIssueIcon(area.icon)}</span>
+        <span>{area.title}</span>
       </p>
       <div className="mt-3 space-y-3">
         {area.state ? <p className="text-sm leading-relaxed text-[var(--text-primary)]">{area.state}</p> : null}
@@ -1910,11 +1934,242 @@ function PremiumIssueAreaCard({ area }: { area: PremiumIssueArea }) {
   );
 }
 
+function resolvePremiumLayoutType(content: PremiumIssueContent): PremiumLayoutType {
+  if (content.layoutType === "lite" || content.layoutType === "plus_evening") {
+    return content.layoutType;
+  }
+  return "plus_morning";
+}
+
+function PremiumNarrativeCard({
+  title,
+  text,
+  badge,
+  footerTitle,
+  footerText,
+  variant = "default"
+}: {
+  title: string;
+  text: string | null;
+  badge?: string | null;
+  footerTitle?: string | null;
+  footerText?: string | null;
+  variant?: "default" | "summary";
+}) {
+  if (!text && !footerText) return null;
+  return (
+    <div
+      className={`horoscope-premium-card rounded-[24px] border border-white/10 p-4 ${
+        variant === "summary" ? "horoscope-premium-card--summary" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">{title}</p>
+        {badge ? <div className="horoscope-meta-chip text-xs">{badge}</div> : null}
+      </div>
+      {text ? <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{text}</p> : null}
+      {footerText ? (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+            {footerTitle || "Дополнение"}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{footerText}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PremiumAccentCard({
+  title,
+  text,
+  emoji
+}: {
+  title: string;
+  text: string | null;
+  emoji?: string;
+}) {
+  if (!text) return null;
+  return (
+    <div className="horoscope-premium-card horoscope-premium-card--accent rounded-[24px] border border-[var(--accent-gold)]/22 p-4">
+      <p className="text-sm font-semibold text-[var(--text-primary)]">
+        {emoji ? `${emoji} ` : null}
+        {title}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{text}</p>
+    </div>
+  );
+}
+
+function PremiumFinalCard({
+  title,
+  text
+}: {
+  title: string;
+  text: string | null;
+}) {
+  if (!text) return null;
+  return (
+    <div className="horoscope-premium-card horoscope-premium-card--final rounded-[24px] border border-[var(--accent-gold)]/22 p-5">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--accent-gold)]">{title}</p>
+      <p className="mt-3 text-base leading-relaxed text-[var(--text-primary)]">{text}</p>
+    </div>
+  );
+}
+
+function PremiumReflectionCard({
+  title,
+  text,
+  emoji
+}: {
+  title: string;
+  text: string | null;
+  emoji?: string;
+}) {
+  if (!text) return null;
+  return (
+    <div className="horoscope-premium-card horoscope-premium-card--reflection rounded-[24px] border border-white/10 p-4">
+      <p className="text-sm font-semibold text-[var(--text-primary)]">
+        {emoji ? `${emoji} ` : null}
+        {title}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{text}</p>
+    </div>
+  );
+}
+
+function renderPremiumTiming(content: PremiumIssueContent) {
+  if (!content.timing.bestWindow.timeRange && !content.timing.cautionWindow.timeRange) return null;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {content.timing.bestWindow.timeRange ? (
+        <PremiumTimingCard
+          tone="good"
+          label={content.timing.bestWindow.label || "Лучшее время"}
+          timeRange={content.timing.bestWindow.timeRange}
+          text={content.timing.bestWindow.text || ""}
+        />
+      ) : null}
+      {content.timing.cautionWindow.timeRange ? (
+        <PremiumTimingCard
+          tone="warning"
+          label={content.timing.cautionWindow.label || "Осторожное время"}
+          timeRange={content.timing.cautionWindow.timeRange}
+          text={content.timing.cautionWindow.text || ""}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function renderPremiumAreas(content: PremiumIssueContent) {
+  if (!content.areas.length) return null;
+  return (
+    <div className="grid gap-3">
+      {content.areas.map((area) => (
+        <PremiumIssueAreaCard key={area.key} area={area} />
+      ))}
+    </div>
+  );
+}
+
+function renderPremiumOpportunityRisk(content: PremiumIssueContent) {
+  if (!content.opportunity.text && !content.risk.text) return null;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {content.opportunity.text ? (
+        <PremiumAccentCard title={content.opportunity.title || "Возможность"} text={content.opportunity.text} emoji="🚀" />
+      ) : null}
+      {content.risk.text ? <PremiumReflectionCard title={content.risk.title || "Риск"} text={content.risk.text} emoji="⚠️" /> : null}
+    </div>
+  );
+}
+
+function renderPremiumIssueLayout(content: PremiumIssueContent, issueStatus: HoroscopeIssueStatus) {
+  const layoutType = resolvePremiumLayoutType(content);
+
+  if (layoutType === "lite") {
+    return (
+      <div className="space-y-3">
+        <PremiumIssueHero content={content} issueStatus={issueStatus} />
+        <PremiumNarrativeCard
+          title={content.dayStory.title || "Сюжет дня"}
+          text={content.dayStory.text}
+          badge={content.periodLabel}
+          footerTitle={content.dayStory.innerTask ? "Внутренняя задача" : null}
+          footerText={content.dayStory.innerTask}
+        />
+        {renderPremiumAreas(content)}
+        {renderPremiumOpportunityRisk(content)}
+        <PremiumFinalCard title={content.finalAdvice.title || "Совет"} text={content.finalAdvice.text} />
+        {renderPremiumTiming(content)}
+        {content.ritual.text ? <PremiumReflectionCard title={content.ritual.title || "Ритуал"} text={content.ritual.text} emoji="🪄" /> : null}
+      </div>
+    );
+  }
+
+  if (layoutType === "plus_evening") {
+    return (
+      <div className="space-y-3">
+        <PremiumIssueHero content={content} issueStatus={issueStatus} />
+        <PremiumAccentCard
+          title={content.eveningReflection.title || "Энергия вечера"}
+          text={content.eveningReflection.text || content.hero.verdict}
+          emoji="🌙"
+        />
+        <PremiumNarrativeCard
+          title={content.dayStory.title || "Что стало главным"}
+          text={content.dayStory.text}
+          badge={content.periodLabel}
+          footerTitle={content.dayStory.innerTask ? "Что важно удержать" : null}
+          footerText={content.dayStory.innerTask}
+          variant="summary"
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {content.ritual.text ? (
+            <PremiumReflectionCard title={content.ritual.title || "Что закрепить"} text={content.ritual.text} emoji="🪄" />
+          ) : null}
+          {content.risk.text ? (
+            <PremiumReflectionCard title={content.risk.title || "Риск вечера"} text={content.risk.text} emoji="⚠️" />
+          ) : null}
+        </div>
+        {renderPremiumAreas(content)}
+        {content.opportunity.text ? (
+          <PremiumAccentCard title={content.opportunity.title || "Настрой на завтра"} text={content.opportunity.text} emoji="✨" />
+        ) : null}
+        <PremiumFinalCard title={content.finalAdvice.title || "Совет на вечер"} text={content.finalAdvice.text} />
+        {renderPremiumTiming(content)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <PremiumIssueHero content={content} issueStatus={issueStatus} />
+      <PremiumAccentCard title="Главная тема" text={content.dayStory.innerTask || content.hero.verdict} emoji="✨" />
+      <PremiumNarrativeCard
+        title={content.dayStory.title || "Сюжет дня"}
+        text={content.dayStory.text}
+        badge={content.periodLabel}
+        variant="summary"
+      />
+      {renderPremiumAreas(content)}
+      {renderPremiumTiming(content)}
+      {renderPremiumOpportunityRisk(content)}
+      <PremiumFinalCard title={content.finalAdvice.title || "Финальный совет"} text={content.finalAdvice.text} />
+      {content.ritual.text ? (
+        <PremiumReflectionCard title={content.ritual.title || "Внутренняя задача"} text={content.ritual.text} emoji="🪄" />
+      ) : null}
+    </div>
+  );
+}
+
 function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose: () => void }) {
   if (!state.open) return null;
   const issue = state.issue;
   const issueSections = normalizeIssueSections(issue?.content_json, issue?.summary_text ?? null, issue?.content_md ?? null);
   const premiumIssue = normalizePremiumIssueContent(
+    issue,
     issue?.content_json,
     issue?.summary_text ?? null,
     issue?.start_date ?? null,
@@ -1924,7 +2179,7 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-6 pt-12 backdrop-blur-md">
-      <div className="w-full max-w-[520px] space-y-4 rounded-[30px] border border-white/15 bg-[var(--bg-card)]/95 p-6 shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+      <div className="horoscope-modal-shell w-full max-w-[520px] space-y-4 rounded-[30px] border border-white/15 bg-[var(--bg-card)]/95 p-6 shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Персональный выпуск</p>
@@ -1951,111 +2206,7 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
         ) : issue ? (
           <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-1">
             {premiumIssue ? (
-              <div className="space-y-3">
-                <PremiumIssueHero content={premiumIssue} issueStatus={issueStatus} />
-
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">
-                      {premiumIssue.dayStory.title || "Сюжет дня"}
-                    </p>
-                    <div className="inline-flex items-center rounded-full border border-white/12 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
-                      {premiumIssue.periodLabel}
-                    </div>
-                  </div>
-                  {premiumIssue.dayStory.text ? (
-                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-primary)]">{premiumIssue.dayStory.text}</p>
-                  ) : null}
-                  {premiumIssue.dayStory.innerTask ? (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Внутренняя задача</p>
-                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-                        {premiumIssue.dayStory.innerTask}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-
-                {(premiumIssue.timing.bestWindow.timeRange || premiumIssue.timing.cautionWindow.timeRange) && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {premiumIssue.timing.bestWindow.timeRange ? (
-                      <PremiumTimingCard
-                        tone="good"
-                        label={premiumIssue.timing.bestWindow.label || "Лучшее время"}
-                        timeRange={premiumIssue.timing.bestWindow.timeRange}
-                        text={premiumIssue.timing.bestWindow.text || ""}
-                      />
-                    ) : null}
-                    {premiumIssue.timing.cautionWindow.timeRange ? (
-                      <PremiumTimingCard
-                        tone="warning"
-                        label={premiumIssue.timing.cautionWindow.label || "Осторожное время"}
-                        timeRange={premiumIssue.timing.cautionWindow.timeRange}
-                        text={premiumIssue.timing.cautionWindow.text || ""}
-                      />
-                    ) : null}
-                  </div>
-                )}
-
-                {premiumIssue.areas.length ? (
-                  <div className="space-y-3">
-                    {premiumIssue.areas.map((area) => (
-                      <PremiumIssueAreaCard key={area.key} area={area} />
-                    ))}
-                  </div>
-                ) : null}
-
-                {(premiumIssue.opportunity.text || premiumIssue.risk.text) && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {premiumIssue.opportunity.text ? (
-                      <div className="rounded-[24px] border border-[var(--accent-gold)]/18 bg-[var(--accent-gold)]/10 p-4">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">🚀 {premiumIssue.opportunity.title}</p>
-                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          {premiumIssue.opportunity.text}
-                        </p>
-                      </div>
-                    ) : null}
-                    {premiumIssue.risk.text ? (
-                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">⚠️ {premiumIssue.risk.title}</p>
-                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{premiumIssue.risk.text}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-
-                {premiumIssue.finalAdvice.text ? (
-                  <div className="rounded-[24px] border border-[var(--accent-gold)]/22 bg-[linear-gradient(180deg,rgba(215,185,139,0.16),rgba(215,185,139,0.08))] p-5">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--accent-gold)]">
-                      {premiumIssue.finalAdvice.title || "Финальный совет"}
-                    </p>
-                    <p className="mt-3 text-base leading-relaxed text-[var(--text-primary)]">
-                      {premiumIssue.finalAdvice.text}
-                    </p>
-                  </div>
-                ) : null}
-
-                {(premiumIssue.ritual.text || premiumIssue.eveningReflection.text) && (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {premiumIssue.ritual.text ? (
-                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">🪄 {premiumIssue.ritual.title}</p>
-                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{premiumIssue.ritual.text}</p>
-                      </div>
-                    ) : null}
-                    {premiumIssue.eveningReflection.text ? (
-                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">
-                          🌙 {premiumIssue.eveningReflection.title}
-                        </p>
-                        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          {premiumIssue.eveningReflection.text}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
+              renderPremiumIssueLayout(premiumIssue, issueStatus)
             ) : issueSections.length ? (
               <div className="space-y-3">
                 {issueSections.map((section) => (
@@ -2158,7 +2309,22 @@ function normalizeIssueSections(
   return sections;
 }
 
+function detectIssueLayoutType(
+  issue: HoroscopeIssueResponse | null | undefined,
+  payload: Record<string, unknown>
+): string | null {
+  const payloadLayoutType = readString(payload.layout_type);
+  if (payloadLayoutType) return payloadLayoutType;
+  if (issue?.layout_type) return issue.layout_type;
+  if (issue?.product_code === "horoscope_sub_daily_lite") return "lite";
+  if (issue?.product_code === "horoscope_sub_daily_plus") {
+    return issue.delivery_slot === "evening" ? "plus_evening" : "plus_morning";
+  }
+  return null;
+}
+
 function normalizePremiumIssueContent(
+  issue: HoroscopeIssueResponse | null | undefined,
   contentJson: HoroscopeIssueResponse["content_json"],
   summaryText: string | null,
   startDate: string | null,
@@ -2227,6 +2393,7 @@ function normalizePremiumIssueContent(
 
   return {
     version: readString(payload.version) ?? "daily_personal_v2",
+    layoutType: detectIssueLayoutType(issue, payload),
     dateLabel: readString(payload.date_label) ?? formatIssuePeriod(startDate, endDate),
     periodLabel,
     persona: {
