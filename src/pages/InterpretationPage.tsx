@@ -29,6 +29,7 @@ import ShareCard from "@/components/sections/ShareCard";
 import { isDeckWithReversals, normalizeCardReversedForDeck } from "@/lib/tarotOrientation";
 import { openInlineQueryWithFallback } from "@/lib/telegram";
 import { API_BASE } from "@/lib/api";
+import "./InterpretationPage.css";
 
 interface LocationState {
   reading?: ViewReadingResponse;
@@ -240,7 +241,15 @@ export default function InterpretationPage() {
   const [inputMeta, setInputMeta] = useState<ReadingInputMeta | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "uploading" | "ready" | "error">("idle");
   const [shareError, setShareError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<"question" | "accent" | "summary" | "analysis" | "cards">("question");
+  const [showStickyNav, setShowStickyNav] = useState(false);
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const questionRef = useRef<HTMLDivElement | null>(null);
+  const accentRef = useRef<HTMLDivElement | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const analysisRef = useRef<HTMLDivElement | null>(null);
+  const cardsRef = useRef<HTMLDivElement | null>(null);
 
   const cardNameMapByDeck = useMemo(() => {
     const buildMap = (
@@ -449,6 +458,20 @@ export default function InterpretationPage() {
     reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed),
     meaning: card.meaning
   }));
+  const reversedCount = shareCards.filter((card) => card.reversed).length;
+  const heroPreviewCards = shareCards.slice(0, Math.min(5, shareCards.length));
+  const heroChips = [
+    `${cards.length} ${cards.length === 1 ? "карта" : cards.length < 5 ? "карты" : "карт"}`,
+    reversedCount > 0 ? `${reversedCount} перевёрнут${reversedCount === 1 ? "ая" : reversedCount < 5 ? "ые" : "ых"}` : null,
+    deckTitle
+  ].filter(Boolean) as string[];
+  const stickySections = [
+    { key: "question" as const, label: "Вопрос", ref: questionRef },
+    { key: "accent" as const, label: "Акцент", ref: accentRef },
+    { key: "summary" as const, label: "Итог", ref: summaryRef },
+    { key: "analysis" as const, label: "Анализ", ref: analysisRef },
+    { key: "cards" as const, label: "Карты", ref: cardsRef }
+  ];
 
   const shareSections = analysisSections
     .map((section) => ({
@@ -459,6 +482,46 @@ export default function InterpretationPage() {
 
   const [shareHintOpen, setShareHintOpen] = useState(false);
   const [pendingShareQuery, setPendingShareQuery] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handleScroll = () => {
+      const heroBottom = heroRef.current?.getBoundingClientRect().bottom ?? 0;
+      setShowStickyNav(heroBottom < 88);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return undefined;
+    const sections = stickySections
+      .map((section) => {
+        const node = section.ref.current;
+        return node ? { key: section.key, node } : null;
+      })
+      .filter(Boolean) as Array<{ key: "question" | "accent" | "summary" | "analysis" | "cards"; node: HTMLDivElement }>;
+    if (sections.length === 0) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const matched = sections.find((section) => section.node === visible.target);
+        if (matched) setActiveSection(matched.key);
+      },
+      {
+        rootMargin: "-22% 0px -58% 0px",
+        threshold: [0.15, 0.35, 0.6]
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section.node));
+    return () => observer.disconnect();
+  }, [cards.length, headlineText, loading, reading, stickySections]);
 
   const buildShareBlob = useCallback(async (): Promise<Blob> => {
     if (!shareRef.current) {
@@ -564,8 +627,12 @@ export default function InterpretationPage() {
     setShareHintOpen(false);
   }, [pendingShareQuery]);
 
+  const scrollToSection = useCallback((targetRef: { current: HTMLDivElement | null }) => {
+    targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   return (
-    <div className="space-y-5 pb-24 text-[var(--text-primary)]">
+    <div className="interpretation-page space-y-5 pb-24 text-[var(--text-primary)]">
       {shareHintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 px-4">
           <div className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#17151f] p-4 text-[var(--text-primary)] shadow-[0_35px_70px_rgba(0,0,0,0.75)]">
@@ -605,7 +672,10 @@ export default function InterpretationPage() {
         Вернуться к колодам
       </Button>
 
-      <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 backdrop-blur-2xl shadow-[0_35px_70px_rgba(0,0,0,0.65)]">
+      <div
+        ref={heroRef}
+        className="interpretation-hero rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 backdrop-blur-2xl shadow-[0_35px_70px_rgba(0,0,0,0.65)]"
+      >
         <div className="flex items-center gap-3 text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">
           <Sparkles className="h-5 w-5 text-[var(--accent-gold)]" strokeWidth={1.4} />
           <span>Интерпретация расклада</span>
@@ -614,7 +684,57 @@ export default function InterpretationPage() {
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           {spreadTitle} • {deckTitle}
         </p>
+        {heroChips.length > 0 ? (
+          <div className="interpretation-hero-chips mt-4">
+            {heroChips.map((chip) => (
+              <span key={chip} className="interpretation-chip">
+                {chip}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {heroPreviewCards.length > 0 ? (
+          <div className="interpretation-hero-cardrail mt-4" aria-hidden="true">
+            {heroPreviewCards.map((card, index) => (
+              <div
+                key={`${card.name}-${card.positionLabel}-${index}`}
+                className="interpretation-hero-card"
+                style={{ zIndex: heroPreviewCards.length - index }}
+              >
+                {card.imageSrc ? (
+                  <img
+                    src={card.imageSrc}
+                    alt=""
+                    className={`h-full w-full rounded-[16px] object-cover ${card.reversed ? "rotate-180" : ""}`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-[16px] bg-white/5 text-[10px] text-white/60">
+                    {card.name}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
+
+      {!loading && !error && reading ? (
+        <div className={`interpretation-sticky-nav ${showStickyNav ? "is-visible" : ""}`}>
+          <div className="interpretation-sticky-nav-inner">
+            {stickySections.map((section) => (
+              <button
+                key={section.key}
+                type="button"
+                className={`interpretation-sticky-pill ${activeSection === section.key ? "is-active" : ""}`}
+                onClick={() => scrollToSection(section.ref)}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {loading && <LoadingTarot message="Готовим красивую интерпретацию" subMessage="Колода перетасовывается..." />}
 
@@ -638,50 +758,64 @@ export default function InterpretationPage() {
 
       {!loading && !error && reading && (
         <div className="space-y-5">
-          <div className="space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
-            <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
+          <div ref={questionRef} className="interpretation-card interpretation-card--question space-y-4 rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="interpretation-card-heading">
+              <p className="text-xs uppercase tracking-[0.35em] text-[var(--text-tertiary)]">Вопрос</p>
+            </div>
             <p className="text-base text-[var(--text-primary)]">{displayQuestionText}</p>
           </div>
 
           {headlineText ? (
-            <div className="space-y-2 rounded-[28px] border border-[var(--accent-pink)]/35 bg-gradient-to-br from-[var(--accent-pink)]/25 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Ключевой акцент</p>
+            <div ref={accentRef} className="interpretation-card interpretation-card--accent space-y-2 rounded-[28px] border border-[var(--accent-pink)]/35 bg-gradient-to-br from-[var(--accent-pink)]/25 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+              <div className="interpretation-card-heading interpretation-card-heading--accent">
+                <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Ключевой акцент</p>
+              </div>
               <p className="text-xl font-semibold leading-relaxed whitespace-pre-line break-words">{headlineText}</p>
             </div>
           ) : null}
 
-          <div className="space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Итоговая интерпретация</p>
+          <div ref={summaryRef} className="interpretation-card interpretation-card--summary space-y-4 rounded-[28px] border border-[var(--accent-gold)]/40 bg-gradient-to-br from-[var(--accent-pink)]/20 to-transparent p-5 text-[var(--text-primary)] shadow-[0_40px_80px_rgba(0,0,0,0.65)]">
+            <div className="interpretation-card-heading interpretation-card-heading--summary">
+              <p className="text-xs uppercase tracking-[0.3em] text-[var(--accent-gold)]/80">Итоговая интерпретация</p>
+            </div>
             <p className="text-lg font-semibold leading-relaxed whitespace-pre-line break-words">{summaryText}</p>
           </div>
 
           {analysisSections.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div ref={analysisRef} className="grid gap-3 md:grid-cols-2">
               {analysisSections.map((section) => (
-                <div key={section.key} className="rounded-2xl border border-white/10 bg-[var(--bg-card)]/80 p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{section.title}</p>
+                <div
+                  key={section.key}
+                  className={`interpretation-card interpretation-card--analysis is-${section.key} rounded-2xl border border-white/10 bg-[var(--bg-card)]/80 p-4`}
+                >
+                  <div className="interpretation-card-heading">
+                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{section.title}</p>
+                  </div>
                   <p className="mt-2 text-sm leading-relaxed whitespace-pre-line break-words text-[var(--text-primary)]">{section.text}</p>
                 </div>
               ))}
             </div>
           ) : null}
 
-          <div className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
-            <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
+          <div ref={cardsRef} className="interpretation-card interpretation-card--cards rounded-[28px] border border-white/10 bg-[var(--bg-card)]/85 p-5 text-sm text-[var(--text-primary)]">
+            <div className="interpretation-card-heading">
+              <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Карты</p>
+              <div className="interpretation-card-subchips">
+                <span className="interpretation-chip interpretation-chip--subtle">{cards.length} {cards.length === 1 ? "позиция" : cards.length < 5 ? "позиции" : "позиций"}</span>
+                {reversedCount > 0 ? (
+                  <span className="interpretation-chip interpretation-chip--subtle">
+                    {reversedCount} перевёрнут{reversedCount === 1 ? "ая" : reversedCount < 5 ? "ые" : "ых"}
+                  </span>
+                ) : null}
+              </div>
+            </div>
             {cardDisplayList.length > 0 ? (
               <div className="mt-4 space-y-3">
                 {cardDisplayList.map((card) => {
-                  const metaLine = [
-                    `Позиция ${card.position}`,
-                    card.positionLabel,
-                    card.reversed && isDeckWithReversals(resolvedDeckId) ? "Перевёрнута" : ""
-                  ]
-                    .filter(Boolean)
-                    .join(" • ");
                   return (
                     <div
                       key={`${card.position}-${card.card_code}`}
-                      className="rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3"
+                      className="interpretation-card-item rounded-2xl border border-white/10 bg-[var(--bg-card-strong)]/80 p-3"
                     >
                       <div className="flex items-center gap-3">
                         {card.assetName ? (
@@ -699,9 +833,15 @@ export default function InterpretationPage() {
                             {card.displayName}
                           </div>
                         )}
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <p className="text-sm font-semibold text-[var(--text-primary)]">{card.displayName}</p>
-                          {metaLine ? <p className="text-[11px] text-[var(--text-secondary)]">{metaLine}</p> : null}
+                          <div className="interpretation-card-meta">
+                            <span className="interpretation-chip interpretation-chip--subtle">Позиция {card.position}</span>
+                            <span className="interpretation-chip interpretation-chip--subtle">{card.positionLabel}</span>
+                            {card.reversed && isDeckWithReversals(resolvedDeckId) ? (
+                              <span className="interpretation-chip interpretation-chip--reversed">Перевёрнутая</span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                       {card.meaning ? <p className="mt-3 text-sm leading-relaxed whitespace-pre-line break-words text-[var(--text-primary)]">{card.meaning}</p> : null}
@@ -714,25 +854,31 @@ export default function InterpretationPage() {
             )}
           </div>
 
-        <Button
-          className="w-full"
-          onClick={handleShare}
-          disabled={shareStatus === "uploading"}
-        >
-          {shareStatus === "uploading" ? "Готовим карточку..." : "Поделиться"}
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full border-white/20 text-white"
-          onClick={() => alert("Скоро будет реализовано")}
-        >
-          Записать расклад в дневник
-        </Button>
-        {shareStatus === "ready" && <p className="text-center text-xs text-white/70">Готово ✅</p>}
-        {shareStatus === "error" && shareError && (
-          <p className="text-center text-xs text-red-200">{shareError}</p>
-        )}
-      </div>
+          <div className="interpretation-action-zone rounded-[28px] border border-white/10 bg-[var(--bg-card)]/78 p-5">
+            <p className="text-sm text-[var(--text-secondary)]">Сохраните расклад, чтобы вернуться к нему позже или поделиться им.</p>
+            <div className="mt-4 space-y-3">
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleShare}
+                disabled={shareStatus === "uploading"}
+              >
+                {shareStatus === "uploading" ? "Готовим карточку..." : "Поделиться"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-white/20 text-white"
+                onClick={() => alert("Скоро будет реализовано")}
+              >
+                Записать расклад в дневник
+              </Button>
+            </div>
+            {shareStatus === "ready" && <p className="mt-3 text-center text-xs text-white/70">Готово ✅</p>}
+            {shareStatus === "error" && shareError && (
+              <p className="mt-3 text-center text-xs text-red-200">{shareError}</p>
+            )}
+          </div>
+        </div>
       )}
       <div className="pointer-events-none absolute left-[-9999px] top-0" aria-hidden="true">
         <ShareCard
