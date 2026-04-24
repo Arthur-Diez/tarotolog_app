@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toBlob } from "html-to-image";
 
@@ -859,11 +859,18 @@ export default function InterpretationPage() {
             <div className="mt-4 space-y-3">
               <Button
                 variant="primary"
-                className="w-full"
+                className="w-full gap-2"
                 onClick={handleShare}
                 disabled={shareStatus === "uploading"}
               >
-                {shareStatus === "uploading" ? "Готовим карточку..." : "Поделиться"}
+                {shareStatus === "uploading" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Готовим карточку...
+                  </>
+                ) : (
+                  "Поделиться"
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -873,6 +880,12 @@ export default function InterpretationPage() {
                 Записать расклад в дневник
               </Button>
             </div>
+            {shareStatus === "uploading" && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-white/75">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent-gold)]" />
+                <span>Создаём изображение для Telegram…</span>
+              </div>
+            )}
             {shareStatus === "ready" && <p className="mt-3 text-center text-xs text-white/70">Готово ✅</p>}
             {shareStatus === "error" && shareError && (
               <p className="mt-3 text-center text-xs text-red-200">{shareError}</p>
