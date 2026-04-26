@@ -863,8 +863,10 @@ export default function ProfilePage() {
     if (timezoneNameToPersist && typeof timezoneOffsetToPersist === "number") {
       birthPayload.current_tz_name = timezoneNameToPersist;
       birthPayload.current_tz_offset_min = timezoneOffsetToPersist;
+      birthPayload.current_tz_confirmed = timezoneConfirmed;
       payload.current_tz_name = timezoneNameToPersist;
       payload.current_tz_offset_min = timezoneOffsetToPersist;
+      payload.current_tz_confirmed = timezoneConfirmed;
     }
 
     const countryToPersist = (confirmedCountry ?? suggestedCountry)?.toUpperCase();
@@ -932,9 +934,11 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       current_tz_name: nameToSave,
       current_tz_offset_min: offsetToSave,
+      current_tz_confirmed: true,
       birth_profile: {
         current_tz_name: nameToSave,
-        current_tz_offset_min: offsetToSave
+        current_tz_offset_min: offsetToSave,
+        current_tz_confirmed: true
       }
     };
     const result = await runSave("confirm-timezone", payload);
@@ -953,9 +957,11 @@ export default function ProfilePage() {
     const payload: UpdateProfilePayload = {
       current_tz_name: name,
       current_tz_offset_min: offset,
+      current_tz_confirmed: true,
       birth_profile: {
         current_tz_name: name,
-        current_tz_offset_min: offset
+        current_tz_offset_min: offset,
+        current_tz_confirmed: true
       }
     };
     const result = await runSave("select-timezone", payload);

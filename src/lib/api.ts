@@ -280,10 +280,13 @@ export interface HoroscopeIssueResponse {
   kind?: string | null;
   status: HoroscopeIssueStatus;
   lang?: string | null;
+  tz_name?: string | null;
+  tz_offset_min?: number | null;
   zodiac_sign?: string | null;
   gender?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  generated_for_local_date?: string | null;
   summary_text?: string | null;
   content_md?: string | null;
   content_json?: Record<string, unknown> | null;

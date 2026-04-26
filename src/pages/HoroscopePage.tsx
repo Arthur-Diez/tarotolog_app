@@ -28,7 +28,8 @@ import {
   type HoroscopeIssueResponse,
   type HoroscopeIssueStatus,
   type HoroscopeIssuesListResponse,
-  type HoroscopeSubscriptionStatusResponse
+  type HoroscopeSubscriptionStatusResponse,
+  type ProfileResponse
 } from "@/lib/api";
 import { markOfferScreenVisit, markPaidActionAttempted } from "@/lib/offerEngagementState";
 import { clearTelegramStartParam, getTelegramStartParam } from "@/lib/telegram";
@@ -405,22 +406,27 @@ export default function HoroscopePage() {
     });
   }, [issues]);
 
-  const issueByProductCode = useMemo(() => {
+  const userLocalDateKey = useMemo(
+    () => resolveUserLocalDateKey(profile, freeHoroscope?.meta?.local_date),
+    [freeHoroscope?.meta?.local_date, profile]
+  );
+
+  const usableOneoffIssueByProductCode = useMemo(() => {
     const map = new Map<string, HoroscopeIssueResponse>();
     sortedIssues.forEach((issue) => {
-      if (!map.has(issue.product_code)) {
+      if (!map.has(issue.product_code) && isOneoffIssueUsableForLocalDate(issue, userLocalDateKey)) {
         map.set(issue.product_code, issue);
       }
     });
     return map;
-  }, [sortedIssues]);
+  }, [sortedIssues, userLocalDateKey]);
 
   const hasPendingIssues = useMemo(
     () => sortedIssues.some((issue) => ISSUE_PROCESSING_STATUSES.has(normalizeIssueStatus(issue.status))),
     [sortedIssues]
   );
 
-  const localDateKey = freeHoroscope?.meta?.local_date ?? new Date().toISOString().slice(0, 10);
+  const localDateKey = userLocalDateKey;
   const personalTodayIssue = useMemo(
     () =>
       sortedIssues.find((issue) =>
@@ -768,7 +774,7 @@ export default function HoroscopePage() {
 
   const handleOneoffAction = useCallback(
     async (product: OneoffProduct) => {
-      const issue = issueByProductCode.get(product.code);
+      const issue = usableOneoffIssueByProductCode.get(product.code);
       if (issue && ISSUE_READY_STATUSES.has(normalizeIssueStatus(issue.status))) {
         await openIssue(issue.id);
         return;
@@ -780,7 +786,7 @@ export default function HoroscopePage() {
 
       await handleOneoffPurchase(product.code);
     },
-    [handleOneoffPurchase, issueByProductCode, openGenerationOverlay, openIssue]
+    [handleOneoffPurchase, openGenerationOverlay, openIssue, usableOneoffIssueByProductCode]
   );
 
   const handleSubscriptionAction = useCallback(
@@ -1043,7 +1049,7 @@ export default function HoroscopePage() {
             className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {ONEOFF_PRODUCTS.map((product) => {
-              const issue = issueByProductCode.get(product.code);
+              const issue = usableOneoffIssueByProductCode.get(product.code);
               const issueStatus = issue ? normalizeIssueStatus(issue.status) : null;
               const ready = issueStatus ? ISSUE_READY_STATUSES.has(issueStatus) : false;
               const processing = issueStatus ? ISSUE_PROCESSING_STATUSES.has(issueStatus) : false;
@@ -1320,6 +1326,80 @@ function isIssueForProductAndDate(
   const issueStart = (issue.start_date || "").slice(0, 10);
   const issueEnd = (issue.end_date || "").slice(0, 10);
   return issueStart === options.localDate && issueEnd === options.localDate;
+}
+
+function isOneoffIssueUsableForLocalDate(issue: HoroscopeIssueResponse, localDate: string): boolean {
+  if (!issue.product_code.startsWith("horoscope_oneoff_")) return false;
+  const issueEnd = extractDateKey(issue.end_date);
+  if (!issueEnd) return true;
+  return issueEnd >= localDate;
+}
+
+function resolveUserLocalDateKey(profile: ProfileResponse | null | undefined, fallbackDate?: string | null): string {
+  const birthProfile = profile?.birth_profile ?? null;
+  const confirmedTimezone =
+    birthProfile?.current_tz_confirmed === true || profile?.user?.current_tz_confirmed === true
+      ? {
+          tzName: birthProfile?.current_tz_name ?? profile?.user?.current_tz_name ?? null,
+          tzOffsetMin: birthProfile?.current_tz_offset_min ?? profile?.user?.current_tz_offset_min ?? null
+        }
+      : null;
+
+  const fallbackTimezone = {
+    tzName:
+      birthProfile?.current_tz_name ??
+      profile?.user?.current_tz_name ??
+      birthProfile?.birth_tz_name ??
+      null,
+    tzOffsetMin:
+      birthProfile?.current_tz_offset_min ??
+      profile?.user?.current_tz_offset_min ??
+      birthProfile?.birth_tz_offset_min ??
+      null
+  };
+
+  return (
+    getDateKeyForTimezone(confirmedTimezone?.tzName ?? null, confirmedTimezone?.tzOffsetMin ?? null) ??
+    getDateKeyForTimezone(fallbackTimezone.tzName, fallbackTimezone.tzOffsetMin) ??
+    extractDateKey(fallbackDate) ??
+    new Date().toISOString().slice(0, 10)
+  );
+}
+
+function getDateKeyForTimezone(tzName?: string | null, tzOffsetMin?: number | null): string | null {
+  if (tzName) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tzName,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(new Date());
+      const year = parts.find((part) => part.type === "year")?.value;
+      const month = parts.find((part) => part.type === "month")?.value;
+      const day = parts.find((part) => part.type === "day")?.value;
+      if (year && month && day) {
+        return `${year}-${month}-${day}`;
+      }
+    } catch {
+      // Invalid IANA timezone names fall through to offset/fallback handling.
+    }
+  }
+
+  if (typeof tzOffsetMin === "number" && Number.isFinite(tzOffsetMin)) {
+    return new Date(Date.now() + tzOffsetMin * 60_000).toISOString().slice(0, 10);
+  }
+
+  return null;
+}
+
+function extractDateKey(value?: string | null): string | null {
+  if (!value) return null;
+  const direct = value.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
 }
 
 function PersonalizeOfferModal({
