@@ -335,6 +335,10 @@ export interface HoroscopeSubscriptionStatusResponse {
   last_run_at?: string | null;
   last_issue_id?: string | null;
   last_delivery_slot?: string | null;
+  morning_time_local?: string | null;
+  evening_time_local?: string | null;
+  tz_name?: string | null;
+  tz_offset_min?: number | null;
 }
 
 export type BackendReadingStatus = "pending" | "queued" | "processing" | "ready" | "error";
@@ -1286,6 +1290,18 @@ export async function getHoroscopeSubscriptionStatus(): Promise<HoroscopeSubscri
   const res = await fetch(`${API_BASE}/horoscope/subscription/status`, {
     method: "GET",
     headers: withAuthHeaders()
+  });
+  return handleResponse<HoroscopeSubscriptionStatusResponse>(res);
+}
+
+export async function updateHoroscopeSubscriptionSchedule(payload: {
+  morning_time_local?: string;
+  evening_time_local?: string;
+}): Promise<HoroscopeSubscriptionStatusResponse> {
+  const res = await fetch(`${API_BASE}/horoscope/subscription/schedule`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
   });
   return handleResponse<HoroscopeSubscriptionStatusResponse>(res);
 }

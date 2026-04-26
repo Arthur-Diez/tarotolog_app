@@ -20,9 +20,11 @@ import {
   getHoroscopeIssue,
   getHoroscopeIssues,
   getHoroscopeSubscriptionStatus,
+  createTelegramStarsPayment,
+  getTelegramStarsPaymentStatus,
   processHoroscopeIssue,
   purchaseHoroscopeOneoff,
-  purchaseHoroscopeSubscription,
+  updateHoroscopeSubscriptionSchedule,
   type HoroscopeFreeTodayContentSection,
   type HoroscopeFreeTodayResponse,
   type HoroscopeIssueResponse,
@@ -32,7 +34,7 @@ import {
   type ProfileResponse
 } from "@/lib/api";
 import { markOfferScreenVisit, markPaidActionAttempted } from "@/lib/offerEngagementState";
-import { clearTelegramStartParam, getTelegramStartParam } from "@/lib/telegram";
+import { clearTelegramStartParam, getTelegramStartParam, openTelegramInvoice } from "@/lib/telegram";
 import "./HoroscopePage.css";
 
 type OneoffProductCode =
@@ -62,6 +64,10 @@ interface SubscriptionPlan {
   energyCostHint: string;
   badge?: string;
   highlights: string[];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 interface StructuredSection {
@@ -226,14 +232,14 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     code: "horoscope_sub_daily_lite",
     title: "Daily Lite",
     subtitle: "Один персональный выпуск утром",
-    energyCostHint: "по тарифу ⚡",
+    energyCostHint: "299 ⭐ / 30 дней",
     highlights: ["Утренний прогноз", "Тема дня и фокус", "Короткий практичный формат"]
   },
   {
     code: "horoscope_sub_daily_plus",
     title: "Daily Plus",
     subtitle: "Утро + вечер с расширенной аналитикой",
-    energyCostHint: "по тарифу ⚡",
+    energyCostHint: "399 ⭐ / 30 дней",
     badge: "Рекомендуем",
     highlights: ["Утренний и вечерний прогноз", "Глубже про отношения и деньги", "Расширенные подсказки по времени"]
   }
@@ -293,6 +299,9 @@ export default function HoroscopePage() {
   const [subscription, setSubscription] = useState<HoroscopeSubscriptionStatusResponse | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [subscriptionMorningTime, setSubscriptionMorningTime] = useState("09:00");
+  const [subscriptionEveningTime, setSubscriptionEveningTime] = useState("20:00");
+  const [subscriptionScheduleSaving, setSubscriptionScheduleSaving] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [buyingOneoffCode, setBuyingOneoffCode] = useState<OneoffProductCode | null>(null);
@@ -319,6 +328,16 @@ export default function HoroscopePage() {
   const [activeOneoffIndex, setActiveOneoffIndex] = useState(0);
   const issueProcessKickRef = useRef<string | null>(null);
   const handledStartParamRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!subscription) return;
+    if (subscription.morning_time_local) {
+      setSubscriptionMorningTime(subscription.morning_time_local.slice(0, 5));
+    }
+    if (subscription.evening_time_local) {
+      setSubscriptionEveningTime(subscription.evening_time_local.slice(0, 5));
+    }
+  }, [subscription]);
 
   const loadFree = useCallback(async () => {
     setFreeLoading(true);
@@ -820,17 +839,42 @@ export default function HoroscopePage() {
       setBuyingPlanCode(planCode);
       setNotice(null);
       try {
-        await purchaseHoroscopeSubscription({
-          plan_code: planCode,
-          lang: userLang ?? "ru",
-          source: "miniapp_horoscope"
+        const starsPayment = await createTelegramStarsPayment({
+          product_code: planCode,
+          idempotency_key: `horoscope-subscription:${planCode}:${Date.now()}`
         });
+        const invoiceUrl = starsPayment.invoice_url || starsPayment.invoice_link || starsPayment.payment_url || null;
+        if (!invoiceUrl || !starsPayment.payment_id) {
+          throw new Error("Не удалось создать Stars-платёж");
+        }
+
+        const invoiceStatus = await openTelegramInvoice(invoiceUrl);
+        if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+          showNotice({
+            tone: "warning",
+            title: invoiceStatus === "cancelled" ? "Оплата отменена" : "Оплата не завершена",
+            message: "Подписка не подключена. Можно попробовать ещё раз.",
+            action: "refresh"
+          });
+          return;
+        }
+
+        if (invoiceStatus === "paid") {
+          for (let attempt = 0; attempt < 6; attempt += 1) {
+            const statusResponse = await getTelegramStarsPaymentStatus(starsPayment.payment_id);
+            if (statusResponse.fulfillment_status === "fulfilled") break;
+            await sleep(900);
+          }
+        }
 
         await Promise.all([refresh(), loadSubscription({ silent: true }), loadIssues({ silent: true })]);
         showNotice({
           tone: "success",
           title: "Подписка активирована",
-          message: planCode === "horoscope_sub_daily_plus" ? "Daily Plus подключён." : "Daily Lite подключён.",
+          message:
+            planCode === "horoscope_sub_daily_plus"
+              ? "Daily Plus подключён за 399 Telegram Stars."
+              : "Daily Lite подключён за 299 Telegram Stars.",
           action: "refresh"
         });
       } catch (error) {
@@ -852,6 +896,29 @@ export default function HoroscopePage() {
       userLang
     ]
   );
+
+  const handleSaveSubscriptionSchedule = useCallback(async () => {
+    if (!hasActiveSubscription) return;
+    setSubscriptionScheduleSaving(true);
+    setNotice(null);
+    try {
+      const updated = await updateHoroscopeSubscriptionSchedule({
+        morning_time_local: subscriptionMorningTime,
+        evening_time_local: subscriptionEveningTime
+      });
+      setSubscription(updated);
+      showNotice({
+        tone: "success",
+        title: "Расписание обновлено",
+        message: "Следующий выпуск будет готов по вашему локальному времени.",
+        action: "refresh"
+      });
+    } catch (error) {
+      handlePurchaseError(error, showNotice);
+    } finally {
+      setSubscriptionScheduleSaving(false);
+    }
+  }, [hasActiveSubscription, showNotice, subscriptionEveningTime, subscriptionMorningTime]);
 
   const noticeAction = notice?.action ?? null;
   const personalTodayIssueStatus = personalTodayIssue ? normalizeIssueStatus(personalTodayIssue.status) : null;
@@ -1231,6 +1298,66 @@ export default function HoroscopePage() {
             );
           })}
         </div>
+
+        {hasActiveSubscription ? (
+          <Card className="border border-white/10 bg-[var(--bg-card)]/88 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">время выпусков</p>
+                <h4 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">Настроить расписание</h4>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Считаем по вашему подтверждённому часовому поясу
+                  {subscription?.tz_name ? `: ${subscription.tz_name}` : "."}
+                </p>
+              </div>
+              {subscription?.next_run_at ? (
+                <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-[var(--text-secondary)]">
+                  {formatDateTime(subscription.next_run_at)}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="space-y-1.5">
+                <span className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">утро</span>
+                <input
+                  type="time"
+                  value={subscriptionMorningTime}
+                  onChange={(event) => setSubscriptionMorningTime(event.target.value)}
+                  className="h-12 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-base font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-gold)]/60"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">вечер</span>
+                <input
+                  type="time"
+                  value={subscriptionEveningTime}
+                  onChange={(event) => setSubscriptionEveningTime(event.target.value)}
+                  disabled={activePlanCode !== "horoscope_sub_daily_plus"}
+                  className="h-12 w-full rounded-2xl border border-white/12 bg-white/[0.06] px-3 text-base font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-gold)]/60 disabled:opacity-45"
+                />
+              </label>
+            </div>
+
+            <Button
+              className="mt-4 w-full"
+              variant="default"
+              onClick={() => {
+                void handleSaveSubscriptionSchedule();
+              }}
+              disabled={subscriptionScheduleSaving || subscriptionLoading}
+            >
+              {subscriptionScheduleSaving ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Сохраняем...
+                </span>
+              ) : (
+                "Сохранить время выпусков"
+              )}
+            </Button>
+          </Card>
+        ) : null}
       </section>
 
       <section className="space-y-3">
