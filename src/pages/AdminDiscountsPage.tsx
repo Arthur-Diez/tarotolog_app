@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, Globe2, LayoutDashboard, Loader2, Rocket, ScrollText, ShieldAlert, Sparkles, Users } from "lucide-react";
+import { BadgePercent, CalendarClock, Crown, Eye, FlaskConical, Gift, Globe2, Image as ImageIcon, LayoutDashboard, Loader2, Megaphone, Rocket, ScrollText, Send, ShieldAlert, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { useProfile } from "@/hooks/useProfile";
 import {
   adminArchiveDiscountRule,
   adminAssignDiscountRule,
+  adminCancelBroadcastCampaign,
+  adminCreateBroadcastCampaign,
   adminCreateDiscountRule,
   adminDisableAssignment,
   adminDuplicateDiscountRule,
@@ -22,24 +24,30 @@ import {
   adminGetRecentPurchases,
   adminGetRecentUsages,
   adminGetUserOfferDebug,
+  adminListBroadcastCampaigns,
   adminListPricingCountryTiers,
   adminListAssignments,
   adminListAssignmentsHistory,
   adminListDiscountRules,
   adminListDiscountUsages,
   adminProbeDiscountAccess,
+  adminQueueBroadcastCampaign,
   adminReorderDiscountRules,
   adminResolveDiscountDebug,
   adminRunDueHoroscopeSubscriptions,
   adminRunQueuedHoroscopeDeliveries,
+  adminRunBroadcastQueue,
   adminSearchUsers,
   adminSimulateDiscountDismiss,
   adminSimulateDiscountPurchase,
   adminSimulateDiscountShow,
   adminToggleDiscountRule,
+  adminUpdateBroadcastCampaign,
+  adminUploadBroadcastImage,
   adminUpsertPricingCountryTier,
   adminUpdateDiscountRule,
   type AdminAnalyticsResponse,
+  type AdminBroadcastCampaign,
   type AdminDashboardSummaryResponse,
   type AdminPricingCountryTierItem,
   type AdminPricingCountryTierListResponse,
@@ -56,7 +64,7 @@ import {
 
 const ADMIN_USER_ID = "eacd5034-10e3-496b-8868-b25df9c28711";
 
-type AdminTab = "dashboard" | "rules" | "preview" | "pricing" | "personal" | "tests" | "logs";
+type AdminTab = "dashboard" | "rules" | "preview" | "pricing" | "broadcasts" | "personal" | "tests" | "logs";
 
 type RuleDraft = {
   id?: string;
@@ -118,6 +126,7 @@ const TAB_ITEMS: Array<{ id: AdminTab; label: string; icon: typeof LayoutDashboa
   { id: "rules", label: "Акции", icon: BadgePercent },
   { id: "preview", label: "Превью", icon: Eye },
   { id: "pricing", label: "Тиры цен", icon: Globe2 },
+  { id: "broadcasts", label: "Рассылки", icon: Megaphone },
   { id: "personal", label: "Персональные", icon: Users },
   { id: "tests", label: "Тесты", icon: FlaskConical },
   { id: "logs", label: "Журнал", icon: ScrollText }
@@ -135,6 +144,26 @@ const DEFAULT_PRICING_TIER_DRAFT: PricingTierDraft = {
   pricing_tier: "B",
   notes: "",
   is_active: true
+};
+
+type BroadcastDraft = {
+  title: string;
+  message_text: string;
+  image_object_key: string;
+  image_url: string;
+  button_text: string;
+  button_url: string;
+  button_kind: "web_app" | "url";
+};
+
+const DEFAULT_BROADCAST_DRAFT: BroadcastDraft = {
+  title: "",
+  message_text: "",
+  image_object_key: "",
+  image_url: "",
+  button_text: "Открыть mini-app",
+  button_url: "https://tarotologai.ru/",
+  button_kind: "web_app"
 };
 
 const TRIGGER_OPTIONS = [
@@ -852,6 +881,16 @@ export default function AdminDiscountsPage() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingActionError, setPricingActionError] = useState<string | null>(null);
 
+  const [broadcasts, setBroadcasts] = useState<AdminBroadcastCampaign[]>([]);
+  const [editingBroadcastId, setEditingBroadcastId] = useState<string | null>(null);
+  const [broadcastDraft, setBroadcastDraft] = useState<BroadcastDraft>(DEFAULT_BROADCAST_DRAFT);
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastSaving, setBroadcastSaving] = useState(false);
+  const [broadcastUploading, setBroadcastUploading] = useState(false);
+  const [broadcastActionLoading, setBroadcastActionLoading] = useState<string | null>(null);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = useState<string | null>(null);
+
   const [rules, setRules] = useState<DiscountRuleResponse[]>([]);
   const [rulesLoading, setRulesLoading] = useState(false);
   const [ruleFilter, setRuleFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
@@ -979,6 +1018,19 @@ export default function AdminDiscountsPage() {
     }
   }, []);
 
+  const loadBroadcasts = useCallback(async () => {
+    try {
+      setBroadcastLoading(true);
+      setBroadcastError(null);
+      const response = await adminListBroadcastCampaigns(40);
+      setBroadcasts(response.items ?? []);
+    } catch (error) {
+      setBroadcastError(error instanceof Error ? error.message : "Не удалось загрузить рассылки");
+    } finally {
+      setBroadcastLoading(false);
+    }
+  }, []);
+
   const loadAssignments = useCallback(
     async (userId?: string) => {
       const [list, history] = await Promise.all([
@@ -1018,8 +1070,9 @@ export default function AdminDiscountsPage() {
     void loadWorkerStatus();
     void loadRules();
     void loadPricing();
+    void loadBroadcasts();
     void loadAssignments();
-  }, [accessGranted, loadAssignments, loadDashboard, loadPricing, loadRules, loadWorkerStatus]);
+  }, [accessGranted, loadAssignments, loadBroadcasts, loadDashboard, loadPricing, loadRules, loadWorkerStatus]);
 
   const runWorkerAction = useCallback(
     async (action: "due" | "deliveries") => {
@@ -1048,6 +1101,96 @@ export default function AdminDiscountsPage() {
     },
     [loadDashboard, loadWorkerStatus]
   );
+
+  const createBroadcast = useCallback(async () => {
+    try {
+      setBroadcastSaving(true);
+      setBroadcastError(null);
+      setBroadcastMessage(null);
+      const payload = {
+        title: broadcastDraft.title.trim(),
+        message_text: broadcastDraft.message_text.trim(),
+        image_object_key: broadcastDraft.image_object_key.trim() || null,
+        image_url: broadcastDraft.image_url.trim() || null,
+        button_text: broadcastDraft.button_text.trim() || null,
+        button_url: broadcastDraft.button_url.trim() || null,
+        button_kind: broadcastDraft.button_kind,
+        target_filter: { audience: "all_started_bot_users" }
+      };
+      const saved = editingBroadcastId
+        ? await adminUpdateBroadcastCampaign(editingBroadcastId, payload)
+        : await adminCreateBroadcastCampaign(payload);
+      setBroadcastMessage(editingBroadcastId ? `Черновик обновлён: ${saved.title}` : `Черновик создан: ${saved.title}`);
+      setEditingBroadcastId(null);
+      setBroadcastDraft(DEFAULT_BROADCAST_DRAFT);
+      await loadBroadcasts();
+    } catch (error) {
+      setBroadcastError(error instanceof Error ? error.message : "Не удалось создать рассылку");
+    } finally {
+      setBroadcastSaving(false);
+    }
+  }, [broadcastDraft, editingBroadcastId, loadBroadcasts]);
+
+  const uploadBroadcastImage = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
+      try {
+        setBroadcastUploading(true);
+        setBroadcastError(null);
+        const uploaded = await adminUploadBroadcastImage(file);
+        setBroadcastDraft((prev) => ({
+          ...prev,
+          image_object_key: uploaded.image_object_key,
+          image_url: ""
+        }));
+        setBroadcastMessage("Изображение загружено и привязано к черновику");
+      } catch (error) {
+        setBroadcastError(error instanceof Error ? error.message : "Не удалось загрузить изображение");
+      } finally {
+        setBroadcastUploading(false);
+      }
+    },
+    []
+  );
+
+  const runBroadcastAction = useCallback(
+    async (campaignId: string, action: "queue" | "cancel") => {
+      try {
+        setBroadcastActionLoading(`${action}:${campaignId}`);
+        setBroadcastError(null);
+        setBroadcastMessage(null);
+        if (action === "queue") {
+          const queued = await adminQueueBroadcastCampaign(campaignId);
+          setBroadcastMessage(`Рассылка поставлена в очередь: ${queued.total_recipients} получателей`);
+        } else {
+          await adminCancelBroadcastCampaign(campaignId);
+          setBroadcastMessage("Рассылка отменена");
+        }
+        await loadBroadcasts();
+      } catch (error) {
+        setBroadcastError(error instanceof Error ? error.message : "Не удалось выполнить действие");
+      } finally {
+        setBroadcastActionLoading(null);
+      }
+    },
+    [loadBroadcasts]
+  );
+
+  const runBroadcastQueue = useCallback(async () => {
+    try {
+      setBroadcastActionLoading("run");
+      setBroadcastError(null);
+      setBroadcastMessage(null);
+      const result = await adminRunBroadcastQueue(50);
+      if (!result.success) throw new Error(result.error || "Не удалось прогнать очередь");
+      setBroadcastMessage(`Обработано: ${result.processed}, отправлено: ${result.sent}, заблокировали: ${result.blocked}`);
+      await loadBroadcasts();
+    } catch (error) {
+      setBroadcastError(error instanceof Error ? error.message : "Не удалось прогнать очередь");
+    } finally {
+      setBroadcastActionLoading(null);
+    }
+  }, [loadBroadcasts]);
 
   useEffect(() => {
     const trimmed = userSearch.trim();
@@ -1224,7 +1367,7 @@ export default function AdminDiscountsPage() {
             variant="outline"
             className="border-white/20"
             onClick={() => {
-              void Promise.all([loadDashboard(), loadRules(), loadPricing(), loadAssignments(selectedUser?.user_id)]);
+              void Promise.all([loadDashboard(), loadRules(), loadPricing(), loadBroadcasts(), loadAssignments(selectedUser?.user_id)]);
             }}
           >
             Обновить всё
@@ -1357,6 +1500,206 @@ export default function AdminDiscountsPage() {
             rightTitle="Последние показы скидок"
             rightItems={recentUsages}
           />
+        </div>
+      ) : null}
+
+      {activeTab === "broadcasts" ? (
+        <div className="space-y-4">
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">
+                  {editingBroadcastId ? "Редактирование рассылки" : "Новая рассылка"}
+                </p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Отправка идёт очередью: консервативный лимит, обработка 429 retry_after, фиксация blocked/failed.
+                </p>
+              </div>
+              <Button variant="outline" className="border-white/20" onClick={() => void loadBroadcasts()} disabled={broadcastLoading}>
+                {broadcastLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Обновить
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-3">
+                <Input
+                  value={broadcastDraft.title}
+                  onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Название рассылки для админки"
+                />
+                <textarea
+                  value={broadcastDraft.message_text}
+                  onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, message_text: e.target.value }))}
+                  placeholder="Текст сообщения. Лучше 350-700 символов, если есть изображение."
+                  rows={8}
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-gold)]/50"
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    value={broadcastDraft.button_text}
+                    onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, button_text: e.target.value }))}
+                    placeholder="Текст кнопки"
+                  />
+                  <select
+                    className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm"
+                    value={broadcastDraft.button_kind}
+                    onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, button_kind: e.target.value as "web_app" | "url" }))}
+                  >
+                    <option value="web_app">Открыть mini-app</option>
+                    <option value="url">Обычная ссылка</option>
+                  </select>
+                </div>
+                <Input
+                  value={broadcastDraft.button_url}
+                  onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, button_url: e.target.value }))}
+                  placeholder="URL кнопки"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Изображение</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+                    Можно загрузить PNG/JPG/WebP в S3 или вставить готовую публичную ссылку. Для Telegram лучше 1200x628 или 1080x1080.
+                  </p>
+                  <label className="mt-3 flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 px-4 py-5 text-sm text-[var(--text-secondary)]">
+                    {broadcastUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}
+                    Загрузить изображение
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => void uploadBroadcastImage(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {broadcastDraft.image_object_key ? (
+                    <p className="mt-2 break-all text-xs text-emerald-200">S3: {broadcastDraft.image_object_key}</p>
+                  ) : null}
+                  <Input
+                    className="mt-3"
+                    value={broadcastDraft.image_url}
+                    onChange={(e) => setBroadcastDraft((prev) => ({ ...prev, image_url: e.target.value, image_object_key: "" }))}
+                    placeholder="Или публичный image URL"
+                  />
+                </div>
+
+                <div className="rounded-[24px] border border-[var(--accent-pink)]/20 bg-[linear-gradient(180deg,rgba(42,31,55,0.95),rgba(18,13,27,0.98))] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Превью</p>
+                  <p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">
+                    {broadcastDraft.title || "Название кампании"}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
+                    {broadcastDraft.message_text || "Здесь будет текст, который получит пользователь в Telegram."}
+                  </p>
+                  {broadcastDraft.button_text ? (
+                    <div className="mt-4 rounded-xl bg-[#3f72a7] px-4 py-2 text-center text-sm font-semibold text-white">
+                      {broadcastDraft.button_text}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                disabled={broadcastSaving || !broadcastDraft.title.trim() || !broadcastDraft.message_text.trim()}
+                onClick={() => void createBroadcast()}
+              >
+                {broadcastSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
+                {editingBroadcastId ? "Сохранить изменения" : "Создать черновик"}
+              </Button>
+              {editingBroadcastId ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingBroadcastId(null);
+                    setBroadcastDraft(DEFAULT_BROADCAST_DRAFT);
+                  }}
+                >
+                  Отменить редактирование
+                </Button>
+              ) : null}
+              <Button variant="outline" className="border-white/20" disabled={broadcastActionLoading !== null} onClick={() => void runBroadcastQueue()}>
+                {broadcastActionLoading === "run" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Прогнать очередь
+              </Button>
+            </div>
+            {broadcastMessage ? <p className="mt-3 text-sm text-emerald-200">{broadcastMessage}</p> : null}
+            {broadcastError ? <p className="mt-3 text-sm text-red-200">{broadcastError}</p> : null}
+          </Card>
+
+          <Card className="rounded-[24px] border border-white/10 bg-[var(--bg-card)]/85 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-[var(--text-primary)]">Кампании</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Создать черновик можно безопасно; отправка начнётся только после постановки в очередь.</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {broadcasts.map((campaign) => (
+                <div key={campaign.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{campaign.title}</p>
+                      <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                        {campaign.status} · всего {campaign.total_recipients} · sent {campaign.sent_count} · failed {campaign.failed_count} · blocked {campaign.blocked_count}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {["draft", "paused", "failed"].includes(campaign.status) ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-white/20"
+                          onClick={() => {
+                            setEditingBroadcastId(campaign.id);
+                            setBroadcastDraft({
+                              title: campaign.title,
+                              message_text: campaign.message_text,
+                              image_object_key: campaign.image_object_key ?? "",
+                              image_url: campaign.image_url ?? "",
+                              button_text: campaign.button_text ?? "",
+                              button_url: campaign.button_url ?? "",
+                              button_kind: campaign.button_kind
+                            });
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                        >
+                          Редактировать
+                        </Button>
+                      ) : null}
+                      {["draft", "paused", "failed"].includes(campaign.status) ? (
+                        <Button
+                          size="sm"
+                          disabled={broadcastActionLoading !== null}
+                          onClick={() => void runBroadcastAction(campaign.id, "queue")}
+                        >
+                          {broadcastActionLoading === `queue:${campaign.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          В очередь
+                        </Button>
+                      ) : null}
+                      {["queued", "sending", "paused", "failed"].includes(campaign.status) ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-white/20"
+                          disabled={broadcastActionLoading !== null}
+                          onClick={() => void runBroadcastAction(campaign.id, "cancel")}
+                        >
+                          Отменить
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">{campaign.message_text}</p>
+                </div>
+              ))}
+              {!broadcasts.length && !broadcastLoading ? (
+                <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-[var(--text-secondary)]">Рассылок пока нет.</p>
+              ) : null}
+            </div>
+          </Card>
         </div>
       ) : null}
 

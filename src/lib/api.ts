@@ -948,6 +948,43 @@ export interface AdminPricingOfferMatrixResponse {
   items: AdminPricingOfferMatrixItem[];
 }
 
+export interface AdminBroadcastCampaign {
+  id: string;
+  title: string;
+  message_text: string;
+  image_object_key?: string | null;
+  image_url?: string | null;
+  button_text?: string | null;
+  button_url?: string | null;
+  button_kind: "web_app" | "url";
+  parse_mode?: "HTML" | "MarkdownV2" | null;
+  target_filter?: Record<string, unknown>;
+  status: string;
+  total_recipients: number;
+  sent_count: number;
+  failed_count: number;
+  blocked_count: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  queued_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  meta?: Record<string, unknown>;
+}
+
+export interface AdminBroadcastCampaignListResponse {
+  items: AdminBroadcastCampaign[];
+}
+
+export interface AdminBroadcastRunResponse {
+  success: boolean;
+  processed: number;
+  sent: number;
+  failed: number;
+  blocked: number;
+  error?: string | null;
+}
+
 export interface HoroscopeWorkerHeartbeat {
   status?: string | null;
   pid?: number | null;
@@ -1488,6 +1525,95 @@ export async function adminProbeDiscountAccess(): Promise<AdminAccessResponse> {
     headers: withAuthHeaders()
   });
   return handleResponse<AdminAccessResponse>(res);
+}
+
+export async function adminListBroadcastCampaigns(limit = 30): Promise<AdminBroadcastCampaignListResponse> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts?limit=${limit}`, {
+    method: "GET",
+    headers: withAuthHeaders()
+  });
+  return handleResponse<AdminBroadcastCampaignListResponse>(res);
+}
+
+export async function adminCreateBroadcastCampaign(payload: {
+  title: string;
+  message_text: string;
+  image_object_key?: string | null;
+  image_url?: string | null;
+  button_text?: string | null;
+  button_url?: string | null;
+  button_kind?: "web_app" | "url";
+  parse_mode?: "HTML" | "MarkdownV2" | null;
+  target_filter?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
+}): Promise<AdminBroadcastCampaign> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<AdminBroadcastCampaign>(res);
+}
+
+export async function adminUpdateBroadcastCampaign(
+  campaignId: string,
+  payload: {
+    title: string;
+    message_text: string;
+    image_object_key?: string | null;
+    image_url?: string | null;
+    button_text?: string | null;
+    button_url?: string | null;
+    button_kind?: "web_app" | "url";
+    parse_mode?: "HTML" | "MarkdownV2" | null;
+    target_filter?: Record<string, unknown>;
+    meta?: Record<string, unknown>;
+  }
+): Promise<AdminBroadcastCampaign> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts/${encodeURIComponent(campaignId)}`, {
+    method: "PATCH",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify(payload)
+  });
+  return handleResponse<AdminBroadcastCampaign>(res);
+}
+
+export async function adminQueueBroadcastCampaign(campaignId: string): Promise<AdminBroadcastCampaign> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts/${encodeURIComponent(campaignId)}/queue`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<AdminBroadcastCampaign>(res);
+}
+
+export async function adminCancelBroadcastCampaign(campaignId: string): Promise<AdminBroadcastCampaign> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts/${encodeURIComponent(campaignId)}/cancel`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<AdminBroadcastCampaign>(res);
+}
+
+export async function adminRunBroadcastQueue(limit = 50): Promise<AdminBroadcastRunResponse> {
+  const res = await fetch(`${API_BASE}/admin/broadcasts/run?limit=${limit}`, {
+    method: "POST",
+    headers: withAuthHeaders(undefined, true),
+    body: JSON.stringify({})
+  });
+  return handleResponse<AdminBroadcastRunResponse>(res);
+}
+
+export async function adminUploadBroadcastImage(file: File): Promise<{ image_object_key: string; content_type: string; size: number }> {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await fetch(`${API_BASE}/admin/broadcasts/upload-image`, {
+    method: "POST",
+    headers: withAuthHeaders(),
+    body: form
+  });
+  return handleResponse<{ image_object_key: string; content_type: string; size: number }>(res);
 }
 
 export async function adminGetDashboardSummary(): Promise<AdminDashboardSummaryResponse> {
