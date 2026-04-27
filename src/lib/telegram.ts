@@ -95,7 +95,21 @@ export function getTelegramStartParam(): string | null {
 
   const params = new URLSearchParams(window.location.search);
   const raw = params.get("tgWebAppStartParam") || params.get("startapp") || params.get("start_param");
-  return raw?.trim() || null;
+  if (raw?.trim()) {
+    return raw.trim();
+  }
+
+  const hash = window.location.hash || "";
+  const queryIndex = hash.indexOf("?");
+  if (queryIndex >= 0) {
+    const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
+    const hashRaw = hashParams.get("tgWebAppStartParam") || hashParams.get("startapp") || hashParams.get("start_param");
+    if (hashRaw?.trim()) {
+      return hashRaw.trim();
+    }
+  }
+
+  return null;
 }
 
 export function clearTelegramStartParam(): void {
@@ -114,6 +128,27 @@ export function clearTelegramStartParam(): void {
 
   if (changed) {
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }
+
+  const hash = window.location.hash || "";
+  const queryIndex = hash.indexOf("?");
+  if (queryIndex < 0) {
+    return;
+  }
+  const hashPath = hash.slice(0, queryIndex);
+  const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
+  let hashChanged = false;
+  for (const key of ["tgWebAppStartParam", "startapp", "start_param"]) {
+    if (hashParams.has(key)) {
+      hashParams.delete(key);
+      hashChanged = true;
+    }
+  }
+  if (hashChanged) {
+    const nextHashQuery = hashParams.toString();
+    const nextHash = `${hashPath}${nextHashQuery ? `?${nextHashQuery}` : ""}`;
+    const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
     window.history.replaceState(window.history.state, "", nextUrl);
   }
 }

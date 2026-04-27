@@ -61,10 +61,26 @@ interface SubscriptionPlan {
   code: SubscriptionPlanCode;
   title: string;
   subtitle: string;
-  energyCostHint: string;
   badge?: string;
   highlights: string[];
 }
+
+type PricingTier = "A" | "B" | "C";
+
+const SUBSCRIPTION_STARS_BY_TIER: Record<PricingTier, Record<SubscriptionPlanCode, number>> = {
+  A: {
+    horoscope_sub_daily_lite: 599,
+    horoscope_sub_daily_plus: 699
+  },
+  B: {
+    horoscope_sub_daily_lite: 299,
+    horoscope_sub_daily_plus: 399
+  },
+  C: {
+    horoscope_sub_daily_lite: 149,
+    horoscope_sub_daily_plus: 249
+  }
+};
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -232,14 +248,12 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     code: "horoscope_sub_daily_lite",
     title: "Daily Lite",
     subtitle: "Один персональный выпуск утром",
-    energyCostHint: "299 ⭐ / 30 дней",
     highlights: ["Утренний прогноз", "Тема дня и фокус", "Короткий практичный формат"]
   },
   {
     code: "horoscope_sub_daily_plus",
     title: "Daily Plus",
     subtitle: "Утро + вечер с расширенной аналитикой",
-    energyCostHint: "399 ⭐ / 30 дней",
     badge: "Рекомендуем",
     highlights: ["Утренний и вечерний прогноз", "Глубже про отношения и деньги", "Расширенные подсказки по времени"]
   }
@@ -283,6 +297,8 @@ export default function HoroscopePage() {
   }, []);
 
   const birthProfile = profile?.birth_profile;
+  const isBirthProfileReady = isBirthProfileReadyForPaid(birthProfile);
+  const pricingTier = normalizePricingTier(birthProfile?.detected_region_tier);
   const userLang = useMemo(
     () => resolvePreferredLanguage(birthProfile?.interface_language ?? profile?.user?.lang),
     [birthProfile?.interface_language, profile?.user?.lang]
@@ -340,6 +356,12 @@ export default function HoroscopePage() {
   }, [subscription]);
 
   const loadFree = useCallback(async () => {
+    if (!isBirthProfileReady) {
+      setFreeLoading(false);
+      setFreeHoroscope(null);
+      setFreeError("Заполните дату рождения, пол и место рождения в профиле, чтобы получить корректный гороскоп.");
+      return;
+    }
     setFreeLoading(true);
     setFreeError(null);
     try {
@@ -357,7 +379,7 @@ export default function HoroscopePage() {
     } finally {
       setFreeLoading(false);
     }
-  }, [userLang]);
+  }, [isBirthProfileReady, userLang]);
 
   const loadIssues = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -873,8 +895,8 @@ export default function HoroscopePage() {
           title: "Подписка активирована",
           message:
             planCode === "horoscope_sub_daily_plus"
-              ? "Daily Plus подключён за 399 Telegram Stars."
-              : "Daily Lite подключён за 299 Telegram Stars.",
+              ? `Daily Plus подключён за ${getSubscriptionStarsPrice(planCode, pricingTier)} Telegram Stars.`
+              : `Daily Lite подключён за ${getSubscriptionStarsPrice(planCode, pricingTier)} Telegram Stars.`,
           action: "refresh"
         });
       } catch (error) {
@@ -893,7 +915,7 @@ export default function HoroscopePage() {
       refresh,
       showNotice,
       subscription?.last_issue_id,
-      userLang
+      pricingTier
     ]
   );
 
@@ -1035,6 +1057,14 @@ export default function HoroscopePage() {
             <div className="h-3 w-11/12 animate-pulse rounded bg-white/10" />
             <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
           </div>
+        ) : freeError && !isBirthProfileReady ? (
+          <div className="space-y-3 rounded-[20px] border border-[var(--accent-gold)]/25 bg-[var(--accent-gold)]/10 p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Сначала заполним профиль</p>
+            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{freeError}</p>
+            <Button size="sm" variant="primary" onClick={() => navigate("/profile")}>
+              Заполнить профиль
+            </Button>
+          </div>
         ) : freeError ? (
           <div className="space-y-3 rounded-[20px] border border-red-300/35 bg-red-500/10 p-4">
             <p className="text-sm text-red-100">{freeError}</p>
@@ -1082,6 +1112,10 @@ export default function HoroscopePage() {
             className="w-full sm:w-auto"
             variant="outline"
             onClick={() => {
+              if (!isBirthProfileReady) {
+                navigate("/profile");
+                return;
+              }
               void loadFree();
             }}
             disabled={freeLoading}
@@ -1092,7 +1126,7 @@ export default function HoroscopePage() {
                 Загружаем...
               </span>
             ) : (
-              "Обновить ритуал"
+              isBirthProfileReady ? "Обновить ритуал" : "Заполнить профиль"
             )}
           </Button>
         </div>
@@ -1256,7 +1290,9 @@ export default function HoroscopePage() {
                     </div>
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">{plan.subtitle}</p>
                   </div>
-                  <p className="whitespace-nowrap text-sm font-semibold text-[var(--accent-gold)]">{plan.energyCostHint}</p>
+                  <p className="whitespace-nowrap text-sm font-semibold text-[var(--accent-gold)]">
+                    {formatSubscriptionPrice(plan.code, pricingTier)}
+                  </p>
                 </div>
 
                 <ul className="mt-4 space-y-2 text-sm text-[var(--text-secondary)]">
@@ -1746,6 +1782,20 @@ function normalizeSubscriptionPlanCode(planCode: string | null | undefined): Sub
     return planCode;
   }
   return null;
+}
+
+function normalizePricingTier(value: string | null | undefined): PricingTier {
+  const normalized = (value || "").trim().toUpperCase();
+  if (normalized === "A" || normalized === "B" || normalized === "C") return normalized;
+  return "B";
+}
+
+function getSubscriptionStarsPrice(planCode: SubscriptionPlanCode, tier: PricingTier): number {
+  return SUBSCRIPTION_STARS_BY_TIER[tier]?.[planCode] ?? SUBSCRIPTION_STARS_BY_TIER.B[planCode];
+}
+
+function formatSubscriptionPrice(planCode: SubscriptionPlanCode, tier: PricingTier): string {
+  return `${getSubscriptionStarsPrice(planCode, tier)} ⭐ / 30 дней`;
 }
 
 function isSubscriptionActive(subscription: HoroscopeSubscriptionStatusResponse | null): boolean {
