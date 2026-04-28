@@ -24,7 +24,7 @@ import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
-import { faceUrl } from "@/lib/cardAsset";
+import { faceUrlCandidates } from "@/lib/cardAsset";
 import ShareCard from "@/components/sections/ShareCard";
 import { isDeckWithReversals, normalizeCardReversedForDeck } from "@/lib/tarotOrientation";
 import { openInlineQueryWithFallback } from "@/lib/telegram";
@@ -454,12 +454,12 @@ export default function InterpretationPage() {
   const shareCards = cardDisplayList.map((card) => ({
     name: card.displayName,
     positionLabel: card.positionLabel,
-    imageSrc: card.assetName ? faceUrl(resolvedDeckId, card.assetName) : null,
+    imageSrc: card.assetName ? faceUrlCandidates(resolvedDeckId, card.assetName)[0] ?? null : null,
     reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed),
     meaning: card.meaning
   }));
   const reversedCount = shareCards.filter((card) => card.reversed).length;
-  const heroPreviewCards = shareCards.slice(0, Math.min(5, shareCards.length));
+  const heroPreviewCards = cardDisplayList.slice(0, Math.min(5, cardDisplayList.length));
   const heroChips = [
     `${cards.length} ${cards.length === 1 ? "карта" : cards.length < 5 ? "карты" : "карт"}`,
     reversedCount > 0 ? `${reversedCount} перевёрнут${reversedCount === 1 ? "ая" : reversedCount < 5 ? "ые" : "ых"}` : null,
@@ -697,20 +697,24 @@ export default function InterpretationPage() {
           <div className="interpretation-hero-cardrail mt-4" aria-hidden="true">
             {heroPreviewCards.map((card, index) => (
               <div
-                key={`${card.name}-${card.positionLabel}-${index}`}
+                key={`${card.displayName}-${card.positionLabel}-${index}`}
                 className="interpretation-hero-card"
                 style={{ zIndex: heroPreviewCards.length - index }}
               >
-                {card.imageSrc ? (
-                  <img
-                    src={card.imageSrc}
+                {card.assetName ? (
+                  <CardFaceImage
+                    deckId={resolvedDeckId}
+                    cardName={card.assetName}
                     alt=""
-                    className={`h-full w-full rounded-[16px] object-cover ${card.reversed ? "rotate-180" : ""}`}
+                    className={`h-full w-full rounded-[16px] object-cover ${
+                      card.reversed && isDeckWithReversals(resolvedDeckId) ? "rotate-180" : ""
+                    }`}
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-[16px] bg-white/5 text-[10px] text-white/60">
-                    {card.name}
+                    {card.displayName}
                   </div>
                 )}
               </div>
