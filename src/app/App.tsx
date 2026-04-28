@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import HomeScreen from "@/pages/HomeScreen";
 import CalendarPage from "@/pages/CalendarPage";
@@ -22,10 +22,14 @@ import { DecksScreen } from "@/screens/DecksScreen";
 import { SpreadsScreen } from "@/screens/SpreadsScreen";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 import { DeckTransitionOverlay } from "@/ui/DeckTransitionOverlay";
+import { getTelegramStartParam } from "@/lib/telegram";
+
+const HOROSCOPE_ISSUE_START_PARAM_RE = /^(?:horoscope_issue:[0-9a-f-]{36}|hi_[0-9a-f]{32})$/i;
 
 export default function App() {
   const { status, user, settings, error, retry, telegramUser } = useAppInit();
   const location = useLocation();
+  const navigate = useNavigate();
   const isSpreadPlayRoute = location.pathname.startsWith("/spreads/play/");
   const { loading: profileLoading, error: profileError, profile, refresh } = useProfile();
   const [spreadsView, setSpreadsView] = useState<{ screen: "decks" | "spreads"; deckId?: DeckId }>(
@@ -33,6 +37,14 @@ export default function App() {
   );
 
   useAutoTimezone(profile);
+
+  useEffect(() => {
+    const startParam = getTelegramStartParam();
+    if (!startParam || !HOROSCOPE_ISSUE_START_PARAM_RE.test(startParam)) return;
+    if (location.pathname !== "/horoscope") {
+      navigate("/horoscope", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     const enforceDarkTheme = () => {
