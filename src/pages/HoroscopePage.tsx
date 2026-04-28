@@ -193,7 +193,7 @@ const MOCK_FALLBACK = {
 
 const ISSUE_PROCESSING_STATUSES = new Set<HoroscopeIssueStatus>(["queued", "pending", "processing"]);
 const ISSUE_READY_STATUSES = new Set<HoroscopeIssueStatus>(["ready"]);
-const HOROSCOPE_ISSUE_START_PARAM_RE = /^horoscope_issue:([0-9a-f-]{36})$/i;
+const HOROSCOPE_ISSUE_START_PARAM_RE = /^(?:horoscope_issue:([0-9a-f-]{36})|hi_([0-9a-f]{32}))$/i;
 const PERSONAL_TODAY_PRODUCT_CODE: OneoffProductCode = "horoscope_oneoff_personal_today";
 const PERSONAL_TODAY_DEFAULT_COST = 10;
 const GENERATION_STEPS = [
@@ -528,10 +528,13 @@ export default function HoroscopePage() {
     const startParam = getTelegramStartParam();
     if (!startParam || handledStartParamRef.current === startParam) return;
     const match = startParam.match(HOROSCOPE_ISSUE_START_PARAM_RE);
-    if (!match?.[1]) return;
+    const legacyIssueId = match?.[1];
+    const compactIssueId = match?.[2];
+    const issueId = legacyIssueId || (compactIssueId ? formatCompactIssueId(compactIssueId) : null);
+    if (!issueId) return;
     handledStartParamRef.current = startParam;
     clearTelegramStartParam();
-    void openIssue(match[1]);
+    void openIssue(issueId);
   }, [openIssue]);
 
   const closeGenerationOverlay = useCallback(() => {
@@ -1416,20 +1419,36 @@ export default function HoroscopePage() {
               const status = normalizeIssueStatus(issue.status);
               const ready = ISSUE_READY_STATUSES.has(status);
               const processing = ISSUE_PROCESSING_STATUSES.has(status);
+              const deliveryMeta = getIssueDeliveryMeta(issue, {
+                morningTime: subscriptionMorningTime,
+                eveningTime: subscriptionEveningTime
+              });
               return (
                 <div
                   key={issue.id}
-                  className="horoscope-history-item flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
+                  className="horoscope-history-item overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(226,198,138,0.16),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.035))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.22)]"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{humanizeIssueTitle(issue.product_code)}</p>
-                    <p className="text-xs text-[var(--text-secondary)]">{formatIssuePeriod(issue.start_date, issue.end_date)}</p>
-                    <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">{formatDateTime(issue.created_at)}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-secondary)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[var(--accent-gold)]/30 bg-[var(--accent-gold)]/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">
+                          {deliveryMeta.emoji} {deliveryMeta.label}
+                        </span>
+                        <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-[var(--text-secondary)]">
+                          {deliveryMeta.timeLabel}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-base font-semibold leading-snug text-[var(--text-primary)]">{deliveryMeta.title}</p>
+                      <p className="mt-1 text-xs text-[var(--text-secondary)]">{formatIssuePeriod(issue.start_date, issue.end_date)}</p>
+                    </div>
+                    <span className="rounded-full border border-white/20 bg-black/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-secondary)]">
                       {ready ? "ready" : processing ? "processing" : status}
                     </span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">
+                      {deliveryMeta.caption}
+                    </p>
                     <Button
                       size="sm"
                       variant={ready ? "primary" : "outline"}
@@ -1452,6 +1471,10 @@ export default function HoroscopePage() {
 
       <IssuePreviewModal
         state={issueModal}
+        scheduleTimes={{
+          morningTime: subscriptionMorningTime,
+          eveningTime: subscriptionEveningTime
+        }}
         onClose={() => {
           setIssueModal({ open: false, loading: false, issue: null, error: null });
         }}
@@ -1834,6 +1857,65 @@ function humanizeIssueTitle(productCode: string): string {
     horoscope_sub_daily_plus: "Подписка · Daily Plus"
   };
   return map[productCode] ?? "Персональный выпуск";
+}
+
+function formatCompactIssueId(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(normalized)) return null;
+  return [
+    normalized.slice(0, 8),
+    normalized.slice(8, 12),
+    normalized.slice(12, 16),
+    normalized.slice(16, 20),
+    normalized.slice(20)
+  ].join("-");
+}
+
+function getIssueDeliveryMeta(
+  issue: HoroscopeIssueResponse | null | undefined,
+  times: { morningTime: string; eveningTime: string }
+) {
+  const productCode = issue?.product_code ?? "";
+  const slot = issue?.delivery_slot ?? "single";
+  const period = formatIssuePeriod(issue?.start_date, issue?.end_date);
+
+  if (productCode === "horoscope_sub_daily_plus" && slot === "evening") {
+    return {
+      emoji: "🌙",
+      label: "Вечерний выпуск",
+      title: "Вечерний выпуск · Daily Plus",
+      timeLabel: times.eveningTime || "20:00",
+      caption: `Daily Plus · ${period}`
+    };
+  }
+
+  if (productCode === "horoscope_sub_daily_plus") {
+    return {
+      emoji: "☀️",
+      label: "Утренний выпуск",
+      title: "Утренний выпуск · Daily Plus",
+      timeLabel: times.morningTime || "09:00",
+      caption: `Daily Plus · ${period}`
+    };
+  }
+
+  if (productCode === "horoscope_sub_daily_lite") {
+    return {
+      emoji: "✨",
+      label: "Дневной выпуск",
+      title: "Дневной выпуск · Daily Lite",
+      timeLabel: times.morningTime || "09:00",
+      caption: `Daily Lite · ${period}`
+    };
+  }
+
+  return {
+    emoji: "🔮",
+    label: "Разовый прогноз",
+    title: humanizeIssueTitle(productCode),
+    timeLabel: formatDateTime(issue?.created_at),
+    caption: period
+  };
 }
 
 function formatIssuePeriod(startDate?: string | null, endDate?: string | null): string {
@@ -2421,9 +2503,18 @@ function renderPremiumIssueLayout(content: PremiumIssueContent, issueStatus: Hor
   );
 }
 
-function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose: () => void }) {
+function IssuePreviewModal({
+  state,
+  scheduleTimes,
+  onClose
+}: {
+  state: IssueModalState;
+  scheduleTimes: { morningTime: string; eveningTime: string };
+  onClose: () => void;
+}) {
   if (!state.open) return null;
   const issue = state.issue;
+  const deliveryMeta = getIssueDeliveryMeta(issue, scheduleTimes);
   const issueSections = normalizeIssueSections(issue?.content_json, issue?.summary_text ?? null, issue?.content_md ?? null);
   const premiumIssue = normalizePremiumIssueContent(
     issue,
@@ -2441,8 +2532,18 @@ function IssuePreviewModal({ state, onClose }: { state: IssueModalState; onClose
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-tertiary)]">Персональный выпуск</p>
             <h4 className="text-xl font-semibold text-[var(--text-primary)]">
-              {issue ? humanizeIssueTitle(issue.product_code) : "Загрузка"}
+              {issue ? deliveryMeta.title : "Загрузка"}
             </h4>
+            {issue ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full border border-[var(--accent-gold)]/30 bg-[var(--accent-gold)]/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--accent-gold)]">
+                  {deliveryMeta.emoji} {deliveryMeta.label}
+                </span>
+                <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-[var(--text-secondary)]">
+                  {deliveryMeta.timeLabel}
+                </span>
+              </div>
+            ) : null}
           </div>
           <button
             type="button"
