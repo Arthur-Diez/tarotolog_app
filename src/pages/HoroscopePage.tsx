@@ -34,6 +34,7 @@ import {
   type ProfileResponse
 } from "@/lib/api";
 import { markOfferScreenVisit, markPaidActionAttempted } from "@/lib/offerEngagementState";
+import { resolveInterpretationLanguage } from "@/lib/languages";
 import { clearTelegramStartParam, getTelegramStartParam, openTelegramInvoice } from "@/lib/telegram";
 import "./HoroscopePage.css";
 
@@ -259,12 +260,11 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   }
 ];
 
-function resolvePreferredLanguage(raw: unknown): "ru" | "en" {
+function resolvePreferredLanguage(raw: unknown): string {
   if (typeof raw !== "string") return "ru";
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return "ru";
-  if (normalized.startsWith("en") || normalized.includes("english")) return "en";
-  return "ru";
+  return normalized.split(/[-_]/)[0] || "ru";
 }
 
 function getZodiacDisplayLabel(raw: unknown): string | null {
@@ -300,8 +300,15 @@ export default function HoroscopePage() {
   const isBirthProfileReady = isBirthProfileReadyForPaid(birthProfile);
   const pricingTier = normalizePricingTier(birthProfile?.detected_region_tier);
   const userLang = useMemo(
-    () => resolvePreferredLanguage(birthProfile?.interface_language ?? profile?.user?.lang),
-    [birthProfile?.interface_language, profile?.user?.lang]
+    () =>
+      resolvePreferredLanguage(
+        resolveInterpretationLanguage(
+          birthProfile?.interpretation_language,
+          birthProfile?.interface_language,
+          profile?.user?.lang
+        )
+      ),
+    [birthProfile?.interpretation_language, birthProfile?.interface_language, profile?.user?.lang]
   );
 
   const [freeHoroscope, setFreeHoroscope] = useState<HoroscopeFreeTodayResponse | null>(null);

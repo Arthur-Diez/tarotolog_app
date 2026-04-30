@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Check, Clock3, Globe2, Languages, Loader2, MapPin, Settings2, Sparkles, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,15 @@ import {
 } from "@/lib/pricingRegion";
 import { COUNTRY_OPTIONS, getCountryLabelEnglish } from "@/lib/countries";
 import { detectDeviceTimezone, formatTimezoneLabel } from "@/lib/timezone";
+import {
+  INTERFACE_LANGUAGE_OPTIONS,
+  INTERPRETATION_LANGUAGE_OPTIONS,
+  SAME_AS_INTERFACE_LANGUAGE,
+  getInterfaceLanguageLabel,
+  getInterpretationLanguageLabel,
+  mapToSupportedInterfaceLanguage,
+  normalizeLanguageCode
+} from "@/lib/languages";
 
 type GenderOption = "male" | "female" | "other" | "";
 
@@ -96,11 +105,6 @@ const WIDGET_LABELS: Record<WidgetKey, string> = {
   numerology_forecast: "Нумерологический прогноз"
 };
 
-const LANGUAGE_OPTIONS = [
-  { code: "ru", label: "Русский" },
-  { code: "en", label: "English" }
-];
-
 type BirthProfileUpdatePayload = NonNullable<UpdateProfilePayload["birth_profile"]>;
 
 const LS_LANG_SNAPSHOT_KEY = "tarotolog_lang_diag_snapshot";
@@ -124,17 +128,11 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
 }
 
 function normalizeLang(code: string | null): string | null {
-  if (!code) return null;
-  const trimmed = code.trim();
-  if (!trimmed) return null;
-  const base = trimmed.toLowerCase().split(/[-_]/)[0];
-  return base || null;
+  return normalizeLanguageCode(code);
 }
 
-function mapSupportedLang(base: string | null): "ru" | "en" {
-  if (base === "ru") return "ru";
-  if (base === "en") return "en";
-  return "en";
+function mapSupportedLang(base: string | null): string {
+  return mapToSupportedInterfaceLanguage(base);
 }
 
 function normalizeTimeValue(value: string): string | null {
@@ -216,9 +214,7 @@ function getCountryLabel(code: string | null): string {
 }
 
 function getLanguageLabel(code: string | null): string {
-  if (!code) return "Не выбрано";
-  const option = LANGUAGE_OPTIONS.find((item) => item.code === code.toLowerCase());
-  return option ? option.label : code;
+  return getInterfaceLanguageLabel(code);
 }
 
 export default function ProfilePage() {
@@ -266,6 +262,8 @@ export default function ProfilePage() {
   const isDiscountAdmin = isAdminByIdentity || isDiscountAdminByBackend;
   const offerSessionKey = useMemo(() => getOfferSessionKey(), []);
   const initialInterfaceLanguage = birthProfile?.interface_language ?? null;
+  const initialInterpretationLanguage =
+    birthProfile?.interpretation_language ?? SAME_AS_INTERFACE_LANGUAGE;
   const initialEffectiveLang = mapSupportedLang(normalizeLang(initialInterfaceLanguage) ?? null);
   const initialTimezoneName: string | null = birthProfile?.current_tz_name ?? user?.current_tz_name ?? null;
   const combinedTimezoneOffset = birthProfile?.current_tz_offset_min ?? user?.current_tz_offset_min;
@@ -326,7 +324,9 @@ export default function ProfilePage() {
   const [timezoneStatus, setTimezoneStatus] =
     useState<{ type: "success" | "error"; message: string } | null>(null);
   const [timezoneModalOpen, setTimezoneModalOpen] = useState(false);
-  const [activeSave, setActiveSave] = useState<"personal" | "widgets" | "timezone" | "country" | "language" | null>(null);
+  const [activeSave, setActiveSave] = useState<
+    "personal" | "widgets" | "timezone" | "country" | "language" | "interpretationLanguage" | null
+  >(null);
   const [ipCountry, setIpCountry] = useState<string | null>(null);
   const initialConfirmedCountry =
     birthProfile?.pricing_country_confirmed && birthProfile?.detected_country ? birthProfile.detected_country : null;
@@ -336,6 +336,10 @@ export default function ProfilePage() {
   const [confirmedLanguage, setConfirmedLanguage] = useState<string | null>(initialInterfaceLanguage);
   const [languageConfirmed, setLanguageConfirmed] = useState<boolean>(Boolean(initialInterfaceLanguage));
   const [languageSelectOpen, setLanguageSelectOpen] = useState(false);
+  const [confirmedInterpretationLanguage, setConfirmedInterpretationLanguage] =
+    useState<string>(initialInterpretationLanguage);
+  const [interpretationLanguageSelectOpen, setInterpretationLanguageSelectOpen] = useState(false);
+  const [interpretationLanguageSearch, setInterpretationLanguageSearch] = useState("");
   const [timezoneName, setTimezoneName] = useState<string | null>(initialTimezoneName);
   const [timezoneOffset, setTimezoneOffset] = useState<number | null>(safeInitialTimezoneOffset);
   const [timezoneConfirmed, setTimezoneConfirmed] = useState<boolean>(Boolean(initialTimezoneConfirmed));
@@ -348,7 +352,7 @@ export default function ProfilePage() {
     navLangNorm: string | null;
     urlLangRaw: string | null;
     urlLangNorm: string | null;
-    effectiveLang: "ru" | "en";
+    effectiveLang: string;
   }>({
     tgLangCodeRaw: null,
     tgLangCodeNorm: null,
@@ -392,6 +396,10 @@ export default function ProfilePage() {
     setConfirmedLanguage(initialInterfaceLanguage);
     setLanguageConfirmed(Boolean(initialInterfaceLanguage));
   }, [initialInterfaceLanguage]);
+
+  useEffect(() => {
+    setConfirmedInterpretationLanguage(initialInterpretationLanguage);
+  }, [initialInterpretationLanguage]);
 
   useEffect(() => {
     setTimezoneName(initialTimezoneName);
@@ -546,6 +554,20 @@ export default function ProfilePage() {
   const suggestedLanguage = diag.navLangNorm
     ? mapSupportedLang(diag.navLangNorm)
     : diag.effectiveLang;
+  const effectiveInterfaceLanguage = confirmedLanguage ?? suggestedLanguage;
+  const interpretationLanguageLabel = getInterpretationLanguageLabel(
+    confirmedInterpretationLanguage,
+    effectiveInterfaceLanguage
+  );
+  const filteredInterpretationLanguages = useMemo(() => {
+    const query = interpretationLanguageSearch.trim().toLowerCase();
+    if (!query) return INTERPRETATION_LANGUAGE_OPTIONS;
+    return INTERPRETATION_LANGUAGE_OPTIONS.filter((option) =>
+      [option.code, option.label, option.nativeLabel]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [interpretationLanguageSearch]);
 
   useEffect(() => {
     markOfferScreenVisit("profile");
@@ -773,6 +795,28 @@ export default function ProfilePage() {
         ...prev,
         lang: value
       }));
+      void refresh();
+    }
+    setActiveSave(null);
+  };
+
+  const handleInterpretationLanguageSelect = async (langCode: string) => {
+    const normalized = normalizeLanguageCode(langCode) ?? SAME_AS_INTERFACE_LANGUAGE;
+    const value =
+      normalized === SAME_AS_INTERFACE_LANGUAGE
+        ? SAME_AS_INTERFACE_LANGUAGE
+        : normalized;
+    setActiveSave("interpretationLanguage");
+    const payload: UpdateProfilePayload = {
+      birth_profile: {
+        interpretation_language: value
+      }
+    };
+    const result = await runSave("select-interpretation-language", payload);
+    if (result) {
+      setConfirmedInterpretationLanguage(value);
+      setInterpretationLanguageSelectOpen(false);
+      setInterpretationLanguageSearch("");
       void refresh();
     }
     setActiveSave(null);
@@ -1011,10 +1055,42 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6 pb-4">
+      <section className="overflow-hidden rounded-[32px] border border-[rgba(215,185,139,0.18)] bg-[radial-gradient(circle_at_18%_12%,rgba(215,185,139,0.22),transparent_32%),linear-gradient(145deg,rgba(49,39,57,0.96),rgba(18,13,24,0.98))] p-5 shadow-[0_28px_70px_rgba(0,0,0,0.62)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <p className="text-[11px] uppercase tracking-[0.38em] text-[var(--text-tertiary)]">Личное пространство</p>
+            <div>
+              <h1 className="font-serif text-[38px] leading-tight text-[var(--text-primary)]">
+                {personal.fullName.trim() || user?.display_name || "Профиль"}
+              </h1>
+              <p className="mt-2 max-w-[320px] text-sm leading-6 text-[var(--text-secondary)]">
+                Данные, язык и часовой пояс, от которых зависит точность раскладов и прогнозов.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">
+                <Sparkles className="h-3.5 w-3.5 text-[var(--accent-gold)]" />
+                {getLanguageLabel(effectiveInterfaceLanguage)}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">
+                <Clock3 className="h-3.5 w-3.5 text-[var(--accent-gold)]" />
+                {timezoneConfirmed ? timezoneLabel : "Пояс не подтверждён"}
+              </span>
+            </div>
+          </div>
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] border border-white/10 bg-white/10 shadow-inner">
+            <UserRound className="h-8 w-8 text-[var(--accent-gold)]" />
+          </div>
+        </div>
+      </section>
+
       <Card className="rounded-[28px] border border-white/10 bg-[var(--bg-card)]/90 shadow-[0_30px_60px_rgba(0,0,0,0.55)]">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-3 text-lg font-semibold text-[var(--text-primary)]">
-            Личные данные
+            <span className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-[var(--accent-gold)]" />
+              Настройки профиля
+            </span>
             {saving && activeSave === "personal" ? (
               <Loader2 className="h-4 w-4 animate-spin text-[var(--accent-pink)]" />
             ) : null}
@@ -1084,7 +1160,10 @@ export default function ProfilePage() {
             ) : null}
             <div className="space-y-4">
               <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-medium text-[var(--text-primary)]">Ваш часовой пояс</p>
+                <p className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <Clock3 className="h-4 w-4 text-[var(--accent-gold)]" />
+                  Ваш часовой пояс
+                </p>
                 {timezonePending ? (
                   <>
                     <p className="text-sm text-[var(--text-secondary)]">{pendingMessage}</p>
@@ -1139,7 +1218,10 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-medium text-[var(--text-primary)]">Ваша страна</p>
+                <p className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <MapPin className="h-4 w-4 text-[var(--accent-gold)]" />
+                  Ваша страна
+                </p>
                 {countryConfirmed ? (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -1207,7 +1289,10 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-3 rounded-[22px] border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-medium text-[var(--text-primary)]">Язык интерфейса</p>
+                <p className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <Globe2 className="h-4 w-4 text-[var(--accent-gold)]" />
+                  Язык интерфейса
+                </p>
                 {languageConfirmed ? (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -1252,19 +1337,93 @@ export default function ProfilePage() {
                   </>
                 )}
                 {languageSelectOpen ? (
-                  <select
-                    className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-[var(--bg-card)] px-4 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-pink)]"
-                    value={confirmedLanguage ?? suggestedLanguage}
-                    onChange={(event) => {
-                      void handleLanguageSelect(event.target.value);
-                    }}
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {INTERFACE_LANGUAGE_OPTIONS.map((option) => {
+                      const selected = (confirmedLanguage ?? suggestedLanguage) === option.code;
+                      return (
+                        <button
+                          key={option.code}
+                          type="button"
+                          className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                            selected
+                              ? "border-[rgba(215,185,139,0.42)] bg-[rgba(215,185,139,0.12)] text-[var(--text-primary)]"
+                              : "border-white/10 bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+                          }`}
+                          onClick={() => void handleLanguageSelect(option.code)}
+                          disabled={saving && activeSave === "language"}
+                        >
+                          <span>
+                            <span className="block text-sm font-semibold">{option.nativeLabel || option.label}</span>
+                            <span className="block text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                              {option.regionHint}
+                            </span>
+                          </span>
+                          {selected ? <Check className="h-4 w-4 text-[var(--accent-gold)]" /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="space-y-3 rounded-[22px] border border-[rgba(215,185,139,0.16)] bg-[linear-gradient(135deg,rgba(215,185,139,0.1),rgba(255,255,255,0.04))] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                      <Languages className="h-4 w-4 text-[var(--accent-gold)]" />
+                      Язык интерпретаций
+                    </p>
+                    <p className="text-sm leading-5 text-[var(--text-secondary)]">
+                      На этом языке будут приходить расклады, карта дня и персональные прогнозы.
+                    </p>
+                    <p className="text-base font-semibold text-[var(--text-primary)]">
+                      {interpretationLanguageLabel}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setInterpretationLanguageSelectOpen((prev) => !prev)}
+                    disabled={saving && activeSave === "interpretationLanguage"}
                   >
-                    {LANGUAGE_OPTIONS.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    Изменить
+                  </Button>
+                </div>
+                {interpretationLanguageSelectOpen ? (
+                  <div className="mt-4 space-y-3">
+                    <Input
+                      value={interpretationLanguageSearch}
+                      onChange={(event) => setInterpretationLanguageSearch(event.target.value)}
+                      placeholder="Найти язык: English, Español, Türkçe..."
+                    />
+                    <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                      {filteredInterpretationLanguages.map((option) => {
+                        const selected = confirmedInterpretationLanguage === option.code;
+                        return (
+                          <button
+                            key={option.code}
+                            type="button"
+                            className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                              selected
+                                ? "border-[rgba(215,185,139,0.44)] bg-[rgba(215,185,139,0.13)] text-[var(--text-primary)]"
+                                : "border-white/10 bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+                            }`}
+                            onClick={() => void handleInterpretationLanguageSelect(option.code)}
+                            disabled={saving && activeSave === "interpretationLanguage"}
+                          >
+                            <span>
+                              <span className="block text-sm font-semibold">{option.nativeLabel || option.label}</span>
+                              <span className="block text-xs text-[var(--text-tertiary)]">
+                                {option.code === SAME_AS_INTERFACE_LANGUAGE ? "Автоматически" : `${option.label} · ${option.code}`}
+                              </span>
+                            </span>
+                            {selected ? <Check className="h-4 w-4 text-[var(--accent-gold)]" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ) : null}
               </div>
 

@@ -146,6 +146,7 @@ export interface BirthProfile {
   gender: "male" | "female" | "other" | null;
   detected_country?: string | null;
   interface_language?: string | null;
+  interpretation_language?: string | null;
   current_tz_name?: string | null;
   current_tz_offset_min?: number | null;
   current_tz_confirmed?: boolean | null;
@@ -207,6 +208,7 @@ export interface UpdateProfilePayload {
     detected_country?: string | null;
     detected_region_tier?: string | null;
     interface_language?: string | null;
+    interpretation_language?: string | null;
     current_tz_name?: string | null;
     current_tz_offset_min?: number | null;
     current_tz_confirmed?: boolean | null;

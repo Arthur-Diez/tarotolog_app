@@ -9,6 +9,7 @@ import { DeckStack } from "@/components/tarot/DeckStack";
 import { LoadingTarot } from "@/components/tarot/LoadingTarot";
 import { useAdsgram } from "@/hooks/useAdsgram";
 import { useEnergyBalance } from "@/hooks/useEnergyBalance";
+import { useProfile } from "@/hooks/useProfile";
 import { useSpreadScale } from "@/hooks/useSpreadScale";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import {
@@ -34,6 +35,7 @@ import { getRwsSpreadEnergyCost } from "@/data/rwsEnergyCosts";
 import { getSilaRodaSpreadEnergyCost } from "@/data/silaRodaEnergyCosts";
 import { DECKS } from "@/data/decks";
 import { useDeckTheme } from "@/ui/useDeckTheme";
+import { resolveInterpretationLanguage } from "@/lib/languages";
 import "./SpreadPlayPage.css";
 
 const DEAL_OFFSET = 96;
@@ -153,6 +155,7 @@ export default function SpreadPlayPage() {
   const schema: SpreadSchema = (spreadId && SPREAD_SCHEMAS[spreadId]) || SpreadOneCard;
 
   const adsgram = useAdsgram();
+  const { profile } = useProfile();
   const { hasSubscription } = useSubscriptionStatus();
   const interstitialShownRef = useRef(false);
   const [viewportHeight, setViewportHeight] = useState(
@@ -905,8 +908,12 @@ export default function SpreadPlayPage() {
           const snapshot = useSpreadStore.getState();
           const deckTitle =
             DECKS.find((deck) => deck.id === snapshot.schema.deckType)?.title ?? snapshot.schema.deckType;
-          const interfaceLocale = normalizeLocale(
-            window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
+          const interpretationLocale = normalizeLocale(
+            resolveInterpretationLanguage(
+              profile?.birth_profile?.interpretation_language,
+              profile?.birth_profile?.interface_language,
+              profile?.user?.lang ?? window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code ?? navigator.language ?? "ru"
+            )
           );
           const cardsPayload = snapshot.cards.map((card) => {
             const code = mapCardNameToCode(card.name, snapshot.schema.deckType);
@@ -932,7 +939,7 @@ export default function SpreadPlayPage() {
             deck_id: snapshot.schema.deckType,
             deck_title: deckTitle,
             question: snapshot.question.trim(),
-            locale: interfaceLocale,
+            locale: interpretationLocale,
             energy_cost: spreadEnergyCost,
             cards: cardsPayload
           });

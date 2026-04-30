@@ -46,6 +46,7 @@ import {
   markPaidActionAttempted,
   markRewardAdCompleted
 } from "@/lib/offerEngagementState";
+import { resolveInterpretationLanguage } from "@/lib/languages";
 import type { TelegramUser } from "@/lib/telegram";
 
 interface HomeScreenProps {
@@ -123,12 +124,11 @@ function getDisplayName(telegramUser: TelegramUser | null | undefined, name?: st
   return name ?? telegramUser?.first_name ?? telegramUser?.username ?? "Гость";
 }
 
-function resolvePreferredLanguage(raw: unknown): "ru" | "en" {
+function resolvePreferredLanguage(raw: unknown): string {
   if (typeof raw !== "string") return "ru";
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return "ru";
-  if (normalized.startsWith("en") || normalized.includes("english")) return "en";
-  return "ru";
+  return normalized.split(/[-_]/)[0] || "ru";
 }
 
 function getZodiacLabel(zodiacSign?: string | null, birthDate?: string | null) {
@@ -295,7 +295,13 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
   const displayName = getDisplayName(telegramUser, profileData?.display_name);
   const energyBalance = profileData?.energy_balance ?? 0;
   const zodiacLabel = getZodiacLabel(profile?.birth_profile?.zodiac_sign, profile?.birth_profile?.birth_date);
-  const interfaceLocale = resolvePreferredLanguage(profile?.birth_profile?.interface_language ?? profile?.user?.lang);
+  const interpretationLocale = resolvePreferredLanguage(
+    resolveInterpretationLanguage(
+      profile?.birth_profile?.interpretation_language,
+      profile?.birth_profile?.interface_language,
+      profile?.user?.lang
+    )
+  );
   const detectedCountry = profile?.birth_profile?.detected_country ?? null;
   const focusTheme = useMemo(() => getFocusTheme(energyBalance), [energyBalance]);
   const formattedEnergy = new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(energyBalance)));
@@ -428,7 +434,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
           `Персональная трактовка моей карты дня на ${dailyCard.local_date}. ` +
           `Карта: ${dailyCard.card_name ?? "Карта дня"}. ` +
           "Как эта карта проявляется именно для меня сегодня, на что обратить внимание и как лучше прожить день?",
-        locale: interfaceLocale,
+        locale: interpretationLocale,
         energy_cost: dailyCardUnlockCost,
         kind: "daily_card_unlock",
         source: "home_daily_card",
@@ -481,7 +487,7 @@ export default function HomeScreen({ telegramUser }: HomeScreenProps) {
     dailyCard,
     dailyCardCanViewInterpretation,
     dailyCardUnlockCost,
-    interfaceLocale,
+    interpretationLocale,
     navigate,
     refreshDailyCard,
     resolvedDailyCardReadingId
