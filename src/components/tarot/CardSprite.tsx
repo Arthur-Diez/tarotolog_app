@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-import { backUrl, faceUrl } from "@/lib/cardAsset";
+import { backImageUrl, faceImageUrl } from "@/lib/cardAsset";
 
 interface CardSpriteProps {
   name: string;
@@ -11,8 +11,8 @@ interface CardSpriteProps {
 
 export function CardSprite({ name, reversed, isOpen, onClick }: CardSpriteProps) {
   const deckId = "rws";
-  const backSrc = backUrl(deckId);
-  const faceSrc = faceUrl(deckId, name);
+  const backSrc = backImageUrl(deckId);
+  const faceSrc = faceImageUrl(deckId, name);
   const faceTransform = reversed ? "rotateY(180deg) rotateX(180deg)" : "rotateY(180deg)";
 
   return (

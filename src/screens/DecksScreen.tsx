@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Expander } from "@/components/Expander";
 import { DeckShowcaseAnimation } from "@/components/tarot/DeckShowcaseAnimation";
-import { faceUrl } from "@/lib/cardAsset";
+import { faceImageUrl } from "@/lib/cardAsset";
 import { DECKS, type Deck, type DeckId } from "@/data/decks";
 import { resolveDeckTheme } from "@/ui/deckTheme";
 import { startTransition } from "@/ui/deckTransitionStore";
@@ -40,7 +40,7 @@ const RWS_FLOW_FACE_CARDS = [
   "Шестерка Кубков"
 ];
 
-const RWS_FLOW_CARD_URLS = RWS_FLOW_FACE_CARDS.map((name) => faceUrl("rws", name));
+const RWS_FLOW_CARD_URLS = RWS_FLOW_FACE_CARDS.map((name) => faceImageUrl("rws", name));
 
 const LENORMAND_FLOW_FACE_CARDS = [
   "Всадник (1)",
@@ -53,7 +53,7 @@ const LENORMAND_FLOW_FACE_CARDS = [
   "Ключ (33)"
 ];
 
-const LENORMAND_FLOW_CARD_URLS = LENORMAND_FLOW_FACE_CARDS.map((name) => faceUrl("lenormand", name));
+const LENORMAND_FLOW_CARD_URLS = LENORMAND_FLOW_FACE_CARDS.map((name) => faceImageUrl("lenormand", name));
 
 const MANARA_FLOW_FACE_CARDS = [
   "0 Шут (Манара)",
@@ -66,7 +66,7 @@ const MANARA_FLOW_FACE_CARDS = [
   "19 Солнце (Манара)"
 ];
 
-const MANARA_FLOW_CARD_URLS = MANARA_FLOW_FACE_CARDS.map((name) => faceUrl("manara", name));
+const MANARA_FLOW_CARD_URLS = MANARA_FLOW_FACE_CARDS.map((name) => faceImageUrl("manara", name));
 
 const ANGELS_FLOW_FACE_CARDS = [
   "0 Шут (Vehuiah)",
@@ -79,7 +79,7 @@ const ANGELS_FLOW_FACE_CARDS = [
   "21 Мир (Damabiah)"
 ];
 
-const ANGELS_FLOW_CARD_URLS = ANGELS_FLOW_FACE_CARDS.map((name) => faceUrl("angels", name));
+const ANGELS_FLOW_CARD_URLS = ANGELS_FLOW_FACE_CARDS.map((name) => faceImageUrl("angels", name));
 const GOLDEN_FLOW_FACE_CARDS = [
   "10 Монет",
   "11 Золотая Справедливость",
@@ -91,7 +91,7 @@ const GOLDEN_FLOW_FACE_CARDS = [
   "19 Золотое Солнце"
 ];
 
-const GOLDEN_FLOW_CARD_URLS = GOLDEN_FLOW_FACE_CARDS.map((name) => faceUrl("golden", name));
+const GOLDEN_FLOW_CARD_URLS = GOLDEN_FLOW_FACE_CARDS.map((name) => faceImageUrl("golden", name));
 const SILA_RODA_FLOW_FACE_CARDS = [
   "0 Проявление себя",
   "1 Мудрость",
@@ -103,7 +103,7 @@ const SILA_RODA_FLOW_FACE_CARDS = [
   "37 Успех"
 ];
 
-const SILA_RODA_FLOW_CARD_URLS = SILA_RODA_FLOW_FACE_CARDS.map((name) => faceUrl("sila_roda", name));
+const SILA_RODA_FLOW_CARD_URLS = SILA_RODA_FLOW_FACE_CARDS.map((name) => faceImageUrl("sila_roda", name));
 const METAPHORICAL_FLOW_FACE_CARDS = [
   "Быть искренним",
   "Верить в себя",
@@ -115,7 +115,7 @@ const METAPHORICAL_FLOW_FACE_CARDS = [
   "Дать место спонтанности"
 ];
 
-const METAPHORICAL_FLOW_CARD_URLS = METAPHORICAL_FLOW_FACE_CARDS.map((name) => faceUrl("metaphoric", name));
+const METAPHORICAL_FLOW_CARD_URLS = METAPHORICAL_FLOW_FACE_CARDS.map((name) => faceImageUrl("metaphoric", name));
 
 const DECK_CONTENT: Partial<Record<DeckId, DeckContent>> = {
   rws: {
@@ -483,7 +483,7 @@ function DeckCard({ deck, content, expanded, animationActive, cardRef, onToggle,
 function FaceCard({ name, size = 56, className = "", style }: { name: string; size?: number; className?: string; style?: CSSProperties }) {
   return (
     <img
-      src={faceUrl("rws", name)}
+      src={faceImageUrl("rws", name)}
       alt={name}
       className={`rounded-[10px] object-cover shadow-[0_14px_24px_rgba(0,0,0,0.4)] deck-preview-card ${className}`}
       style={{ width: `${size}px`, height: `${Math.round(size * 1.5)}px`, ...style }}

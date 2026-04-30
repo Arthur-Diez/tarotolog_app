@@ -24,7 +24,7 @@ import { RWS_SPREADS_MAP, type SpreadId } from "@/data/rws_spreads";
 import { RWS_ALL } from "@/data/rws_deck";
 import { mapCardNameToCode, mapCardValueToCode } from "@/lib/cardCode";
 import { SPREAD_SCHEMAS } from "@/data/spreadSchemas";
-import { faceUrlCandidates } from "@/lib/cardAsset";
+import { faceImageUrlCandidates } from "@/lib/cardAsset";
 import ShareCard from "@/components/sections/ShareCard";
 import { isDeckWithReversals, normalizeCardReversedForDeck } from "@/lib/tarotOrientation";
 import { openInlineQueryWithFallback } from "@/lib/telegram";
@@ -454,7 +454,7 @@ export default function InterpretationPage() {
   const shareCards = cardDisplayList.map((card) => ({
     name: card.displayName,
     positionLabel: card.positionLabel,
-    imageSrc: card.assetName ? faceUrlCandidates(resolvedDeckId, card.assetName)[0] ?? null : null,
+    imageSrc: card.assetName ? faceImageUrlCandidates(resolvedDeckId, card.assetName)[0] ?? null : null,
     reversed: normalizeCardReversedForDeck(resolvedDeckId, card.reversed),
     meaning: card.meaning
   }));

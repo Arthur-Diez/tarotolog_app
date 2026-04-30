@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 
 import CardFaceImage from "@/components/tarot/CardFaceImage";
-import { faceUrlCandidates } from "@/lib/cardAsset";
+import { faceImageUrlCandidates } from "@/lib/cardAsset";
 
 interface DealtCardProps {
   backSrc: string;
@@ -23,7 +23,7 @@ export default function DealtCard({
   className = "",
   onClick
 }: DealtCardProps) {
-  const faceCandidates = useMemo(() => faceUrlCandidates(deckId, faceName), [deckId, faceName]);
+  const faceCandidates = useMemo(() => faceImageUrlCandidates(deckId, faceName), [deckId, faceName]);
   const [preloadedFaceSrc, setPreloadedFaceSrc] = useState<string | null>(null);
 
   useEffect(() => {

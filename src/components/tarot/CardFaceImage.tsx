@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ImgHTMLAttributes } from "react";
 
-import { faceUrlCandidates } from "@/lib/cardAsset";
+import { faceImageUrlCandidates } from "@/lib/cardAsset";
 
 interface CardFaceImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> {
   deckId: string;
@@ -11,7 +11,7 @@ interface CardFaceImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "
 }
 
 export default function CardFaceImage({ deckId, cardName, forcedSrc, ...imgProps }: CardFaceImageProps) {
-  const sources = useMemo(() => faceUrlCandidates(deckId, cardName), [deckId, cardName]);
+  const sources = useMemo(() => faceImageUrlCandidates(deckId, cardName), [deckId, cardName]);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {

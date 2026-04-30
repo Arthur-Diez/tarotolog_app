@@ -9,6 +9,13 @@ export const faceUrl = (deckId: string, name: string): string =>
 
 export const backUrl = (deckId: string): string => `/assets/tarot/${resolveDeckAssetId(deckId)}/back.png`;
 
+export const faceWebpUrl = (deckId: string, name: string): string =>
+  `/assets/tarot/${resolveDeckAssetId(deckId)}/faces-webp/${encodeURIComponent(name)}.webp`;
+
+export const backWebpUrl = (deckId: string): string => `/assets/tarot/${resolveDeckAssetId(deckId)}/back.webp`;
+
+export const backImageUrl = (deckId: string): string => backWebpUrl(deckId);
+
 const buildCardNameVariants = (name: string): string[] => {
   const variants = new Set<string>();
   const add = (value: string) => {
@@ -31,3 +38,10 @@ const buildCardNameVariants = (name: string): string[] => {
 
 export const faceUrlCandidates = (deckId: string, name: string): string[] =>
   buildCardNameVariants(name).map((variant) => faceUrl(deckId, variant));
+
+export const faceImageUrlCandidates = (deckId: string, name: string): string[] => {
+  const variants = buildCardNameVariants(name);
+  return [...variants.map((variant) => faceWebpUrl(deckId, variant)), ...variants.map((variant) => faceUrl(deckId, variant))];
+};
+
+export const faceImageUrl = (deckId: string, name: string): string => faceImageUrlCandidates(deckId, name)[0] ?? faceUrl(deckId, name);

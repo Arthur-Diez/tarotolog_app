@@ -1,4 +1,4 @@
-import { backUrl } from "@/lib/cardAsset";
+import { backImageUrl } from "@/lib/cardAsset";
 
 interface CardBackProps {
   size?: number;
@@ -6,7 +6,7 @@ interface CardBackProps {
 }
 
 export default function CardBack({ size = 96, className = "" }: CardBackProps) {
-  const src = backUrl("rws");
+  const src = backImageUrl("rws");
   return (
     <img
       src={src}

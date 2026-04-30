@@ -19,7 +19,7 @@ import {
   type BackendReadingStatus,
   type ViewReadingResponse
 } from "@/lib/api";
-import { backUrl } from "@/lib/cardAsset";
+import { backImageUrl } from "@/lib/cardAsset";
 import { mapCardNameToCode } from "@/lib/cardCode";
 import { isDeckWithReversals } from "@/lib/tarotOrientation";
 import { useSpreadStore } from "@/stores/spreadStore";
@@ -494,7 +494,7 @@ export default function SpreadPlayPage() {
     [clearPendingEnergyCharge, navigate, setEnergyBalance, setReadingResult]
   );
 
-  const backSrc = useMemo(() => backUrl(schema.deckType), [schema.deckType]);
+  const backSrc = useMemo(() => backImageUrl(schema.deckType), [schema.deckType]);
   const trimmedQuestion = question.trim();
 
   const resetQuestionBubble = () => {
